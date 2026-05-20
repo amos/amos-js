@@ -7,7 +7,6 @@
     "module": "ES2022",
     "moduleResolution": "bundler",
     "rootDirs": ["."],
-    "baseUrl": ".",
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
