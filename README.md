@@ -7,7 +7,7 @@ It is the foundation for `@amos.com/react-amos-js`, but is fully usable on its o
 ## Installation
 
 ```bash
-npm install github:amos/amos-js
+npm install @amos.com/amos-js
 ```
 
 ## What it gives you

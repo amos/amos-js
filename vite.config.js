@@ -13,11 +13,13 @@ export default defineConfig({
         // types (provided by `@types/googlepay`) when they import
         // `@amos.com/amos-js`.
         if (normalized.endsWith("/dist/index.d.ts")) {
-          const referenceLine = '/// <reference types="googlepay" />\n';
-          if (!content.includes(referenceLine)) {
-            return { content: referenceLine + content };
-          }
+          return {
+            content:
+              '/// <reference types="googlepay" />\nexport * from "./src/index";\n',
+          };
         }
+
+        return { content };
       },
     }),
   ],
