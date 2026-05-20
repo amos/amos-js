@@ -1,0 +1,42 @@
+{
+  "name": "@amos.com/amos-js",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "biome": "biome check --write",
+    "dev": "vite",
+    "prebuild": "npm run typecheck",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "author": "Amos",
+  "description": "Amos JavaScript SDK for embedding payment methods via iframes.",
+  "devDependencies": {
+    "@biomejs/biome": "2.4.15",
+    "@types/node": "25.9.1",
+    "typescript": "6.0.3",
+    "vite": "7.3.3",
+    "vite-plugin-dts": "4.5.4"
+  },
+  "dependencies": {
+    "@amos.com/node": "0.1.6",
+    "@types/googlepay": "0.7.10"
+  },
+  "peerDependencies": {
+    "openapi-fetch": "^0 || ^1"
+  }
+}
