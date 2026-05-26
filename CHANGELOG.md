@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.2.0
+
+### Minor Changes
+
+- Add css variables for appearance API
+
 ## 0.1.2
 
 ### Patch Changes

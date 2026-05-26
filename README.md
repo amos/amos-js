@@ -198,6 +198,8 @@ Only the variables you provide are sent; omitted variables keep their defaults.
 | `--destructive`          | Error/invalid state borders and icons          | `oklch(0.577 0.245 27.325)` |
 | `--border`               | General border color                           | `oklch(0.922 0 0)`          |
 | `--input`                | Input field border color                       | `oklch(0.922 0 0)`          |
+| `--input-background`     | Input field background fill                    | `var(--background)`         |
+| `--input-height`         | Height of text inputs and form controls        | `2.25rem`                   |
 | `--ring`                 | Focus ring and outline color                   | `oklch(0.708 0 0)`          |
 | `--radius`               | Base border-radius (derived into sm/md/lg/xl)  | `0.625rem`                  |
 

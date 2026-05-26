@@ -80,6 +80,18 @@ export type ThemeVariable =
    */
   | "--input"
   /*
+   * Input field background fill. Falls back to `--background` when unset.
+   *
+   * Default: var(--background)
+   */
+  | "--input-background"
+  /*
+   * Height of text inputs and form controls (e.g. `2.25rem`, `48px`).
+   *
+   * Default: 2.25rem
+   */
+  | "--input-height"
+  /*
    * Focus ring and outline color for inputs and buttons.
    *
    * Default: oklch(0.708 0 0)
