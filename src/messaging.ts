@@ -19,8 +19,10 @@ export function sendParentReadyMessage(iframe: Iframe): void {
 /**
  * Push appearance overrides into the embedded iframe.
  *
- * Only the provided `themeVariables` are sent; omitted variables keep
- * their defaults.
+ * Uses a replace model for `themeVariables`: each message that includes
+ * `themeVariables` sets the full override set. Only the listed variables
+ * are overridden; unlisted variables revert to iframe defaults. Omit
+ * `themeVariables` entirely to leave existing overrides unchanged.
  */
 export function updateAppearance({
   iframe,
