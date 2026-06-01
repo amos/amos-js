@@ -51,6 +51,7 @@ export {
 } from "./payment-method-form";
 export type {
   Appearance,
+  AppearanceLabels,
   Message,
   ThemeVariable,
 } from "./types";

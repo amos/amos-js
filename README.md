@@ -167,11 +167,12 @@ In short, your app orchestrates the payment flow, while sensitive payment data s
 
 ## Appearance
 
-Every mount function (and the `attach*Listeners` helpers) accepts an optional `appearance` option that controls the look of the iframe UI. It contains a `themeVariables` object whose keys are CSS custom-property names and whose values are strings. You can update appearance after page load via the controller's `update({ appearance })` method.
+Every mount function (and the `attach*Listeners` helpers) accepts an optional `appearance` option that controls the look of the iframe UI. It contains a `themeVariables` object whose keys are CSS custom-property names and whose values are strings, and an optional `labels` setting for field label placement. You can update appearance after page load via the controller's `update({ appearance })` method.
 
 ```ts
 form.update({
   appearance: {
+    labels: "floating",
     themeVariables: {
       "--primary": "oklch(0.5 0.2 240)",
       "--radius": "0.25rem",
@@ -181,6 +182,18 @@ form.update({
 ```
 
 Only the variables you provide are sent; omitted variables keep their defaults.
+
+### Label placement
+
+Set `labels` to control how field labels are rendered in card and bank account forms:
+
+| Value | Behavior |
+| ----- | -------- |
+| `above` (default) | Label text above each input |
+| `floating` | Label inside the control; moves up when focused or filled |
+| `placeholder` | No visible label; placeholder and `aria-label` only |
+
+Radio groups (e.g. account type) always use an above-style group label regardless of this setting.
 
 ### Available theme variables
 
@@ -216,7 +229,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 
 **Optional `options`:**
 
-- `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>> }`)
+- `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder" }`)
 - `additionalFields` (`{ cardholderName: boolean }`, defaults to `{ cardholderName: false }`)
 - `onPaymentIntentConfirmationSucceeded` (`(paymentIntent: PaymentIntent) => void`)
 - `onSetupIntentConfirmationSucceeded` (`(setupIntent: SetupIntent) => void`)

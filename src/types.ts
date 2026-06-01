@@ -105,10 +105,25 @@ export type ThemeVariable =
   | "--radius";
 
 /**
+ * Placement of field labels in payment method forms.
+ *
+ * - `above` — label text is rendered above the control (default).
+ * - `floating` — label sits inside the control and shrinks when focused or filled.
+ * - `placeholder` — no visible label; use placeholder text and `aria-label` only.
+ */
+export type AppearanceLabels = "above" | "floating" | "placeholder";
+
+/**
  * Appearance overrides for the embedded Amos iframe UI.
  */
 export type Appearance = {
   themeVariables?: Partial<Record<ThemeVariable, string>>;
+  /**
+   * Field label placement for card and bank account forms.
+   *
+   * @default "above"
+   */
+  labels?: AppearanceLabels;
 };
 
 /**
