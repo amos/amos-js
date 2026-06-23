@@ -5,7 +5,8 @@ export default defineConfig({
   plugins: [
     dts({
       insertTypesEntry: true,
-      outDir: "dist",
+      outDirs: "dist",
+      entryRoot: ".",
       beforeWriteFile: (filePath, content) => {
         const normalized = filePath.replaceAll("\\", "/");
 
