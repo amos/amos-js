@@ -12,7 +12,7 @@ npm install @amos.com/amos-js
 
 ## What it gives you
 
-- **Types** for the `postMessage` protocol used between your page and the Amos iframe (`Message`, `Appearance`, `ThemeVariable`), plus convenience aliases for the OpenAPI schema types you'll encounter (`PaymentIntent`, `SetupIntent`, `EmbedToken`, `CreatePaymentIntentInput`, ...).
+- **Types** for the `postMessage` protocol used between your page and the Amos iframe (`Message`, `Appearance`, `ThemeVariable`). OpenAPI schema types (for example `components["schemas"]["PaymentIntent"]`) come from `@amos.com/node`.
 - **Iframe-targeted helpers** to validate the form, confirm a payment intent, confirm a setup intent, update appearance, etc.
 - **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`) that create the iframe, wire up its message protocol, manage its height/opacity, and return a small controller for updating options and tearing it down.
 - **Lower-level building blocks** (`getCreditCardFormSrc`, `attachPaymentMethodFormListeners`, `attachGooglePayButtonListeners`, ...) for integrators (such as `@amos.com/react-amos-js`) that want to render the iframe element themselves.
@@ -90,7 +90,7 @@ The following flow is for credit card and bank account payment method types only
 2. **Render your checkout UI** by calling `mountAmosCreditCardPaymentMethodForm(container, options)` (or `mountAmosBankAccountPaymentMethodForm(...)`) along with the required option (`onConfirmationFailed`) and optional callbacks (`onPaymentIntentConfirmationSucceeded`, `onSetupIntentConfirmationSucceeded`). The iframe height is auto-managed by the SDK.
 3. **User clicks "Pay now" button**: call `validateForm({ iframe: form.iframe })`, which returns `Promise<true>` if the embedded form is valid, and `Promise<false>` otherwise.
 4. **Create payment intent on your server**: use your server-side Amos client to call `POST /payment_intents`. You may also associate this payment intent with a new or existing customer via `POST /customers`. This must be server-side because it uses your private API key.
-5. **Return the payment intent token to the browser**: your backend responds with the `EmbedToken` needed for confirmation.
+5. **Return the payment intent token to the browser**: your backend responds with the embed token (`components["schemas"]["EmbedToken"]`) needed for confirmation.
 6. **Confirm the payment intent from the client**: call `confirmPaymentIntent({ iframe: form.iframe, token })` in the browser to continue the payment flow.
 7. **Handle UX**: show the user a "processing" state when the "Pay now" button is clicked, and show a success or error message via `onPaymentIntentConfirmationSucceeded` and `onConfirmationFailed`.
 
@@ -231,8 +231,8 @@ Mount the secure credit-card payment method form into a container element (an `H
 
 - `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder" }`)
 - `additionalFields` (`{ cardholderName: boolean }`, defaults to `{ cardholderName: false }`)
-- `onPaymentIntentConfirmationSucceeded` (`(paymentIntent: PaymentIntent) => void`)
-- `onSetupIntentConfirmationSucceeded` (`(setupIntent: SetupIntent) => void`)
+- `onPaymentIntentConfirmationSucceeded` (`(paymentIntent: components["schemas"]["PaymentIntent"]) => void`)
+- `onSetupIntentConfirmationSucceeded` (`(setupIntent: components["schemas"]["SetupIntent"]) => void`)
 - `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic)
 
 **Returns** `AmosPaymentMethodFormMountController`:
@@ -254,8 +254,8 @@ Mount the secure Google Pay button (express checkout) into a container element.
 - `renderToken` (`string`)
 - `amount` (`string`)
 - `merchantName` (`string`)
-- `onInitiatePaymentIntentRequest` (`({ paymentIntentCreateAttributes, customerCreateAttributes }) => Promise<EmbedToken["token"]>`)
-- `onPaymentIntentConfirmationSucceeded` (`(paymentIntent: PaymentIntent) => void`)
+- `onInitiatePaymentIntentRequest` (`({ paymentIntentCreateAttributes, customerCreateAttributes }) => Promise<components["schemas"]["EmbedToken"]["token"]>`)
+- `onPaymentIntentConfirmationSucceeded` (`(paymentIntent: components["schemas"]["PaymentIntent"]) => void`)
 - `onConfirmationFailed` (`(errorMessage: string) => void`)
 
 **Optional `options`:** `appearance`, `onHeightChange`, `onAppearanceReady`.
@@ -296,13 +296,13 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 
 ### Exported types
 
-`Message`, `Appearance`, `ThemeVariable`, `CreateCustomerInput`, `CreatePaymentIntentInput`, `CreateSetupIntentInput`, `PaymentIntent`, `SetupIntent`, `EmbedToken`, `EmbedTokenJwt`, `RenderTokenJwt`, plus the per-form `*Options` and `*Controller` types.
+`Message`, `Appearance`, `ThemeVariable`, `FormattedGooglePayPaymentData`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
 
 ## Notes and potential gotchas
 
 - **`iframe` argument**: every messaging helper (`validateForm`, `confirmPaymentIntent`, `confirmSetupIntent`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
 - **Same components for payment vs setup intents**: `mountAmosCreditCardPaymentMethodForm` and `mountAmosBankAccountPaymentMethodForm` support both payment intents and setup intents. The flow differs only by which server call you make and which confirmation function you use. You may optionally provide `onPaymentIntentConfirmationSucceeded` and/or `onSetupIntentConfirmationSucceeded`; the appropriate one is invoked based on the flow.
-- **Amount format**: for `mountAmosGooglePayButton`, `amount` is a string (e.g. `"5000"` for $50.00). For `CreatePaymentIntentInput` on the server, `amount` is a number in cents (e.g. `5000`).
+- **Amount format**: for `mountAmosGooglePayButton`, `amount` is a string (e.g. `"5000"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server, `amount` is a number in cents (e.g. `5000`).
 - **Browser-only**: the mount and messaging helpers require `window` and the DOM. They are not safe to call during server-side rendering — call them from client-side code only (for example, inside a `useEffect`-like hook in your framework of choice).
 
 ---

@@ -187,6 +187,13 @@ export function attachGooglePayButtonListeners(
 }
 
 /**
+ * Result of {@link formatGooglePayPaymentData}.
+ */
+export type FormattedGooglePayPaymentData = {
+  paymentMethod: components["schemas"]["EmbedConfirmGooglePayPaymentMethodInput"];
+};
+
+/**
  * Transform raw Google Pay payment data into an Amos-compatible
  * `paymentMethod` payload. Use this when integrating with the raw
  * Google Pay API directly instead of through
@@ -196,9 +203,10 @@ export function formatGooglePayPaymentData({
   paymentData,
 }: {
   paymentData: google.payments.api.PaymentData;
-}) {
+}): FormattedGooglePayPaymentData {
   return {
     paymentMethod: {
+      type: "googlepay",
       billing_address_attributes: {
         name: paymentData.shippingAddress?.name,
         address_line1: paymentData.shippingAddress?.address1,

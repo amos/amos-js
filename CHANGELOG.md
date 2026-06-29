@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.3.18
+
+### Patch Changes
+
+- Update amos-node and clean up types
+
 ## 0.3.17
 
 ### Patch Changes
