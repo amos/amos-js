@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.3.20
+
+### Patch Changes
+
+- Add input font size variable
+
 ## 0.3.19
 
 ### Patch Changes

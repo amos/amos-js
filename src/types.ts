@@ -92,6 +92,12 @@ export type ThemeVariable =
    */
   | "--input-height"
   /*
+   * Font size of text inputs and dropdown fields (e.g. `0.875rem`, `16px`).
+   *
+   * Default: 0.875rem
+   */
+  | "--input-font-size"
+  /*
    * Focus ring and outline color for inputs and buttons.
    *
    * Default: oklch(0.708 0 0)

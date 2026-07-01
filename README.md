@@ -213,6 +213,7 @@ Radio groups (e.g. account type) always use an above-style group label regardles
 | `--input`                | Input field border color                       | `oklch(0.922 0 0)`          |
 | `--input-background`     | Input field background fill                    | `var(--background)`         |
 | `--input-height`         | Height of text inputs and form controls        | `2.25rem`                   |
+| `--input-font-size`      | Font size of text inputs and dropdown fields   | `0.875rem`                  |
 | `--ring`                 | Focus ring and outline color                   | `oklch(0.708 0 0)`          |
 | `--radius`               | Base border-radius (derived into sm/md/lg/xl)  | `0.625rem`                  |
 
