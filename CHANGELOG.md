@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.3.19
+
+### Patch Changes
+
+- Update amos-node
+
 ## 0.3.18
 
 ### Patch Changes
