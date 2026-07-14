@@ -32,6 +32,7 @@
     "release": "npm run build && changeset publish"
   },
   "author": "Amos",
+  "license": "MIT",
   "description": "Amos JavaScript SDK for embedding payment methods via iframes.",
   "devDependencies": {
     "@biomejs/biome": "2.5.1",
