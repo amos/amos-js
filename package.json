@@ -1,6 +1,6 @@
 {
   "name": "@amos.com/amos-js",
-  "version": "0.3.21",
+  "version": "0.3.22",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -35,18 +35,16 @@
   "license": "MIT",
   "description": "Amos JavaScript SDK for embedding payment methods via iframes.",
   "devDependencies": {
-    "@biomejs/biome": "2.5.1",
-    "@changesets/cli": "2.31.0",
-    "@types/node": "26.0.0",
-    "typescript": "6.0.3",
-    "vite": "8.1.0",
-    "vite-plugin-dts": "5.0.2"
+    "@biomejs/biome": "2.5.5",
+    "@changesets/cli": "2.31.1",
+    "@types/node": "26.1.1",
+    "@typescript/typescript6": "6.0.2",
+    "typescript": "7.0.2",
+    "vite": "8.1.5",
+    "vite-plugin-dts": "5.0.3"
   },
   "dependencies": {
-    "@amos.com/node": "0.1.26",
+    "@amos.com/node": "0.1.27",
     "@types/googlepay": "0.7.11"
-  },
-  "peerDependencies": {
-    "openapi-fetch": "^0 || ^1"
   }
 }
