@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.4.1
+
+### Patch Changes
+
+- Restrict `billingAddressRequirement` to `"country" | "full"` (removed `"postalCode"` and `"postalCodeAndCountry"`). Default is now `"country"`. Postal / ZIP is collected only for Canada, Puerto Rico, the United Kingdom, and the United States (labeled ZIP for US).
+
 ## 0.4.0
 
 ### Minor Changes

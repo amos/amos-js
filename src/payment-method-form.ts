@@ -19,28 +19,22 @@ export type CreditCardAdditionalFields = {
  * How much billing address the embedded credit-card or bank-account form
  * collects.
  *
- * - `postalCode` — ZIP / postal code only (default). No country is collected
- *   or sent on confirm.
- * - `postalCodeAndCountry` — country and postal code, both required.
+ * - `country` — country / region, plus postal / ZIP when that selection
+ *   collects one (CA, PR, GB, US). Default.
  * - `full` — full street address (Smarty autocomplete on line 1).
  */
-export type BillingAddressRequirement =
-  | "postalCode"
-  | "postalCodeAndCountry"
-  | "full";
+export type BillingAddressRequirement = "country" | "full";
 
 const CREDIT_CARD_ADDRESS_HEIGHT_PX: Record<BillingAddressRequirement, number> =
   {
-    postalCode: 212,
-    postalCodeAndCountry: 212,
+    country: 212,
     full: 452,
   };
 
 const CREDIT_CARD_CARDHOLDER_NAME_HEIGHT_PX = 80;
 
 const BANK_ACCOUNT_HEIGHT_PX: Record<BillingAddressRequirement, number> = {
-  postalCode: 400,
-  postalCodeAndCountry: 400,
+  country: 400,
   full: 640,
 };
 
@@ -50,7 +44,7 @@ const BANK_ACCOUNT_HEIGHT_PX: Record<BillingAddressRequirement, number> = {
 export function getCreditCardFormSrc(
   renderToken: string,
   additionalFields: CreditCardAdditionalFields = { cardholderName: false },
-  billingAddressRequirement: BillingAddressRequirement = "postalCode",
+  billingAddressRequirement: BillingAddressRequirement = "country",
 ): string {
   const enabled = Object.entries(additionalFields)
     .filter(([, value]) => value)
@@ -71,7 +65,7 @@ export function getCreditCardFormSrc(
  */
 export function getBankAccountFormSrc(
   renderToken: string,
-  billingAddressRequirement: BillingAddressRequirement = "postalCode",
+  billingAddressRequirement: BillingAddressRequirement = "country",
 ): string {
   const params = new URLSearchParams({
     token: renderToken,
@@ -88,11 +82,11 @@ export function getBankAccountFormSrc(
  */
 export function getCreditCardFormInitialHeight(
   additionalFields: CreditCardAdditionalFields = { cardholderName: false },
-  billingAddressRequirement: BillingAddressRequirement = "postalCode",
+  billingAddressRequirement: BillingAddressRequirement = "country",
 ): string {
   const addressHeight =
     CREDIT_CARD_ADDRESS_HEIGHT_PX[billingAddressRequirement] ??
-    CREDIT_CARD_ADDRESS_HEIGHT_PX.postalCode;
+    CREDIT_CARD_ADDRESS_HEIGHT_PX.country;
   const cardholderExtra = additionalFields.cardholderName
     ? CREDIT_CARD_CARDHOLDER_NAME_HEIGHT_PX
     : 0;
@@ -104,9 +98,9 @@ export function getCreditCardFormInitialHeight(
  * `billingAddressRequirement` into account.
  */
 export function getBankAccountFormInitialHeight(
-  billingAddressRequirement: BillingAddressRequirement = "postalCode",
+  billingAddressRequirement: BillingAddressRequirement = "country",
 ): string {
-  return `${BANK_ACCOUNT_HEIGHT_PX[billingAddressRequirement] ?? BANK_ACCOUNT_HEIGHT_PX.postalCode}px`;
+  return `${BANK_ACCOUNT_HEIGHT_PX[billingAddressRequirement] ?? BANK_ACCOUNT_HEIGHT_PX.country}px`;
 }
 
 /**

@@ -232,7 +232,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 
 - `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder" }`)
 - `additionalFields` (`{ cardholderName: boolean }`, defaults to `{ cardholderName: false }`)
-- `billingAddressRequirement` (`"postalCode" | "postalCodeAndCountry" | "full"`, defaults to `"postalCode"`) — how much billing address the iframe collects. `postalCode` sends only postal code (no country). `full` shows a full street address form with Smarty autocomplete.
+- `billingAddressRequirement` (`"country" | "full"`, defaults to `"country"`) — how much billing address the iframe collects. `country` collects country / region and, for CA / PR / GB / US, a postal code (labeled ZIP for the United States). `full` shows a full street address form with Smarty autocomplete.
 - `onPaymentIntentConfirmationSucceeded` (`(paymentIntent: components["schemas"]["PaymentIntent"]) => void`)
 - `onSetupIntentConfirmationSucceeded` (`(setupIntent: components["schemas"]["SetupIntent"]) => void`)
 - `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic)

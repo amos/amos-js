@@ -89,7 +89,7 @@ export type AmosCreditCardPaymentMethodFormOptions =
     /**
      * How much billing address the form collects.
      *
-     * @default "postalCode"
+     * @default "country"
      */
     billingAddressRequirement?: BillingAddressRequirement;
   };
@@ -125,7 +125,7 @@ export function mountAmosCreditCardPaymentMethodForm(
   const {
     renderToken,
     additionalFields = { cardholderName: false },
-    billingAddressRequirement = "postalCode",
+    billingAddressRequirement = "country",
     ...listenerOptions
   } = options;
 
@@ -181,7 +181,7 @@ export type AmosBankAccountPaymentMethodFormOptions =
     /**
      * How much billing address the form collects.
      *
-     * @default "postalCode"
+     * @default "country"
      */
     billingAddressRequirement?: BillingAddressRequirement;
   };
@@ -202,7 +202,7 @@ export function mountAmosBankAccountPaymentMethodForm(
   const host = resolveContainer(container);
   const {
     renderToken,
-    billingAddressRequirement = "postalCode",
+    billingAddressRequirement = "country",
     ...listenerOptions
   } = options;
 
