@@ -1,6 +1,16 @@
 /// <reference types="googlepay" />
 
 export type {
+  ApplePayButtonController,
+  ApplePayButtonListenerOptions,
+} from "./apple-pay";
+export {
+  attachApplePayButtonListeners,
+  getApplePayButtonInitialHeight,
+  getApplePayButtonSrc,
+} from "./apple-pay";
+
+export type {
   FormattedGooglePayPaymentData,
   GooglePayButtonController,
   GooglePayButtonListenerOptions,
@@ -25,6 +35,8 @@ export {
   validateForm,
 } from "./messaging";
 export type {
+  AmosApplePayButtonMountController,
+  AmosApplePayButtonOptions,
   AmosBankAccountPaymentMethodFormOptions,
   AmosCreditCardPaymentMethodFormOptions,
   AmosGooglePayButtonMountController,
@@ -32,6 +44,7 @@ export type {
   AmosPaymentMethodFormMountController,
 } from "./mount";
 export {
+  mountAmosApplePayButton,
   mountAmosBankAccountPaymentMethodForm,
   mountAmosCreditCardPaymentMethodForm,
   mountAmosGooglePayButton,

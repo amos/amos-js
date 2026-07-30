@@ -96,7 +96,7 @@ The following flow is for credit card and bank account payment method types only
 
 ### Google Pay
 
-Google Pay (and soon, Apple Pay) is a form of express checkout. The Google Pay button is an alternative to the "Pay now" button in your payment forms. Users can make a payment with either flow.
+Google Pay and Apple Pay are forms of express checkout. Their buttons are alternatives to the "Pay now" button in your payment forms. Users can make a payment with either flow.
 
 The key differences between the express and non-express payment flows are:
 
@@ -265,6 +265,10 @@ Mount the secure Google Pay button (express checkout) into a container element.
 **Returns** `AmosGooglePayButtonMountController`:
 
 - `iframe`, `update(patch)`, `destroy()`. Use `update({ amount, merchantName })` to push new values into the iframe.
+
+### `mountAmosApplePayButton(container, options)`
+
+Mount the secure Apple Pay button (express checkout). Same options and return shape as `mountAmosGooglePayButton`.
 
 ### `validateForm({ iframe })`
 

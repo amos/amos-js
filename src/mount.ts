@@ -1,4 +1,11 @@
 import {
+  attachApplePayButtonListeners,
+  type ApplePayButtonController,
+  type ApplePayButtonListenerOptions,
+  getApplePayButtonInitialHeight,
+  getApplePayButtonSrc,
+} from "./apple-pay";
+import {
   attachGooglePayButtonListeners,
   type GooglePayButtonController,
   type GooglePayButtonListenerOptions,
@@ -281,6 +288,72 @@ export function mountAmosGooglePayButton(
   host.appendChild(iframe);
 
   const controller = attachGooglePayButtonListeners(iframe, {
+    ...listenerOptions,
+    onHeightChange: (height) => {
+      iframe.style.height = height;
+      listenerOptions.onHeightChange?.(height);
+    },
+    onAppearanceReady: () => {
+      iframe.style.opacity = "1";
+      listenerOptions.onAppearanceReady?.();
+    },
+  });
+
+  return {
+    iframe,
+    update: controller.update,
+    destroy() {
+      controller.destroy();
+      iframe.remove();
+    },
+  };
+}
+
+/**
+ * Options accepted by {@link mountAmosApplePayButton}.
+ */
+export type AmosApplePayButtonOptions = ApplePayButtonListenerOptions & {
+  /**
+   * The Amos render token for the Apple Pay button.
+   *
+   * It is safe to pass this to the client. Create this on
+   * https://dashboard.amos.com.
+   */
+  renderToken: string;
+};
+
+/**
+ * Controller returned by {@link mountAmosApplePayButton}.
+ */
+export type AmosApplePayButtonMountController = ApplePayButtonController & {
+  /**
+   * The underlying `<iframe>` element.
+   */
+  iframe: HTMLIFrameElement;
+};
+
+/**
+ * Mount the secure Apple Pay button (express checkout) into a
+ * container element. Returns a controller exposing the underlying
+ * iframe, an `update()` method, and a `destroy()` method.
+ */
+export function mountAmosApplePayButton(
+  container: Container,
+  options: AmosApplePayButtonOptions,
+): AmosApplePayButtonMountController {
+  const host = resolveContainer(container);
+  const { renderToken, ...listenerOptions } = options;
+
+  const iframe = createIframe({
+    src: getApplePayButtonSrc(renderToken),
+    title: "Secure Apple Pay button powered by Amos",
+    name: "amos-apple-pay-button",
+    height: getApplePayButtonInitialHeight(),
+    allow: "payment",
+  });
+  host.appendChild(iframe);
+
+  const controller = attachApplePayButtonListeners(iframe, {
     ...listenerOptions,
     onHeightChange: (height) => {
       iframe.style.height = height;
