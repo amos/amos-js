@@ -232,6 +232,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 
 - `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder" }`)
 - `additionalFields` (`{ cardholderName: boolean }`, defaults to `{ cardholderName: false }`)
+- `billingAddressRequirement` (`"postalCode" | "postalCodeAndCountry" | "full"`, defaults to `"postalCode"`) — how much billing address the iframe collects. `postalCode` sends only postal code (no country). `full` shows a full street address form with Smarty autocomplete.
 - `onPaymentIntentConfirmationSucceeded` (`(paymentIntent: components["schemas"]["PaymentIntent"]) => void`)
 - `onSetupIntentConfirmationSucceeded` (`(setupIntent: components["schemas"]["SetupIntent"]) => void`)
 - `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic)
@@ -244,7 +245,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 
 ### `mountAmosBankAccountPaymentMethodForm(container, options)`
 
-Same shape as `mountAmosCreditCardPaymentMethodForm`, minus `additionalFields`.
+Same shape as `mountAmosCreditCardPaymentMethodForm`, minus `additionalFields`. Supports the same `billingAddressRequirement` option.
 
 ### `mountAmosGooglePayButton(container, options)`
 
@@ -283,7 +284,7 @@ This is what `@amos.com/react-amos-js` uses to integrate with React's rendering 
 
 The Google Pay equivalent of `attachPaymentMethodFormListeners`.
 
-### `getCreditCardFormSrc(renderToken, additionalFields?)` / `getBankAccountFormSrc(renderToken)` / `getGooglePayButtonSrc(renderToken)`
+### `getCreditCardFormSrc(renderToken, additionalFields?, billingAddressRequirement?)` / `getBankAccountFormSrc(renderToken, billingAddressRequirement?)` / `getGooglePayButtonSrc(renderToken)`
 
 Build the iframe `src` URL for each form type.
 

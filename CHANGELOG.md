@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.4.0
+
+### Minor Changes
+
+- Support billingAddressRequirement option
+
 ## 0.3.24
 
 ### Patch Changes

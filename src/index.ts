@@ -37,6 +37,7 @@ export {
   mountAmosGooglePayButton,
 } from "./mount";
 export type {
+  BillingAddressRequirement,
   CreditCardAdditionalFields,
   PaymentMethodFormController,
   PaymentMethodFormListenerOptions,

@@ -8,11 +8,40 @@ import type { Appearance, Message } from "./types";
 
 /**
  * The additional fields beyond the standard card number, expiration
- * date, CVV, country, and postal code that are required to be filled
+ * date, CVV, and billing address fields that are required to be filled
  * out in the embedded credit-card form.
  */
 export type CreditCardAdditionalFields = {
   cardholderName: boolean;
+};
+
+/**
+ * How much billing address the embedded credit-card or bank-account form
+ * collects.
+ *
+ * - `postalCode` — ZIP / postal code only (default). No country is collected
+ *   or sent on confirm.
+ * - `postalCodeAndCountry` — country and postal code, both required.
+ * - `full` — full street address (Smarty autocomplete on line 1).
+ */
+export type BillingAddressRequirement =
+  | "postalCode"
+  | "postalCodeAndCountry"
+  | "full";
+
+const CREDIT_CARD_ADDRESS_HEIGHT_PX: Record<BillingAddressRequirement, number> =
+  {
+    postalCode: 212,
+    postalCodeAndCountry: 212,
+    full: 452,
+  };
+
+const CREDIT_CARD_CARDHOLDER_NAME_HEIGHT_PX = 80;
+
+const BANK_ACCOUNT_HEIGHT_PX: Record<BillingAddressRequirement, number> = {
+  postalCode: 400,
+  postalCodeAndCountry: 400,
+  full: 640,
 };
 
 /**
@@ -21,37 +50,63 @@ export type CreditCardAdditionalFields = {
 export function getCreditCardFormSrc(
   renderToken: string,
   additionalFields: CreditCardAdditionalFields = { cardholderName: false },
+  billingAddressRequirement: BillingAddressRequirement = "postalCode",
 ): string {
   const enabled = Object.entries(additionalFields)
     .filter(([, value]) => value)
     .map(([key]) => key)
     .join(",");
 
-  return `${getEmbedOrigin(renderToken)}/iframe/card?token=${renderToken}&additionalFields=${enabled}`;
+  const params = new URLSearchParams({
+    token: renderToken,
+    additionalFields: enabled,
+    billingAddressRequirement,
+  });
+
+  return `${getEmbedOrigin(renderToken)}/iframe/card?${params}`;
 }
 
 /**
  * Build the iframe `src` URL for the embedded bank-account form.
  */
-export function getBankAccountFormSrc(renderToken: string): string {
-  return `${getEmbedOrigin(renderToken)}/iframe/bank?token=${renderToken}`;
+export function getBankAccountFormSrc(
+  renderToken: string,
+  billingAddressRequirement: BillingAddressRequirement = "postalCode",
+): string {
+  const params = new URLSearchParams({
+    token: renderToken,
+    billingAddressRequirement,
+  });
+
+  return `${getEmbedOrigin(renderToken)}/iframe/bank?${params}`;
 }
 
 /**
  * Default iframe pixel height for the credit-card form, taking the
- * configured `additionalFields` into account.
+ * configured `additionalFields` and `billingAddressRequirement` into
+ * account.
  */
 export function getCreditCardFormInitialHeight(
   additionalFields: CreditCardAdditionalFields = { cardholderName: false },
+  billingAddressRequirement: BillingAddressRequirement = "postalCode",
 ): string {
-  return additionalFields.cardholderName ? "292px" : "212px";
+  const addressHeight =
+    CREDIT_CARD_ADDRESS_HEIGHT_PX[billingAddressRequirement] ??
+    CREDIT_CARD_ADDRESS_HEIGHT_PX.postalCode;
+  const cardholderExtra = additionalFields.cardholderName
+    ? CREDIT_CARD_CARDHOLDER_NAME_HEIGHT_PX
+    : 0;
+  return `${addressHeight + cardholderExtra}px`;
 }
 
 /**
- * Default iframe pixel height for the bank-account form.
+ * Default iframe pixel height for the bank-account form, taking
+ * `billingAddressRequirement` into account.
  */
-export function getBankAccountFormInitialHeight(): string {
-  return "400px";
+export function getBankAccountFormInitialHeight(
+  billingAddressRequirement: BillingAddressRequirement = "postalCode",
+): string {
+  return `${BANK_ACCOUNT_HEIGHT_PX[billingAddressRequirement] ?? BANK_ACCOUNT_HEIGHT_PX.postalCode}px`;
 }
 
 /**

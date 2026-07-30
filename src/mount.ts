@@ -7,6 +7,7 @@ import {
 } from "./google-pay";
 import {
   attachPaymentMethodFormListeners,
+  type BillingAddressRequirement,
   type CreditCardAdditionalFields,
   getBankAccountFormInitialHeight,
   getBankAccountFormSrc,
@@ -79,12 +80,18 @@ export type AmosCreditCardPaymentMethodFormOptions =
     renderToken: string;
     /**
      * The additional fields that are required to be filled out in the
-     * form in addition to the card number, expiration date, CVV,
-     * country, and postal code.
+     * form in addition to the card number, expiration date, CVV, and
+     * billing address fields.
      *
      * @default { cardholderName: false }
      */
     additionalFields?: CreditCardAdditionalFields;
+    /**
+     * How much billing address the form collects.
+     *
+     * @default "postalCode"
+     */
+    billingAddressRequirement?: BillingAddressRequirement;
   };
 
 /**
@@ -118,14 +125,22 @@ export function mountAmosCreditCardPaymentMethodForm(
   const {
     renderToken,
     additionalFields = { cardholderName: false },
+    billingAddressRequirement = "postalCode",
     ...listenerOptions
   } = options;
 
   const iframe = createIframe({
-    src: getCreditCardFormSrc(renderToken, additionalFields),
+    src: getCreditCardFormSrc(
+      renderToken,
+      additionalFields,
+      billingAddressRequirement,
+    ),
     title: "Secure credit card payment method form powered by Amos",
     name: "amos-credit-card-payment-method-form",
-    height: getCreditCardFormInitialHeight(additionalFields),
+    height: getCreditCardFormInitialHeight(
+      additionalFields,
+      billingAddressRequirement,
+    ),
   });
   host.appendChild(iframe);
 
@@ -163,6 +178,12 @@ export type AmosBankAccountPaymentMethodFormOptions =
      * https://dashboard.amos.com.
      */
     renderToken: string;
+    /**
+     * How much billing address the form collects.
+     *
+     * @default "postalCode"
+     */
+    billingAddressRequirement?: BillingAddressRequirement;
   };
 
 /**
@@ -179,13 +200,17 @@ export function mountAmosBankAccountPaymentMethodForm(
   options: AmosBankAccountPaymentMethodFormOptions,
 ): AmosPaymentMethodFormMountController {
   const host = resolveContainer(container);
-  const { renderToken, ...listenerOptions } = options;
+  const {
+    renderToken,
+    billingAddressRequirement = "postalCode",
+    ...listenerOptions
+  } = options;
 
   const iframe = createIframe({
-    src: getBankAccountFormSrc(renderToken),
+    src: getBankAccountFormSrc(renderToken, billingAddressRequirement),
     title: "Secure bank account payment method form powered by Amos",
     name: "amos-bank-account-payment-method-form",
-    height: getBankAccountFormInitialHeight(),
+    height: getBankAccountFormInitialHeight(billingAddressRequirement),
   });
   host.appendChild(iframe);
 
