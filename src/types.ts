@@ -191,6 +191,18 @@ export type Message =
     }
   | {
       type: "UPDATED_APPEARANCE";
+    }
+  | {
+      /**
+       * Iframe → parent: expand the Apple Pay iframe to a full-viewport
+       * overlay so Chrome's QR handoff UI is not clipped by the button
+       * height. The Apple Pay session stays on the Amos embed origin.
+       */
+      type: "EXPAND_IFRAME";
+    }
+  | {
+      /** Iframe → parent: restore the Apple Pay iframe to its button size. */
+      type: "COLLAPSE_IFRAME";
     };
 
 /**

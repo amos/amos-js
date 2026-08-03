@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.6.0
+
+### Minor Changes
+
+- Keep Apple Pay button/session in the Amos embed iframe (Amos-only Apple domain registration). Expand the iframe to a full-viewport overlay on EXPAND_IFRAME so Chrome's QR handoff UI is not clipped; restore on COLLAPSE_IFRAME.
+
 ## 0.5.0
 
 ### Minor Changes
