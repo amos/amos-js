@@ -2,11 +2,13 @@ import type { components } from "@amos.com/node";
 import { getEmbedOrigin } from "./jwt";
 import {
   confirmPaymentIntent,
+  hasNativeApplePaySession,
   sendConfirmationFailed,
   sendParentReadyMessage,
   updateAmount as sendUpdateAmount,
   updateAppearance as sendUpdateAppearance,
   updateMerchantName as sendUpdateMerchantName,
+  updateNativeApplePaySession as sendUpdateNativeApplePaySession,
 } from "./messaging";
 import type { Appearance, Message } from "./types";
 
@@ -159,6 +161,13 @@ export function attachApplePayButtonListeners(
     sendUpdateMerchantName({ iframe, merchantName: current.merchantName });
   }
 
+  function pushNativeApplePaySession() {
+    sendUpdateNativeApplePaySession({
+      iframe,
+      hasNativeApplePaySession: hasNativeApplePaySession(),
+    });
+  }
+
   function handleMessage(event: MessageEvent<Message>) {
     // Ignore messages from other frames / windows.
     if (event.source !== iframe.contentWindow) {
@@ -169,6 +178,7 @@ export function attachApplePayButtonListeners(
       case "IFRAME_READY":
         sendParentReadyMessage(iframe);
         sendUpdateAppearance({ iframe, appearance: current.appearance });
+        pushNativeApplePaySession();
         pushAmount();
         pushMerchantName();
         break;

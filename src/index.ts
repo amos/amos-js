@@ -27,11 +27,13 @@ export { decodeJwt, getEmbedOrigin } from "./jwt";
 export {
   confirmPaymentIntent,
   confirmSetupIntent,
+  hasNativeApplePaySession,
   sendConfirmationFailed,
   sendParentReadyMessage,
   updateAmount,
   updateAppearance,
   updateMerchantName,
+  updateNativeApplePaySession,
   validateForm,
 } from "./messaging";
 export type {

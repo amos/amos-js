@@ -156,6 +156,15 @@ export type Message =
       merchantName: string;
     }
   | {
+      /**
+       * Parent → iframe: whether the host page has a native
+       * `ApplePaySession` (Safari). When `false`, the iframe should
+       * expand for Chrome's in-iframe QR handoff UI.
+       */
+      type: "UPDATE_NATIVE_APPLE_PAY_SESSION";
+      hasNativeApplePaySession: boolean;
+    }
+  | {
       type: "UPDATE_APPEARANCE";
       appearance: Appearance;
     }

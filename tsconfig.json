@@ -23,6 +23,7 @@
     "strictNullChecks": true,
     "strictFunctionTypes": true,
     "declaration": true,
-    "declarationDir": "./dist"
+    "declarationDir": "./dist",
+    "rootDir": "./src"
   }
 }
