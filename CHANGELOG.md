@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.0
+
+### Minor Changes
+
+- Replace confirmation success/failure callbacks and messages with a single `CONFIRMATION_RESULT` / `onResult` flow. Recoverable field validation stays in the iframe (`status: "incomplete"`); verify settlement via webhooks.
+
 ## 0.7.2
 
 ### Patch Changes

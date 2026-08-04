@@ -1,6 +1,42 @@
 import type { components } from "@amos.com/node";
 
 /**
+ * Outcome of an interactive confirmation flow inside the Amos iframe.
+ *
+ * `onResult` / `CONFIRMATION_RESULT` means the host should stop waiting
+ * (e.g. dismiss a spinner). It is **not** proof that funds were
+ * received — verify settlement on your backend via webhooks (or by
+ * retrieving the PaymentIntent / SetupIntent with your secret key),
+ * the same way Stripe recommends.
+ *
+ * Recoverable field validation errors (e.g. bad expiration year) are
+ * shown inside the iframe and do **not** produce a result; the customer
+ * can fix the form and retry.
+ */
+export type ConfirmationResult =
+  | {
+      status: "succeeded";
+      intent: "payment";
+      paymentIntent: components["schemas"]["PaymentIntent"];
+    }
+  | {
+      status: "succeeded";
+      intent: "setup";
+      setupIntent: components["schemas"]["SetupIntent"];
+    }
+  | {
+      /**
+       * Recoverable validation was shown in the iframe. Unlock the host UI;
+       * the customer can fix fields and retry. Do not treat as settlement.
+       */
+      status: "incomplete";
+    }
+  | {
+      status: "failed";
+      errorMessage: string;
+    };
+
+/**
  * CSS custom properties that control the appearance of the embedded
  * Amos iframe UI. Only the variables you provide are sent; omitted
  * variables keep their defaults.
@@ -178,16 +214,13 @@ export type Message =
     } & Pick<components["schemas"]["SetupIntent"], "id"> &
       Pick<components["schemas"]["EmbedToken"], "token">)
   | {
-      type: "PAYMENT_INTENT_CONFIRMATION_SUCCEEDED";
-      paymentIntent: components["schemas"]["PaymentIntent"];
-    }
-  | {
-      type: "SETUP_INTENT_CONFIRMATION_SUCCEEDED";
-      setupIntent: components["schemas"]["SetupIntent"];
-    }
-  | {
-      type: "CONFIRMATION_FAILED";
-      errorMessage: string;
+      /**
+       * Embed → parent: the interactive confirmation flow finished.
+       * Not settlement proof — verify payment/setup success on your
+       * backend via webhooks (or by retrieving the intent).
+       */
+      type: "CONFIRMATION_RESULT";
+      result: ConfirmationResult;
     }
   | {
       type: "UPDATED_APPEARANCE";

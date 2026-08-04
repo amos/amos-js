@@ -4,13 +4,12 @@ import type { components } from "@amos.com/node";
 import { getEmbedOrigin } from "./jwt";
 import {
   confirmPaymentIntent,
-  sendConfirmationFailed,
   sendParentReadyMessage,
   updateAmount as sendUpdateAmount,
   updateAppearance as sendUpdateAppearance,
   updateMerchantName as sendUpdateMerchantName,
 } from "./messaging";
-import type { Appearance, Message } from "./types";
+import type { Appearance, ConfirmationResult, Message } from "./types";
 
 /**
  * Build the iframe `src` URL for the embedded Google Pay button.
@@ -62,15 +61,10 @@ export type GooglePayButtonListenerOptions = {
     customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
   }) => Promise<components["schemas"]["EmbedToken"]["token"]>;
   /**
-   * Called when payment intent confirmation succeeds.
+   * Called when the interactive confirmation flow finishes (success or
+   * terminal failure). Not settlement proof — verify via webhooks.
    */
-  onPaymentIntentConfirmationSucceeded: (
-    paymentIntent: components["schemas"]["PaymentIntent"],
-  ) => void;
-  /**
-   * Called when payment intent confirmation fails.
-   */
-  onConfirmationFailed: (errorMessage: string) => void;
+  onResult: (result: ConfirmationResult) => void;
 };
 
 /**
@@ -144,20 +138,16 @@ export function attachGooglePayButtonListeners(
             confirmPaymentIntent({ iframe, token });
           })
           .catch((error: unknown) => {
-            sendConfirmationFailed({
-              iframe,
+            current.onResult({
+              status: "failed",
               errorMessage:
                 error instanceof Error ? error.message : "Unknown error",
             });
           });
         break;
 
-      case "PAYMENT_INTENT_CONFIRMATION_SUCCEEDED":
-        current.onPaymentIntentConfirmationSucceeded(event.data.paymentIntent);
-        break;
-
-      case "CONFIRMATION_FAILED":
-        current.onConfirmationFailed(event.data.errorMessage);
+      case "CONFIRMATION_RESULT":
+        current.onResult(event.data.result);
         break;
     }
   }

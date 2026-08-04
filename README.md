@@ -51,11 +51,14 @@ const form = mountAmosCreditCardPaymentMethodForm(
         "--radius": "0.5rem",
       },
     },
-    onPaymentIntentConfirmationSucceeded: (paymentIntent) => {
-      console.log("Payment succeeded:", paymentIntent.id);
-    },
-    onConfirmationFailed: (errorMessage) => {
-      console.error("Payment failed:", errorMessage);
+    onResult: (result) => {
+      // Unlock UI. Verify settlement on your backend via webhooks.
+      if (result.status === "succeeded") {
+        console.log("Confirm returned:", result);
+      } else if (result.status === "failed") {
+        console.error("Confirm failed:", result.errorMessage);
+      }
+      // status === "incomplete": field errors shown in the iframe; customer can retry
     },
   },
 );
@@ -87,12 +90,12 @@ form.destroy();
 The following flow is for credit card and bank account payment method types only.
 
 1. **Set up prerequisites**: create a `renderToken` (safe for client), and keep `apiKey` and `accountId` server-side only.
-2. **Render your checkout UI** by calling `mountAmosCreditCardPaymentMethodForm(container, options)` (or `mountAmosBankAccountPaymentMethodForm(...)`) along with the required option (`onConfirmationFailed`) and optional callbacks (`onPaymentIntentConfirmationSucceeded`, `onSetupIntentConfirmationSucceeded`). The iframe height is auto-managed by the SDK.
+2. **Render your checkout UI** by calling `mountAmosCreditCardPaymentMethodForm(container, options)` (or `mountAmosBankAccountPaymentMethodForm(...)`) along with the required `onResult` callback. The iframe height is auto-managed by the SDK.
 3. **User clicks "Pay now" button**: call `validateForm({ iframe: form.iframe })`, which returns `Promise<true>` if the embedded form is valid, and `Promise<false>` otherwise.
 4. **Create payment intent on your server**: use your server-side Amos client to call `POST /payment_intents`. You may also associate this payment intent with a new or existing customer via `POST /customers`. This must be server-side because it uses your private API key.
 5. **Return the payment intent token to the browser**: your backend responds with the embed token (`components["schemas"]["EmbedToken"]`) needed for confirmation.
 6. **Confirm the payment intent from the client**: call `confirmPaymentIntent({ iframe: form.iframe, token })` in the browser to continue the payment flow.
-7. **Handle UX**: show the user a "processing" state when the "Pay now" button is clicked, and show a success or error message via `onPaymentIntentConfirmationSucceeded` and `onConfirmationFailed`.
+7. **Handle UX**: show the user a "processing" state when the "Pay now" button is clicked, and handle `onResult`. Do not treat `onResult` as settlement proof — verify payment success on your backend via webhooks. Recoverable field errors are shown in the iframe (`status: "incomplete"`).
 
 ### Google Pay
 
@@ -128,11 +131,12 @@ const button = mountAmosGooglePayButton(
       const { token } = await response.json();
       return token;
     },
-    onPaymentIntentConfirmationSucceeded: (paymentIntent) => {
-      console.log("Google Pay succeeded:", paymentIntent.id);
-    },
-    onConfirmationFailed: (errorMessage) => {
-      console.error("Google Pay failed:", errorMessage);
+    onResult: (result) => {
+      if (result.status === "succeeded") {
+        console.log("Google Pay confirm returned:", result);
+      } else if (result.status === "failed") {
+        console.error("Google Pay failed:", result.errorMessage);
+      }
     },
   },
 );
@@ -147,7 +151,7 @@ Setup intents are used to save payment methods for future use (e.g. recurring pa
 
 - On the server, call `POST /setup_intents` instead of `POST /payment_intents`.
 - On the client, call `confirmSetupIntent({ iframe, token })` instead of `confirmPaymentIntent({ iframe, token })`.
-- Use `onSetupIntentConfirmationSucceeded` instead of `onPaymentIntentConfirmationSucceeded`.
+- The same `onResult` callback is used; succeeded setup intents arrive as `{ status: "succeeded", intent: "setup", setupIntent }`.
 
 The same `mountAmosCreditCardPaymentMethodForm` / `mountAmosBankAccountPaymentMethodForm` controllers support both payment intents and setup intents — they are differentiated by which confirmation function you call.
 
@@ -226,15 +230,15 @@ Mount the secure credit-card payment method form into a container element (an `H
 **Required `options`:**
 
 - `renderToken` (`string`)
-- `onConfirmationFailed` (`(errorMessage: string) => void`)
+- `onResult` (`(result: ConfirmationResult) => void`) — required. Called when the interactive confirmation attempt finishes (`succeeded`, `failed`, or `incomplete`). Not settlement proof; verify via webhooks.
 
 **Optional `options`:**
 
 - `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder" }`)
 - `additionalFields` (`{ cardholderName: boolean }`, defaults to `{ cardholderName: false }`)
 - `billingAddressRequirement` (`"country" | "full"`, defaults to `"country"`) — how much billing address the iframe collects. `country` collects country / region and, for CA / PR / GB / US, a postal code (labeled ZIP for the United States). `full` shows a full street address form with Smarty autocomplete.
-- `onPaymentIntentConfirmationSucceeded` (`(paymentIntent: components["schemas"]["PaymentIntent"]) => void`)
-- `onSetupIntentConfirmationSucceeded` (`(setupIntent: components["schemas"]["SetupIntent"]) => void`)
+
+
 - `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic)
 
 **Returns** `AmosPaymentMethodFormMountController`:
@@ -257,8 +261,8 @@ Mount the secure Google Pay button (express checkout) into a container element.
 - `amount` (`string`)
 - `merchantName` (`string`)
 - `onInitiatePaymentIntentRequest` (`({ paymentIntentCreateAttributes, customerCreateAttributes }) => Promise<components["schemas"]["EmbedToken"]["token"]>`)
-- `onPaymentIntentConfirmationSucceeded` (`(paymentIntent: components["schemas"]["PaymentIntent"]) => void`)
-- `onConfirmationFailed` (`(errorMessage: string) => void`)
+
+- `onResult` (`(result: ConfirmationResult) => void`) — required. Called when the interactive confirmation attempt finishes (`succeeded`, `failed`, or `incomplete`). Not settlement proof; verify via webhooks.
 
 **Optional `options`:** `appearance`, `onHeightChange`, `onAppearanceReady`.
 
@@ -307,7 +311,7 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 ## Notes and potential gotchas
 
 - **`iframe` argument**: every messaging helper (`validateForm`, `confirmPaymentIntent`, `confirmSetupIntent`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
-- **Same components for payment vs setup intents**: `mountAmosCreditCardPaymentMethodForm` and `mountAmosBankAccountPaymentMethodForm` support both payment intents and setup intents. The flow differs only by which server call you make and which confirmation function you use. You may optionally provide `onPaymentIntentConfirmationSucceeded` and/or `onSetupIntentConfirmationSucceeded`; the appropriate one is invoked based on the flow.
+- **Same components for payment vs setup intents**: `mountAmosCreditCardPaymentMethodForm` and `mountAmosBankAccountPaymentMethodForm` support both payment intents and setup intents. The flow differs only by which server call you make and which confirmation function you use. Handle both outcomes via `onResult`.
 - **Amount format**: for `mountAmosGooglePayButton`, `amount` is a string (e.g. `"5000"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server, `amount` is a number in cents (e.g. `5000`).
 - **Browser-only**: the mount and messaging helpers require `window` and the DOM. They are not safe to call during server-side rendering — call them from client-side code only (for example, inside a `useEffect`-like hook in your framework of choice).
 

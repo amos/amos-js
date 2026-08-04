@@ -157,20 +157,20 @@ export function confirmSetupIntent({
 }
 
 /**
- * Notify the iframe that confirmation failed (used by express-checkout
- * flows after `onInitiatePaymentIntentRequest` rejects).
+ * Notify the iframe that confirmation finished with a failure (used by
+ * express-checkout flows after `onInitiatePaymentIntentRequest` rejects).
  */
-export function sendConfirmationFailed({
+export function sendConfirmationResult({
   iframe,
-  errorMessage,
+  result,
 }: {
   iframe: Iframe;
-  errorMessage: string;
+  result: Extract<Message, { type: "CONFIRMATION_RESULT" }>["result"];
 }): void {
   iframe?.contentWindow?.postMessage(
     createMessage({
-      type: "CONFIRMATION_FAILED",
-      errorMessage,
+      type: "CONFIRMATION_RESULT",
+      result,
     }),
     "*",
   );

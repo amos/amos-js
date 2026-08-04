@@ -1,10 +1,9 @@
-import type { components } from "@amos.com/node";
 import { getEmbedOrigin } from "./jwt";
 import {
   sendParentReadyMessage,
   updateAppearance as sendUpdateAppearance,
 } from "./messaging";
-import type { Appearance, Message } from "./types";
+import type { Appearance, ConfirmationResult, Message } from "./types";
 
 /**
  * The additional fields beyond the standard card number, expiration
@@ -128,21 +127,11 @@ export type PaymentMethodFormListenerOptions = {
    */
   onAppearanceReady?: () => void;
   /**
-   * Called when payment intent confirmation succeeds.
+   * Called when the interactive confirmation flow finishes (success or
+   * terminal failure). Not settlement proof — verify via webhooks.
+   * Recoverable field errors stay in the iframe and do not invoke this.
    */
-  onPaymentIntentConfirmationSucceeded?: (
-    paymentIntent: components["schemas"]["PaymentIntent"],
-  ) => void;
-  /**
-   * Called when setup intent confirmation succeeds.
-   */
-  onSetupIntentConfirmationSucceeded?: (
-    setupIntent: components["schemas"]["SetupIntent"],
-  ) => void;
-  /**
-   * Called when payment or setup intent confirmation fails.
-   */
-  onConfirmationFailed: (errorMessage: string) => void;
+  onResult: (result: ConfirmationResult) => void;
 };
 
 /**
@@ -196,18 +185,8 @@ export function attachPaymentMethodFormListeners(
         current.onAppearanceReady?.();
         break;
 
-      case "PAYMENT_INTENT_CONFIRMATION_SUCCEEDED":
-        current.onPaymentIntentConfirmationSucceeded?.(
-          event.data.paymentIntent,
-        );
-        break;
-
-      case "SETUP_INTENT_CONFIRMATION_SUCCEEDED":
-        current.onSetupIntentConfirmationSucceeded?.(event.data.setupIntent);
-        break;
-
-      case "CONFIRMATION_FAILED":
-        current.onConfirmationFailed(event.data.errorMessage);
+      case "CONFIRMATION_RESULT":
+        current.onResult(event.data.result);
         break;
     }
   }

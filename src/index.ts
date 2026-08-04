@@ -27,7 +27,7 @@ export { decodeJwt, getEmbedOrigin } from "./jwt";
 export {
   confirmPaymentIntent,
   confirmSetupIntent,
-  sendConfirmationFailed,
+  sendConfirmationResult,
   sendParentReadyMessage,
   updateAmount,
   updateAppearance,
@@ -65,6 +65,7 @@ export {
 export type {
   Appearance,
   AppearanceLabels,
+  ConfirmationResult,
   Message,
   ThemeVariable,
 } from "./types";
