@@ -97,9 +97,7 @@ export type ApplePayButtonController = {
  * correct `src` (see {@link getApplePayButtonSrc}).
  *
  * The Apple Pay button and `ApplePaySession` run inside the Amos embed
- * iframe (so only Amos domains need Apple merchant registration). On
- * non-Safari browsers, the embed opens Apple's QR handoff in a popup
- * (`pay.apple.com`) rather than expanding this iframe.
+ * iframe so only Amos domains need Apple merchant registration.
  */
 export function attachApplePayButtonListeners(
   iframe: HTMLIFrameElement,
