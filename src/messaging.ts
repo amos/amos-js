@@ -71,34 +71,6 @@ export function updateMerchantName({
 }
 
 /**
- * Whether the host page exposes a native `ApplePaySession` (Safari).
- * Non-Safari browsers load Apple's SDK inside the embed iframe instead.
- */
-export function hasNativeApplePaySession(): boolean {
-  return "ApplePaySession" in globalThis;
-}
-
-/**
- * Tell the Apple Pay iframe whether the parent has a native
- * `ApplePaySession`. Sent during the `IFRAME_READY` handshake.
- */
-export function updateNativeApplePaySession({
-  iframe,
-  hasNativeApplePaySession,
-}: {
-  iframe: Iframe;
-  hasNativeApplePaySession: boolean;
-}): void {
-  iframe?.contentWindow?.postMessage(
-    createMessage({
-      type: "UPDATE_NATIVE_APPLE_PAY_SESSION",
-      hasNativeApplePaySession,
-    }),
-    "*",
-  );
-}
-
-/**
  * Ask the embedded credit-card or bank-account iframe form to validate
  * its inputs.
  *

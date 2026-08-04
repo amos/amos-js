@@ -2,13 +2,11 @@ import type { components } from "@amos.com/node";
 import { getEmbedOrigin } from "./jwt";
 import {
   confirmPaymentIntent,
-  hasNativeApplePaySession,
   sendConfirmationFailed,
   sendParentReadyMessage,
   updateAmount as sendUpdateAmount,
   updateAppearance as sendUpdateAppearance,
   updateMerchantName as sendUpdateMerchantName,
-  updateNativeApplePaySession as sendUpdateNativeApplePaySession,
 } from "./messaging";
 import type { Appearance, Message } from "./types";
 
@@ -90,49 +88,6 @@ export type ApplePayButtonController = {
   destroy: () => void;
 };
 
-type SavedIframeLayout = {
-  cssText: string;
-  bodyOverflow: string;
-};
-
-/**
- * Expand the Apple Pay iframe to a full-viewport overlay so Chrome's QR
- * handoff UI (rendered inside the iframe) is not clipped to the button
- * height. Safari's native sheet is OS-level and unaffected.
- */
-function expandApplePayIframe(iframe: HTMLIFrameElement): SavedIframeLayout {
-  const saved: SavedIframeLayout = {
-    cssText: iframe.style.cssText,
-    bodyOverflow: document.body.style.overflow,
-  };
-  document.body.style.overflow = "hidden";
-  Object.assign(iframe.style, {
-    position: "fixed",
-    inset: "0px",
-    width: "100vw",
-    height: "100vh",
-    maxWidth: "none",
-    maxHeight: "none",
-    margin: "0",
-    border: "0",
-    zIndex: "2147483647",
-    opacity: "1",
-    background: "#ffffff",
-  });
-  return saved;
-}
-
-function collapseApplePayIframe(
-  iframe: HTMLIFrameElement,
-  saved: SavedIframeLayout | null,
-): void {
-  if (!saved) {
-    return;
-  }
-  document.body.style.overflow = saved.bodyOverflow;
-  iframe.style.cssText = saved.cssText;
-}
-
 /**
  * Wire up the host-page side of the Apple Pay iframe message protocol
  * on an existing `<iframe>` element. Returns a controller for updating
@@ -143,15 +98,14 @@ function collapseApplePayIframe(
  *
  * The Apple Pay button and `ApplePaySession` run inside the Amos embed
  * iframe (so only Amos domains need Apple merchant registration). On
- * `EXPAND_IFRAME`, the parent temporarily overlays that iframe
- * full-viewport for Chrome's in-iframe QR handoff UI.
+ * non-Safari browsers, the embed opens Apple's QR handoff in a popup
+ * (`pay.apple.com`) rather than expanding this iframe.
  */
 export function attachApplePayButtonListeners(
   iframe: HTMLIFrameElement,
   options: ApplePayButtonListenerOptions,
 ): ApplePayButtonController {
   let current = { ...options };
-  let savedLayout: SavedIframeLayout | null = null;
 
   function pushAmount() {
     sendUpdateAmount({ iframe, amount: current.amount });
@@ -159,13 +113,6 @@ export function attachApplePayButtonListeners(
 
   function pushMerchantName() {
     sendUpdateMerchantName({ iframe, merchantName: current.merchantName });
-  }
-
-  function pushNativeApplePaySession() {
-    sendUpdateNativeApplePaySession({
-      iframe,
-      hasNativeApplePaySession: hasNativeApplePaySession(),
-    });
   }
 
   function handleMessage(event: MessageEvent<Message>) {
@@ -178,16 +125,12 @@ export function attachApplePayButtonListeners(
       case "IFRAME_READY":
         sendParentReadyMessage(iframe);
         sendUpdateAppearance({ iframe, appearance: current.appearance });
-        pushNativeApplePaySession();
         pushAmount();
         pushMerchantName();
         break;
 
       case "UPDATE_HEIGHT":
-        // Ignore height updates while the session overlay is open.
-        if (!savedLayout) {
-          current.onHeightChange?.(event.data.height);
-        }
+        current.onHeightChange?.(event.data.height);
         break;
 
       case "UPDATE_APPEARANCE":
@@ -196,17 +139,6 @@ export function attachApplePayButtonListeners(
 
       case "UPDATED_APPEARANCE":
         current.onAppearanceReady?.();
-        break;
-
-      case "EXPAND_IFRAME":
-        if (!savedLayout) {
-          savedLayout = expandApplePayIframe(iframe);
-        }
-        break;
-
-      case "COLLAPSE_IFRAME":
-        collapseApplePayIframe(iframe, savedLayout);
-        savedLayout = null;
         break;
 
       case "CREATE_PAYMENT_INTENT":
@@ -258,8 +190,6 @@ export function attachApplePayButtonListeners(
     },
     destroy() {
       window.removeEventListener("message", handleMessage);
-      collapseApplePayIframe(iframe, savedLayout);
-      savedLayout = null;
     },
   };
 }

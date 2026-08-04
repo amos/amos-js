@@ -1,5 +1,27 @@
 # @amos.com/amos-js
 
+## 0.7.0
+
+### Minor Changes
+
+- Drop Apple Pay iframe expand/collapse and native-session handshake. Non-Safari QR handoff opens in a popup via Apple's SDK (`renderApplePayCodeAs: "window"`).
+
+### Patch Changes
+
+- 764dbec: Refactor Apple Pay
+
+## Unreleased
+
+### Minor Changes
+
+- Drop Apple Pay iframe expand/collapse (`EXPAND_IFRAME` / `COLLAPSE_IFRAME`) and `UPDATE_NATIVE_APPLE_PAY_SESSION` / `hasNativeApplePaySession`. Non-Safari QR handoff opens in a popup via Apple's `ApplePayWebOptions.renderApplePayCodeAs: "window"` (configured in the embed).
+
+## 0.6.1
+
+### Patch Changes
+
+- Detect native `ApplePaySession` on the parent (`UPDATE_NATIVE_APPLE_PAY_SESSION` / `hasNativeApplePaySession`) so the embed expands only for Chrome's in-iframe QR handoff.
+
 ## 0.6.0
 
 ### Minor Changes

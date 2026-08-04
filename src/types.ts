@@ -156,15 +156,6 @@ export type Message =
       merchantName: string;
     }
   | {
-      /**
-       * Parent → iframe: whether the host page has a native
-       * `ApplePaySession` (Safari). When `false`, the iframe should
-       * expand for Chrome's in-iframe QR handoff UI.
-       */
-      type: "UPDATE_NATIVE_APPLE_PAY_SESSION";
-      hasNativeApplePaySession: boolean;
-    }
-  | {
       type: "UPDATE_APPEARANCE";
       appearance: Appearance;
     }
@@ -200,18 +191,6 @@ export type Message =
     }
   | {
       type: "UPDATED_APPEARANCE";
-    }
-  | {
-      /**
-       * Iframe → parent: expand the Apple Pay iframe to a full-viewport
-       * overlay so Chrome's QR handoff UI is not clipped by the button
-       * height. The Apple Pay session stays on the Amos embed origin.
-       */
-      type: "EXPAND_IFRAME";
-    }
-  | {
-      /** Iframe → parent: restore the Apple Pay iframe to its button size. */
-      type: "COLLAPSE_IFRAME";
     };
 
 /**
