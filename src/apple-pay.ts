@@ -1,4 +1,8 @@
 import type { components } from "@amos.com/node";
+import {
+  hideApplePayWaitingOverlay,
+  showApplePayWaitingOverlay,
+} from "./apple-pay-waiting-overlay";
 import { getEmbedOrigin } from "./jwt";
 import {
   confirmPaymentIntent,
@@ -8,7 +12,7 @@ import {
   updateAppearance as sendUpdateAppearance,
   updateMerchantName as sendUpdateMerchantName,
 } from "./messaging";
-import type { Appearance, Message } from "./types";
+import { type Appearance, createMessage, type Message } from "./types";
 
 /**
  * Build the iframe `src` URL for the embedded Apple Pay button.
@@ -88,6 +92,13 @@ export type ApplePayButtonController = {
   destroy: () => void;
 };
 
+function sendApplePayCancel(iframe: HTMLIFrameElement): void {
+  iframe.contentWindow?.postMessage(
+    createMessage({ type: "APPLE_PAY_CANCEL" }),
+    "*",
+  );
+}
+
 /**
  * Wire up the host-page side of the Apple Pay iframe message protocol
  * on an existing `<iframe>` element. Returns a controller for updating
@@ -97,7 +108,9 @@ export type ApplePayButtonController = {
  * correct `src` (see {@link getApplePayButtonSrc}).
  *
  * The Apple Pay button and `ApplePaySession` run inside the Amos embed
- * iframe so only Amos domains need Apple merchant registration.
+ * iframe so only Amos domains need Apple merchant registration. While
+ * Apple Pay Code is open in a separate window, this host paints a
+ * waiting overlay and can cancel via {@link Message} `APPLE_PAY_CANCEL`.
  */
 export function attachApplePayButtonListeners(
   iframe: HTMLIFrameElement,
@@ -139,6 +152,19 @@ export function attachApplePayButtonListeners(
         current.onAppearanceReady?.();
         break;
 
+      case "APPLE_PAY_WINDOW_OPEN":
+        showApplePayWaitingOverlay({
+          onCancel: () => {
+            sendApplePayCancel(iframe);
+            hideApplePayWaitingOverlay();
+          },
+        });
+        break;
+
+      case "APPLE_PAY_WINDOW_CLOSE":
+        hideApplePayWaitingOverlay();
+        break;
+
       case "CREATE_PAYMENT_INTENT":
         current
           .onInitiatePaymentIntentRequest({
@@ -159,10 +185,12 @@ export function attachApplePayButtonListeners(
         break;
 
       case "PAYMENT_INTENT_CONFIRMATION_SUCCEEDED":
+        hideApplePayWaitingOverlay();
         current.onPaymentIntentConfirmationSucceeded(event.data.paymentIntent);
         break;
 
       case "CONFIRMATION_FAILED":
+        hideApplePayWaitingOverlay();
         current.onConfirmationFailed(event.data.errorMessage);
         break;
     }
@@ -188,6 +216,7 @@ export function attachApplePayButtonListeners(
     },
     destroy() {
       window.removeEventListener("message", handleMessage);
+      hideApplePayWaitingOverlay();
     },
   };
 }

@@ -191,6 +191,18 @@ export type Message =
     }
   | {
       type: "UPDATED_APPEARANCE";
+    }
+  | {
+      /** Embed → parent: Apple Pay Code window / waiting UI should show. */
+      type: "APPLE_PAY_WINDOW_OPEN";
+    }
+  | {
+      /** Embed → parent: waiting UI should dismiss. */
+      type: "APPLE_PAY_WINDOW_CLOSE";
+    }
+  | {
+      /** Parent → embed: user cancelled from the host-page waiting overlay. */
+      type: "APPLE_PAY_CANCEL";
     };
 
 /**

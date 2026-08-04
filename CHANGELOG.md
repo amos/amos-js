@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.7.1
+
+### Patch Changes
+
+- Show Apple Pay overlay
+
 ## 0.7.0
 
 ### Minor Changes
