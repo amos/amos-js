@@ -174,48 +174,62 @@ export type Appearance = {
  */
 export type Message =
   | {
+      /** Embed → parent: iframe finished loading and is ready for messages. */
       type: "IFRAME_READY";
     }
   | {
+      /** Parent → embed: host acknowledged `IFRAME_READY`. */
       type: "PARENT_ACKNOWLEDGED_IFRAME_READY";
     }
   | {
+      /** Embed → parent: iframe content height changed (resize container). */
       type: "UPDATE_HEIGHT";
       height: string;
     }
   | {
+      /** Parent → embed: express-checkout amount changed. */
       type: "UPDATE_AMOUNT";
       amount: string;
     }
   | {
+      /** Parent → embed: express-checkout merchant display name changed. */
       type: "UPDATE_MERCHANT_NAME";
       merchantName: string;
     }
   | {
+      /** Parent → embed: push appearance overrides into the iframe. */
       type: "UPDATE_APPEARANCE";
       appearance: Appearance;
     }
   | {
+      /**
+       * Parent → embed: validate form inputs (`requestId` only).
+       * Embed → parent: validation response (`isValid` set).
+       */
       type: "VALIDATE_FORM";
       requestId: string;
       isValid?: boolean;
     }
   | {
+      /** Embed → parent: express checkout requests a payment intent from the host. */
       type: "CREATE_PAYMENT_INTENT";
       paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
       customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
     }
   | ({
+      /** Parent → embed: confirm a payment intent with an embed token. */
       type: "CONFIRM_PAYMENT_INTENT";
     } & Pick<components["schemas"]["PaymentIntent"], "id"> &
       Pick<components["schemas"]["EmbedToken"], "token">)
   | ({
+      /** Parent → embed: confirm a setup intent with an embed token. */
       type: "CONFIRM_SETUP_INTENT";
     } & Pick<components["schemas"]["SetupIntent"], "id"> &
       Pick<components["schemas"]["EmbedToken"], "token">)
   | {
       /**
        * Embed → parent: the interactive confirmation flow finished.
+       * Parent → embed: express-checkout initiation failed on the host.
        * Not settlement proof — verify payment/setup success on your
        * backend via webhooks (or by retrieving the intent).
        */
@@ -223,6 +237,7 @@ export type Message =
       result: ConfirmationResult;
     }
   | {
+      /** Embed → parent: appearance overrides were applied in the iframe. */
       type: "UPDATED_APPEARANCE";
     }
   | {
