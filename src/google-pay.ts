@@ -213,23 +213,7 @@ export function formatGooglePayPaymentData({
         phone: paymentData.shippingAddress?.phoneNumber,
       },
       card_profile_attributes: {
-        wallet_provider: "googlepay",
         wallet_payload: paymentData.paymentMethodData.tokenizationData.token,
-        wallet_last4: paymentData.paymentMethodData.info?.cardDetails,
-        wallet_brand: (() => {
-          switch (paymentData.paymentMethodData.info?.cardNetwork) {
-            case "AMEX":
-              return "american_express";
-            case "VISA":
-              return "visa";
-            case "MASTERCARD":
-              return "master";
-            case "DISCOVER":
-              return "discover";
-            default:
-              return undefined;
-          }
-        })(),
       },
     },
   };
