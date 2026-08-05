@@ -1,6 +1,6 @@
 # Amos JavaScript SDK
 
-`@amos.com/amos-js` is a framework-agnostic JavaScript SDK for embedding Amos payment methods (credit card, bank account, Google Pay) into your web app via secure iframes, and for communicating with those iframes from the host page.
+`@amos.com/amos-js` is a framework-agnostic JavaScript SDK for embedding Amos payment methods (credit card, bank account, Google Pay, Apple Pay) into your web app via secure iframes, and for communicating with those iframes from the host page.
 
 It is the foundation for `@amos.com/react-amos-js`, but is fully usable on its own from vanilla JavaScript / TypeScript / any other framework.
 
@@ -14,8 +14,8 @@ npm install @amos.com/amos-js
 
 - **Types** for the `postMessage` protocol used between your page and the Amos iframe (`Message`, `Appearance`, `ThemeVariable`). OpenAPI schema types (for example `components["schemas"]["PaymentIntent"]`) come from `@amos.com/node`.
 - **Iframe-targeted helpers** to validate the form, confirm a payment intent, confirm a setup intent, update appearance, etc.
-- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`) that create the iframe, wire up its message protocol, manage its height/opacity, and return a small controller for updating options and tearing it down.
-- **Lower-level building blocks** (`getCreditCardFormSrc`, `attachPaymentMethodFormListeners`, `attachGooglePayButtonListeners`, ...) for integrators (such as `@amos.com/react-amos-js`) that want to render the iframe element themselves.
+- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height/opacity, and return a small controller for updating options and tearing it down.
+- **Lower-level building blocks** (`getCreditCardFormSrc`, `attachPaymentMethodFormListeners`, `attachGooglePayButtonListeners`, `attachApplePayButtonListeners`, ...) for integrators (such as `@amos.com/react-amos-js`) that want to render the iframe element themselves.
 
 > **Note:** A server-side SDK (for example `@amos.com/node`) must be used alongside `@amos.com/amos-js` for end-to-end payment processing. `@amos.com/amos-js` is the client-side half.
 
@@ -27,7 +27,7 @@ npm install @amos.com/amos-js
 3. Amos account ID (provided once your application has been approved)
 ```
 
-The render token configures the iframe's allowed origin(s), allowed payment methods, and the range of valid payment amounts. If the render token does not allow an origin, the iframe will not render. Similarly, components corresponding to different payment method types will not render if not allowed by the render token.
+The render token configures the iframe's allowed origin(s), allowed payment methods, accepted billing countries or US states, and the range of valid payment amounts. These settings come from the render template and are embedded in the token JWT (`RenderTokenJwt`); billing geography is controlled by `billing_address_options` (`allowed_countries` for international templates, `allowed_states` for US-only). If the render token does not allow an origin, the iframe will not render. Similarly, components corresponding to different payment method types will not render if not allowed by the render token, and billing addresses outside the configured countries or states will be rejected.
 
 > **Note**: The render token also determines the environment (`production` or `sandbox`). Render tokens created on `dashboard.amos.com` have a `production` environment. Render tokens created on `dashboard-sandbox.amos.com` have a `sandbox` environment. Similarly, API keys can only access the environment that they were created in.
 
@@ -97,7 +97,7 @@ The following flow is for credit card and bank account payment method types only
 6. **Confirm the payment intent from the client**: call `confirmPaymentIntent({ iframe: form.iframe, token })` in the browser to continue the payment flow.
 7. **Handle UX**: show the user a "processing" state when the "Pay now" button is clicked, and handle `onResult`. Do not treat `onResult` as settlement proof — verify payment success on your backend via webhooks. Recoverable field errors are shown in the iframe (`status: "incomplete"`).
 
-### Google Pay
+### Google Pay & Apple Pay
 
 Google Pay and Apple Pay are forms of express checkout. Their buttons are alternatives to the "Pay now" button in your payment forms. Users can make a payment with either flow.
 
@@ -145,6 +145,8 @@ const button = mountAmosGooglePayButton(
 button.update({ amount: "7500" });
 ```
 
+Apple Pay uses the same express-checkout flow and options — swap `mountAmosGooglePayButton` for `mountAmosApplePayButton`. When Apple Pay Code opens in a separate window, the SDK shows a host-page waiting overlay and tears it down when the session ends.
+
 ## Understanding the flow for creating and confirming setup intents
 
 Setup intents are used to save payment methods for future use (e.g. recurring payments, subscriptions) without charging the customer immediately. The flow is identical to a payment intent, except:
@@ -165,7 +167,7 @@ Why this matters:
 - Raw payment details are submitted from the iframe directly to Amos-controlled infrastructure.
 - Your backend only creates payment intents (or setup intents) and returns a short-lived token used to continue the iframe flow.
 - `confirmPaymentIntent` / `confirmSetupIntent` sends the token back to the iframe to complete confirmation; it does not pass full payment method payloads through your app server.
-- In express flows (e.g. Google Pay), the iframe component handles payment data exchange and only asks your server to create a payment intent token.
+- In express flows (e.g. Google Pay, Apple Pay), the iframe component handles payment data exchange and only asks your server to create a payment intent token.
 
 In short, your app orchestrates the payment flow, while sensitive payment data stays within Amos-controlled components and APIs.
 
@@ -288,11 +290,11 @@ Lower-level helper that wires up the host-page side of the credit-card or bank-a
 
 This is what `@amos.com/react-amos-js` uses to integrate with React's rendering model.
 
-### `attachGooglePayButtonListeners(iframe, options)`
+### `attachGooglePayButtonListeners(iframe, options)` / `attachApplePayButtonListeners(iframe, options)`
 
-The Google Pay equivalent of `attachPaymentMethodFormListeners`.
+The Google Pay / Apple Pay equivalents of `attachPaymentMethodFormListeners`.
 
-### `getCreditCardFormSrc(renderToken, additionalFields?, billingAddressRequirement?)` / `getBankAccountFormSrc(renderToken, billingAddressRequirement?)` / `getGooglePayButtonSrc(renderToken)`
+### `getCreditCardFormSrc(renderToken, additionalFields?, billingAddressRequirement?)` / `getBankAccountFormSrc(renderToken, billingAddressRequirement?)` / `getGooglePayButtonSrc(renderToken)` / `getApplePayButtonSrc(renderToken)`
 
 Build the iframe `src` URL for each form type.
 
@@ -312,7 +314,7 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 
 - **`iframe` argument**: every messaging helper (`validateForm`, `confirmPaymentIntent`, `confirmSetupIntent`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
 - **Same components for payment vs setup intents**: `mountAmosCreditCardPaymentMethodForm` and `mountAmosBankAccountPaymentMethodForm` support both payment intents and setup intents. The flow differs only by which server call you make and which confirmation function you use. Handle both outcomes via `onResult`.
-- **Amount format**: for `mountAmosGooglePayButton`, `amount` is a string (e.g. `"5000"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server, `amount` is a number in cents (e.g. `5000`).
+- **Amount format**: for `mountAmosGooglePayButton` and `mountAmosApplePayButton`, `amount` is a string (e.g. `"5000"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server, `amount` is a number in cents (e.g. `5000`).
 - **Browser-only**: the mount and messaging helpers require `window` and the DOM. They are not safe to call during server-side rendering — call them from client-side code only (for example, inside a `useEffect`-like hook in your framework of choice).
 
 ---
