@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.4
+
+### Patch Changes
+
+- Fix SVG
+
 ## 0.9.3
 
 ### Patch Changes
