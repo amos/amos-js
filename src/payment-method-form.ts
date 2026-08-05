@@ -129,7 +129,9 @@ export type PaymentMethodFormListenerOptions = {
   /**
    * Called when the interactive confirmation flow finishes (success or
    * terminal failure). Not settlement proof — verify via webhooks.
-   * Recoverable field errors stay in the iframe and do not invoke this.
+   * Recoverable validation posts `status: "incomplete"` with a `reason`
+   * (`field_errors` or `validation_failed`) instead of invoking this for
+   * terminal outcomes only — hosts should unlock UI on `incomplete`.
    */
   onResult: (result: ConfirmationResult) => void;
 };
@@ -167,6 +169,10 @@ export function attachPaymentMethodFormListeners(
   let current = { ...options };
 
   function handleMessage(event: MessageEvent<Message>) {
+    if (event.source !== iframe.contentWindow) {
+      return;
+    }
+
     switch (event.data.type) {
       case "IFRAME_READY":
         sendParentReadyMessage(iframe);

@@ -107,6 +107,10 @@ export function attachGooglePayButtonListeners(
   }
 
   function handleMessage(event: MessageEvent<Message>) {
+    if (event.source !== iframe.contentWindow) {
+      return;
+    }
+
     switch (event.data.type) {
       case "IFRAME_READY":
         sendParentReadyMessage(iframe);

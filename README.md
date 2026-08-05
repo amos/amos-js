@@ -58,7 +58,10 @@ const form = mountAmosCreditCardPaymentMethodForm(
       } else if (result.status === "failed") {
         console.error("Confirm failed:", result.errorMessage);
       }
-      // status === "incomplete": field errors shown in the iframe; customer can retry
+      // status === "incomplete": field errors or validation_failed — unlock UI
+      if (result.status === "incomplete") {
+        console.log("Recoverable:", result.reason);
+      }
     },
   },
 );
@@ -232,7 +235,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 **Required `options`:**
 
 - `renderToken` (`string`)
-- `onResult` (`(result: ConfirmationResult) => void`) — required. Called when the interactive confirmation attempt finishes (`succeeded`, `failed`, or `incomplete`). Not settlement proof; verify via webhooks.
+- `onResult` (`(result: ConfirmationResult) => void`) — required. Called when the interactive confirmation attempt finishes (`succeeded`, `failed`, or `incomplete` with `reason`). Not settlement proof; verify via webhooks.
 
 **Optional `options`:**
 
@@ -264,7 +267,7 @@ Mount the secure Google Pay button (express checkout) into a container element.
 - `merchantName` (`string`)
 - `onInitiatePaymentIntentRequest` (`({ paymentIntentCreateAttributes, customerCreateAttributes }) => Promise<components["schemas"]["EmbedToken"]["token"]>`)
 
-- `onResult` (`(result: ConfirmationResult) => void`) — required. Called when the interactive confirmation attempt finishes (`succeeded`, `failed`, or `incomplete`). Not settlement proof; verify via webhooks.
+- `onResult` (`(result: ConfirmationResult) => void`) — required. Called when the interactive confirmation attempt finishes (`succeeded`, `failed`, or `incomplete` with `reason`). Not settlement proof; verify via webhooks.
 
 **Optional `options`:** `appearance`, `onHeightChange`, `onAppearanceReady`.
 

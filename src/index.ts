@@ -65,6 +65,7 @@ export {
 export type {
   Appearance,
   AppearanceLabels,
+  ConfirmationIncompleteReason,
   ConfirmationResult,
   Message,
   ThemeVariable,

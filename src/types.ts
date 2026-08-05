@@ -1,6 +1,18 @@
 import type { components } from "@amos.com/node";
 
 /**
+ * Why an interactive confirmation attempt ended with `status: "incomplete"`.
+ *
+ * Helps hosts distinguish recoverable iframe states for analytics and
+ * support without exposing PCI data.
+ */
+export type ConfirmationIncompleteReason =
+  /** Pay API field errors were mapped onto iframe inputs for retry. */
+  | "field_errors"
+  /** Client-side / HTML5 validation failed when confirm was requested. */
+  | "validation_failed";
+
+/**
  * Outcome of an interactive confirmation flow inside the Amos iframe.
  *
  * `onResult` / `CONFIRMATION_RESULT` means the host should stop waiting
@@ -9,9 +21,9 @@ import type { components } from "@amos.com/node";
  * retrieving the PaymentIntent / SetupIntent with your secret key),
  * the same way Stripe recommends.
  *
- * Recoverable field validation errors (e.g. bad expiration year) are
- * shown inside the iframe and do **not** produce a result; the customer
- * can fix the form and retry.
+ * Recoverable validation (field errors shown in the iframe, or client-side
+ * validation on confirm) posts `status: "incomplete"` with a `reason` so
+ * the host can unlock its UI; the customer can fix the form and retry.
  */
 export type ConfirmationResult =
   | {
@@ -26,10 +38,12 @@ export type ConfirmationResult =
     }
   | {
       /**
-       * Recoverable validation was shown in the iframe. Unlock the host UI;
-       * the customer can fix fields and retry. Do not treat as settlement.
+       * Recoverable validation was shown in the iframe or confirm was
+       * blocked by client-side validation. Unlock the host UI; the customer
+       * can fix fields and retry. Do not treat as settlement.
        */
       status: "incomplete";
+      reason: ConfirmationIncompleteReason;
     }
   | {
       status: "failed";

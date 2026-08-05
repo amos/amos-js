@@ -1,5 +1,13 @@
 # @amos.com/amos-js
 
+## 0.9.2
+
+### Patch Changes
+
+- Add `reason` on `status: "incomplete"` (`field_errors` | `validation_failed`) so hosts can distinguish recoverable iframe states.
+- Ignore `postMessage` events from windows other than the mounted iframe (`event.source` check on card/bank and Google Pay listeners).
+- Fix `ConfirmationResult` JSDoc to match the `incomplete` behavior.
+
 ## 0.8.1
 
 ### Patch Changes
