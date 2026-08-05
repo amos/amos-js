@@ -24,6 +24,7 @@
     "dev": "vite",
     "prebuild": "npm run typecheck",
     "build": "vite build",
+    "watch": "vite build --watch",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "prepack": "npm run build",
