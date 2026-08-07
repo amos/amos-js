@@ -1,6 +1,6 @@
 {
   "name": "@amos.com/amos-js",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -36,10 +36,10 @@
   "license": "MIT",
   "description": "Amos JavaScript SDK for embedding payment methods via iframes.",
   "peerDependencies": {
-    "@amos.com/node": ">=0.1.37"
+    "@amos.com/node": ">=0.1.39"
   },
   "devDependencies": {
-    "@amos.com/node": "0.1.37",
+    "@amos.com/node": "0.1.39",
     "@biomejs/biome": "2.5.7",
     "@changesets/cli": "2.31.1",
     "@types/node": "26.1.2",
