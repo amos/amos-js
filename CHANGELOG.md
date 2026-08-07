@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.5
+
+### Patch Changes
+
+- Add resetForm API. Restrict postMessage origin.
+
 ## 0.9.4
 
 ### Patch Changes

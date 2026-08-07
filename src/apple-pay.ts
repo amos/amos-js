@@ -6,6 +6,7 @@ import {
 import { getEmbedOrigin } from "./jwt";
 import {
   confirmPaymentIntent,
+  getIframeTargetOrigin,
   sendParentReadyMessage,
   updateAmount as sendUpdateAmount,
   updateAppearance as sendUpdateAppearance,
@@ -94,7 +95,7 @@ export type ApplePayButtonController = {
 function sendApplePayCancel(iframe: HTMLIFrameElement): void {
   iframe.contentWindow?.postMessage(
     createMessage({ type: "APPLE_PAY_CANCEL" }),
-    "*",
+    getIframeTargetOrigin(iframe),
   );
 }
 

@@ -1,7 +1,7 @@
 import {
-  attachApplePayButtonListeners,
   type ApplePayButtonController,
   type ApplePayButtonListenerOptions,
+  attachApplePayButtonListeners,
   getApplePayButtonInitialHeight,
   getApplePayButtonSrc,
 } from "./apple-pay";

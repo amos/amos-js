@@ -27,6 +27,7 @@ export { decodeJwt, getEmbedOrigin } from "./jwt";
 export {
   confirmPaymentIntent,
   confirmSetupIntent,
+  resetForm,
   sendConfirmationResult,
   sendParentReadyMessage,
   updateAmount,

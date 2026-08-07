@@ -287,6 +287,10 @@ Validates the embedded card/bank iframe form. Returns `Promise<boolean>` (resolv
 
 Forward an embed JWT to the iframe so it can complete the payment / setup intent confirmation. The matching `payment_intent_id` / `setup_intent_id` is extracted from the JWT and forwarded automatically.
 
+### `resetForm({ iframe })`
+
+Clears all field values and API errors in the embedded card/bank iframe form. Call after `onResult` when the customer wants to try again.
+
 ### `attachPaymentMethodFormListeners(iframe, options)`
 
 Lower-level helper that wires up the host-page side of the credit-card or bank-account iframe message protocol on an existing `<iframe>` element. The iframe is expected to have been added to the DOM with the correct `src` already (see `getCreditCardFormSrc` / `getBankAccountFormSrc`). Returns `{ update, destroy }`.
@@ -315,7 +319,7 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 
 ## Notes and potential gotchas
 
-- **`iframe` argument**: every messaging helper (`validateForm`, `confirmPaymentIntent`, `confirmSetupIntent`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
+- **`iframe` argument**: every messaging helper (`validateForm`, `confirmPaymentIntent`, `confirmSetupIntent`, `resetForm`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
 - **Same components for payment vs setup intents**: `mountAmosCreditCardPaymentMethodForm` and `mountAmosBankAccountPaymentMethodForm` support both payment intents and setup intents. The flow differs only by which server call you make and which confirmation function you use. Handle both outcomes via `onResult`.
 - **Amount format**: for `mountAmosGooglePayButton` and `mountAmosApplePayButton`, `amount` is a string (e.g. `"5000"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server, `amount` is a number in cents (e.g. `5000`).
 - **Browser-only**: the mount and messaging helpers require `window` and the DOM. They are not safe to call during server-side rendering — call them from client-side code only (for example, inside a `useEffect`-like hook in your framework of choice).

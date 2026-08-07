@@ -265,6 +265,10 @@ export type Message =
   | {
       /** Parent → embed: user cancelled from the host-page waiting overlay. */
       type: "APPLE_PAY_CANCEL";
+    }
+  | {
+      /** Parent → embed: clear all form field values and API errors. */
+      type: "RESET_FORM";
     };
 
 /**

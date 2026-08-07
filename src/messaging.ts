@@ -5,14 +5,28 @@ import { type Appearance, createMessage, type Message } from "./types";
 type Iframe = HTMLIFrameElement | null | undefined;
 
 /**
+ * Resolve the Amos embed origin from an iframe's configured `src`.
+ *
+ * Integrators are expected to set `src` via the SDK's `get*Src` helpers
+ * before calling messaging functions.
+ */
+export function getIframeTargetOrigin(iframe: HTMLIFrameElement): string {
+  return new URL(iframe.src).origin;
+}
+
+/**
  * Notify the embedded iframe that the host page is ready to receive
  * messages. The SDK calls this internally after receiving an
  * `IFRAME_READY` event from the iframe.
  */
 export function sendParentReadyMessage(iframe: Iframe): void {
-  iframe?.contentWindow?.postMessage(
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
     createMessage({ type: "PARENT_ACKNOWLEDGED_IFRAME_READY" }),
-    "*",
+    getIframeTargetOrigin(iframe),
   );
 }
 
@@ -31,9 +45,13 @@ export function updateAppearance({
   iframe: Iframe;
   appearance?: Appearance;
 }): void {
-  iframe?.contentWindow?.postMessage(
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
     createMessage({ type: "UPDATE_APPEARANCE", appearance }),
-    "*",
+    getIframeTargetOrigin(iframe),
   );
 }
 
@@ -47,9 +65,13 @@ export function updateAmount({
   iframe: Iframe;
   amount: string;
 }): void {
-  iframe?.contentWindow?.postMessage(
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
     createMessage({ type: "UPDATE_AMOUNT", amount }),
-    "*",
+    getIframeTargetOrigin(iframe),
   );
 }
 
@@ -64,9 +86,13 @@ export function updateMerchantName({
   iframe: Iframe;
   merchantName: string;
 }): void {
-  iframe?.contentWindow?.postMessage(
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
     createMessage({ type: "UPDATE_MERCHANT_NAME", merchantName }),
-    "*",
+    getIframeTargetOrigin(iframe),
   );
 }
 
@@ -81,10 +107,12 @@ export function validateForm({ iframe }: { iframe: Iframe }): Promise<boolean> {
   const requestId = crypto.randomUUID();
 
   return new Promise((resolve) => {
-    iframe?.contentWindow?.postMessage(
-      createMessage({ type: "VALIDATE_FORM", requestId }),
-      "*",
-    );
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage(
+        createMessage({ type: "VALIDATE_FORM", requestId }),
+        getIframeTargetOrigin(iframe),
+      );
+    }
 
     const timeoutId = setTimeout(() => {
       window.removeEventListener("message", handleMessage);
@@ -107,6 +135,21 @@ export function validateForm({ iframe }: { iframe: Iframe }): Promise<boolean> {
 }
 
 /**
+ * Clear all field values and API errors in the embedded credit-card or
+ * bank-account iframe form.
+ */
+export function resetForm({ iframe }: { iframe: Iframe }): void {
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
+    createMessage({ type: "RESET_FORM" }),
+    getIframeTargetOrigin(iframe),
+  );
+}
+
+/**
  * Confirm a payment intent in the embedded iframe flow.
  *
  * Pass the embed JWT (`token`) returned by your server's
@@ -119,15 +162,19 @@ export function confirmPaymentIntent({
 }: {
   iframe: Iframe;
 } & Pick<components["schemas"]["EmbedToken"], "token">): void {
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
   const { payment_intent_id: id }: components["schemas"]["EmbedTokenJwt"] =
     decodeJwt(token).payload;
-  iframe?.contentWindow?.postMessage(
+  iframe.contentWindow.postMessage(
     createMessage({
       type: "CONFIRM_PAYMENT_INTENT",
       token,
       id: id ?? undefined,
     }),
-    "*",
+    getIframeTargetOrigin(iframe),
   );
 }
 
@@ -144,15 +191,19 @@ export function confirmSetupIntent({
 }: {
   iframe: Iframe;
 } & Pick<components["schemas"]["EmbedToken"], "token">): void {
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
   const { setup_intent_id: id }: components["schemas"]["EmbedTokenJwt"] =
     decodeJwt(token).payload;
-  iframe?.contentWindow?.postMessage(
+  iframe.contentWindow.postMessage(
     createMessage({
       type: "CONFIRM_SETUP_INTENT",
       token,
       id: id ?? undefined,
     }),
-    "*",
+    getIframeTargetOrigin(iframe),
   );
 }
 
@@ -167,11 +218,15 @@ export function sendConfirmationResult({
   iframe: Iframe;
   result: Extract<Message, { type: "CONFIRMATION_RESULT" }>["result"];
 }): void {
-  iframe?.contentWindow?.postMessage(
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
     createMessage({
       type: "CONFIRMATION_RESULT",
       result,
     }),
-    "*",
+    getIframeTargetOrigin(iframe),
   );
 }
