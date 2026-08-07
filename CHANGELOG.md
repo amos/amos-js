@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.6
+
+### Patch Changes
+
+- Move @amos.com/node to peer dependency
+
 ## 0.9.5
 
 ### Patch Changes
