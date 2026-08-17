@@ -93,6 +93,12 @@ export type ThemeVariable =
    */
   | "--secondary-foreground"
   /*
+   * Muted surface color (e.g. chips, subdued fills).
+   *
+   * Default: oklch(0.97 0 0)
+   */
+  | "--muted"
+  /*
    * Placeholder text, helper labels, and muted icons.
    *
    * Default: oklch(0.556 0 0)
@@ -112,17 +118,35 @@ export type ThemeVariable =
    */
   | "--accent-foreground"
   /*
-   * Error/invalid state borders and icons.
+   * Error/invalid state borders, icons, and field error text.
    *
    * Default: oklch(0.577 0.245 27.325)
    */
   | "--destructive"
+  /*
+   * Text on destructive-colored surfaces (e.g. destructive buttons).
+   *
+   * Default: oklch(0.45 0.24 27.325)
+   */
+  | "--destructive-foreground"
   /*
    * General border color applied to all elements via the base layer.
    *
    * Default: oklch(0.922 0 0)
    */
   | "--border"
+  /*
+   * Dropdown / popover panel background.
+   *
+   * Default: oklch(1 0 0)
+   */
+  | "--popover"
+  /*
+   * Dropdown / popover panel text color.
+   *
+   * Default: oklch(0.145 0 0)
+   */
+  | "--popover-foreground"
   /*
    * Input field border color.
    *
@@ -148,6 +172,36 @@ export type ThemeVariable =
    */
   | "--input-font-size"
   /*
+   * Font weight of typed input values and dropdown fields (e.g. `400`, `normal`).
+   *
+   * Default: 400
+   */
+  | "--input-font-weight"
+  /*
+   * Horizontal padding inside inputs and aligned floating labels (e.g. `0.75rem`, `12px`).
+   *
+   * Default: 0.75rem
+   */
+  | "--input-padding"
+  /*
+   * Input field border width (e.g. `1px`).
+   *
+   * Default: 1px
+   */
+  | "--input-border-width"
+  /*
+   * Input field box shadow (e.g. `none`, `0 1px 2px 0 rgb(0 0 0 / 0.05)`).
+   *
+   * Default: 0 1px 2px 0 rgb(0 0 0 / 0.05)
+   */
+  | "--input-shadow"
+  /*
+   * Height of text inputs when labels are floating (e.g. `3.25rem`, `52px`).
+   *
+   * Default: 3.25rem
+   */
+  | "--floating-input-height"
+  /*
    * Font size of floating labels when the field is focused or filled
    * (e.g. `0.75rem`, `12px`). Does not affect the typed input value.
    *
@@ -161,11 +215,65 @@ export type ThemeVariable =
    */
   | "--floating-label-font-weight"
   /*
+   * Color of floating labels. Defaults to `--muted-foreground`.
+   *
+   * Default: var(--muted-foreground)
+   */
+  | "--floating-label-color"
+  /*
+   * Top offset of the shrunk floating label inside the control (e.g. `0.625rem`).
+   *
+   * Default: 0.625rem
+   */
+  | "--floating-label-offset"
+  /*
+   * Font size of above-style field labels and radio option labels.
+   *
+   * Default: 0.875rem
+   */
+  | "--label-font-size"
+  /*
+   * Font weight of above-style field labels and radio option labels.
+   *
+   * Default: 500
+   */
+  | "--label-font-weight"
+  /*
+   * Vertical gap between stacked form fields (e.g. `1rem`, `16px`).
+   *
+   * Default: 1rem
+   */
+  | "--field-gap"
+  /*
+   * Horizontal gap between side-by-side controls (e.g. expiry + CVC).
+   *
+   * Default: 0.5rem
+   */
+  | "--control-gap"
+  /*
+   * Font size of field-level error messages.
+   *
+   * Default: 0.875rem
+   */
+  | "--error-font-size"
+  /*
+   * Size of radio buttons on the bank account form (e.g. `1rem`, `16px`).
+   *
+   * Default: 1rem
+   */
+  | "--radio-size"
+  /*
    * Focus ring and outline color for inputs and buttons.
    *
    * Default: oklch(0.708 0 0)
    */
   | "--ring"
+  /*
+   * Focus ring width for inputs (e.g. `3px`).
+   *
+   * Default: 3px
+   */
+  | "--ring-width"
   /*
    * Base border-radius; derived into --radius-sm/md/lg/xl.
    *

@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.9
+
+### Patch Changes
+
+- Add appearance variables
+
 ## 0.9.8
 
 ### Patch Changes

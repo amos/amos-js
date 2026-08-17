@@ -214,19 +214,37 @@ Radio groups (e.g. account type) always use an above-style group label regardles
 | `--primary-foreground`   | Text on primary-colored surfaces               | `oklch(0.985 0 0)`          |
 | `--secondary`            | Secondary button fill                          | `oklch(0.97 0 0)`           |
 | `--secondary-foreground` | Text on secondary-colored surfaces             | `oklch(0.205 0 0)`          |
-| `--muted-foreground`     | Placeholder text, helper labels, muted icons   | `oklch(0.556 0 0)`          |
-| `--accent`               | Hover/focus highlight for interactive items    | `oklch(0.97 0 0)`           |
-| `--accent-foreground`    | Text on accent-highlighted items               | `oklch(0.205 0 0)`          |
-| `--destructive`          | Error/invalid state borders and icons          | `oklch(0.577 0.245 27.325)` |
-| `--border`               | General border color                           | `oklch(0.922 0 0)`          |
-| `--input`                | Input field border color                       | `oklch(0.922 0 0)`          |
-| `--input-background`     | Input field background fill                    | `var(--background)`         |
-| `--input-height`         | Height of text inputs and form controls        | `2.25rem`                   |
+| `--muted`                      | Muted surface color                                              | `oklch(0.97 0 0)`           |
+| `--muted-foreground`           | Placeholder text, helper labels, muted icons                     | `oklch(0.556 0 0)`          |
+| `--accent`                     | Hover/focus highlight for interactive items                      | `oklch(0.97 0 0)`           |
+| `--accent-foreground`          | Text on accent-highlighted items                                 | `oklch(0.205 0 0)`          |
+| `--destructive`                | Error/invalid state borders, icons, and field error text         | `oklch(0.577 0.245 27.325)` |
+| `--destructive-foreground`     | Text on destructive-colored surfaces                             | `oklch(0.45 0.24 27.325)`   |
+| `--border`                     | General border color                                             | `oklch(0.922 0 0)`          |
+| `--popover`                    | Dropdown / popover panel background                              | `oklch(1 0 0)`              |
+| `--popover-foreground`         | Dropdown / popover panel text color                              | `oklch(0.145 0 0)`          |
+| `--input`                      | Input field border color                                         | `oklch(0.922 0 0)`          |
+| `--input-background`           | Input field background fill                                      | `var(--background)`         |
+| `--input-height`               | Height of text inputs and form controls                          | `2.25rem`                   |
 | `--input-font-size`            | Font size of text inputs and dropdown fields                     | `0.875rem`                  |
+| `--input-font-weight`          | Font weight of typed input values                                | `400`                       |
+| `--input-padding`              | Horizontal padding inside inputs                                 | `0.75rem`                   |
+| `--input-border-width`         | Input field border width                                         | `1px`                       |
+| `--input-shadow`               | Input field box shadow                                           | `0 1px 2px 0 rgb(0 0 0 / 0.05)` |
+| `--floating-input-height`      | Height of inputs when labels are floating                        | `3.25rem`                   |
 | `--floating-label-font-size`   | Font size of floating labels when focused or filled              | `0.75rem`                   |
 | `--floating-label-font-weight` | Font weight of floating labels                                   | `500`                       |
+| `--floating-label-color`       | Color of floating labels                                         | `var(--muted-foreground)`   |
+| `--floating-label-offset`      | Top offset of the shrunk floating label                          | `0.625rem`                  |
+| `--label-font-size`            | Font size of above-style field labels                            | `0.875rem`                  |
+| `--label-font-weight`          | Font weight of above-style field labels                          | `500`                       |
+| `--field-gap`                  | Vertical gap between stacked form fields                         | `1rem`                      |
+| `--control-gap`                | Horizontal gap between side-by-side controls                     | `0.5rem`                    |
+| `--error-font-size`            | Font size of field-level error messages                          | `0.875rem`                  |
+| `--radio-size`                 | Size of radio buttons on the bank account form                   | `1rem`                      |
 | `--ring`                       | Focus ring and outline color                                     | `oklch(0.708 0 0)`          |
-| `--radius`               | Base border-radius (derived into sm/md/lg/xl)  | `0.625rem`                  |
+| `--ring-width`                 | Focus ring width                                                 | `3px`                       |
+| `--radius`                     | Base border-radius (derived into sm/md/lg/xl)                    | `0.625rem`                  |
 
 ## API reference
 
