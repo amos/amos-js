@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.11
+
+### Patch Changes
+
+- Add onValidityChange
+
 ## 0.9.10
 
 ### Patch Changes

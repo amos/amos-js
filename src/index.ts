@@ -75,6 +75,7 @@ export type {
   ConfirmationResult,
   GooglePayButtonElementProps,
   Message,
+  PaymentMethodFormValidityChangeEvent,
   ThemeVariable,
   WalletButtonStyle,
 } from "./types";

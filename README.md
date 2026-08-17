@@ -63,6 +63,9 @@ const form = mountAmosCreditCardPaymentMethodForm(
         console.log("Recoverable:", result.reason);
       }
     },
+    onValidityChange: ({ isValid }) => {
+      document.querySelector("#pay-now")!.disabled = !isValid;
+    },
   },
 );
 
@@ -264,6 +267,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 - `billingAddressRequirement` (`"country" | "full"`, defaults to `"country"`) — how much billing address the iframe collects. `country` collects country / region and, for CA / PR / GB / US, a postal code (labeled ZIP for the United States). `full` shows a full street address form with Smarty autocomplete.
 
 
+- `onValidityChange` (`(event: { isValid: boolean }) => void`) — called when form validity changes. `isValid` is true when all required fields are present and valid. Does not include PCI data. Use this to enable or disable your checkout button.
 - `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic)
 
 **Returns** `AmosPaymentMethodFormMountController`:
@@ -363,7 +367,7 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 
 ### Exported types
 
-`Message`, `Appearance`, `ThemeVariable`, `FormattedGooglePayPaymentData`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
+`Message`, `Appearance`, `ThemeVariable`, `FormattedGooglePayPaymentData`, `PaymentMethodFormValidityChangeEvent`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
 
 ## Notes and potential gotchas
 

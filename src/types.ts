@@ -3,6 +3,15 @@
 import type { components } from "@amos.com/node";
 
 /**
+ * PCI-safe snapshot of card/bank form validity, posted when HTML
+ * constraint validation changes. Use this to enable or disable a host
+ * checkout button.
+ */
+export type PaymentMethodFormValidityChangeEvent = {
+  isValid: boolean;
+};
+
+/**
  * Why an interactive confirmation attempt ended with `status: "incomplete"`.
  *
  * Helps hosts distinguish recoverable iframe states for analytics and
@@ -593,6 +602,15 @@ export type Message =
   | {
       /** Parent → embed: clear all form field values and API errors. */
       type: "RESET_FORM";
+    }
+  | {
+      /**
+       * Embed → parent: card/bank form validity changed.
+       * `isValid` is true when all required fields are present and
+       * valid. Does not include PCI data.
+       */
+      type: "FORM_VALIDITY_CHANGE";
+      isValid: boolean;
     };
 
 /**

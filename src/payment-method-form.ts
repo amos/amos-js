@@ -3,7 +3,12 @@ import {
   sendParentReadyMessage,
   updateAppearance as sendUpdateAppearance,
 } from "./messaging";
-import type { Appearance, ConfirmationResult, Message } from "./types";
+import type {
+  Appearance,
+  ConfirmationResult,
+  Message,
+  PaymentMethodFormValidityChangeEvent,
+} from "./types";
 
 /**
  * The additional fields beyond the standard card number, expiration
@@ -127,6 +132,12 @@ export type PaymentMethodFormListenerOptions = {
    */
   onAppearanceReady?: () => void;
   /**
+   * Called when card/bank form validity changes. `isValid` is true
+   * when all required fields are present and valid. Does not include
+   * PCI data. Use this to enable or disable a host checkout button.
+   */
+  onValidityChange?: (event: PaymentMethodFormValidityChangeEvent) => void;
+  /**
    * Called when the interactive confirmation flow finishes (success or
    * terminal failure). Not settlement proof — verify via webhooks.
    * Recoverable validation posts `status: "incomplete"` with a `reason`
@@ -189,6 +200,10 @@ export function attachPaymentMethodFormListeners(
 
       case "UPDATED_APPEARANCE":
         current.onAppearanceReady?.();
+        break;
+
+      case "FORM_VALIDITY_CHANGE":
+        current.onValidityChange?.({ isValid: event.data.isValid });
         break;
 
       case "CONFIRMATION_RESULT":
