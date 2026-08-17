@@ -14,7 +14,7 @@ npm install @amos.com/amos-js
 
 - **Types** for the `postMessage` protocol used between your page and the Amos iframe (`Message`, `Appearance`, `ThemeVariable`). OpenAPI schema types (for example `components["schemas"]["PaymentIntent"]`) come from `@amos.com/node`.
 - **Iframe-targeted helpers** to validate the form, confirm a payment intent, confirm a setup intent, update appearance, etc.
-- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height/opacity, and return a small controller for updating options and tearing it down.
+- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height/opacity, show a field-shaped loading skeleton for card/bank forms, and return a small controller for updating options and tearing it down.
 - **Lower-level building blocks** (`getCreditCardFormSrc`, `attachPaymentMethodFormListeners`, `attachGooglePayButtonListeners`, `attachApplePayButtonListeners`, ...) for integrators (such as `@amos.com/react-amos-js`) that want to render the iframe element themselves.
 
 > **Note:** A server-side SDK (for example `@amos.com/node`) must be used alongside `@amos.com/amos-js` for end-to-end payment processing. `@amos.com/amos-js` is the client-side half.
@@ -96,7 +96,7 @@ form.destroy();
 The following flow is for credit card and bank account payment method types only.
 
 1. **Set up prerequisites**: create a `renderToken` (safe for client), and keep `apiKey` and `accountId` server-side only.
-2. **Render your checkout UI** by calling `mountAmosCreditCardPaymentMethodForm(container, options)` (or `mountAmosBankAccountPaymentMethodForm(...)`) along with the required `onResult` callback. The iframe height is auto-managed by the SDK.
+2. **Render your checkout UI** by calling `mountAmosCreditCardPaymentMethodForm(container, options)` (or `mountAmosBankAccountPaymentMethodForm(...)`) along with the required `onResult` callback. The SDK shows a field-shaped skeleton immediately (sized from `appearance`, `additionalFields`, and `billingAddressRequirement`) and auto-manages iframe height.
 3. **User clicks "Pay now" button**: call `validateForm({ iframe: form.iframe })`, which returns `Promise<true>` if the embedded form is valid, and `Promise<false>` otherwise.
 4. **Create payment intent on your server**: use your server-side Amos client to call `POST /payment_intents`. You may also associate this payment intent with a new or existing customer via `POST /customers`. This must be server-side because it uses your private API key.
 5. **Return the payment intent token to the browser**: your backend responds with the embed token (`components["schemas"]["EmbedToken"]`) needed for confirmation.
@@ -268,13 +268,13 @@ Mount the secure credit-card payment method form into a container element (an `H
 
 
 - `onValidityChange` (`(event: { isValid: boolean }) => void`) — called when form validity changes. `isValid` is true when all required fields are present and valid. Does not include PCI data. Use this to enable or disable your checkout button.
-- `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic)
+- `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic). The skeleton is removed and the iframe faded in when `onAppearanceReady` fires.
 
 **Returns** `AmosPaymentMethodFormMountController`:
 
 - `iframe` — the underlying `<iframe>` element.
 - `update(patch)` — patch any of the options listed above.
-- `destroy()` — remove the iframe and detach listeners.
+- `destroy()` — remove the iframe (and any loading skeleton) and detach listeners.
 
 ### `mountAmosBankAccountPaymentMethodForm(container, options)`
 

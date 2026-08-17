@@ -6,6 +6,10 @@ import {
   getApplePayButtonSrc,
 } from "./apple-pay";
 import {
+  createPaymentMethodFormSkeleton,
+  type PaymentMethodFormSkeletonOptions,
+} from "./form-skeleton";
+import {
   attachGooglePayButtonListeners,
   type GooglePayButtonController,
   type GooglePayButtonListenerOptions,
@@ -47,6 +51,18 @@ const SHARED_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   border: "0",
 };
 
+const SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
+  position: "absolute",
+  top: "0",
+  left: "-4px",
+  width: "calc(100% + 8px)",
+  height: "100%",
+  margin: "0",
+  // Do not interpolate opacity while the skeleton is showing.
+  transition: "none",
+  pointerEvents: "none",
+};
+
 function createIframe({
   src,
   title,
@@ -71,6 +87,133 @@ function createIframe({
   }
   Object.assign(iframe.style, SHARED_IFRAME_STYLE, { height });
   return iframe;
+}
+
+function mountPaymentMethodFormWithSkeleton({
+  host,
+  iframe,
+  listenerOptions,
+  skeletonOptions,
+}: {
+  host: HTMLElement;
+  iframe: HTMLIFrameElement;
+  listenerOptions: PaymentMethodFormListenerOptions;
+  skeletonOptions: PaymentMethodFormSkeletonOptions;
+}): AmosPaymentMethodFormMountController {
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "relative";
+  wrapper.style.width = "100%";
+  wrapper.setAttribute("aria-busy", "true");
+
+  const skeleton = createPaymentMethodFormSkeleton(skeletonOptions);
+  Object.assign(iframe.style, SKELETON_IFRAME_STYLE);
+
+  wrapper.append(skeleton.element, iframe);
+  host.appendChild(wrapper);
+
+  let revealed = false;
+  let appearanceReady = false;
+  let lastHeight: string | undefined;
+  let appearance = skeletonOptions.appearance;
+  let heightTransitionTimer: ReturnType<typeof setTimeout> | undefined;
+  let fallbackRevealTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function skeletonHeightPx(): number {
+    return wrapper.getBoundingClientRect().height;
+  }
+
+  function reportedHeightPx(): number {
+    return lastHeight ? Number.parseFloat(lastHeight) : Number.NaN;
+  }
+
+  function reveal(): void {
+    if (revealed) {
+      return;
+    }
+    revealed = true;
+    if (fallbackRevealTimer !== undefined) {
+      clearTimeout(fallbackRevealTimer);
+      fallbackRevealTimer = undefined;
+    }
+
+    const skeletonPx = skeletonHeightPx();
+    const reportedPx = reportedHeightPx();
+    const revealPx = Number.isFinite(reportedPx)
+      ? Math.max(reportedPx, skeletonPx)
+      : skeletonPx;
+
+    iframe.style.transition = "none";
+    iframe.style.position = "";
+    iframe.style.top = "";
+    iframe.style.left = "";
+    iframe.style.margin = SHARED_IFRAME_STYLE.margin ?? "";
+    iframe.style.height = `${revealPx}px`;
+    iframe.style.opacity = "1";
+    iframe.style.pointerEvents = "";
+    skeleton.element.remove();
+    wrapper.removeAttribute("aria-busy");
+
+    // Height easing is for later layout changes (ZIP show/hide, errors),
+    // not the first paint — that would animate the last row into place.
+    heightTransitionTimer = setTimeout(() => {
+      iframe.style.transition = "height 200ms ease-in-out";
+    }, 400);
+  }
+
+  function tryReveal(): void {
+    if (revealed || !appearanceReady) {
+      return;
+    }
+    const reportedPx = reportedHeightPx();
+    const skeletonPx = skeletonHeightPx();
+    if (Number.isFinite(reportedPx) && reportedPx >= skeletonPx - 2) {
+      reveal();
+    }
+  }
+
+  const controller = attachPaymentMethodFormListeners(iframe, {
+    ...listenerOptions,
+    onHeightChange: (height) => {
+      lastHeight = height;
+      if (revealed) {
+        iframe.style.height = height;
+      } else {
+        tryReveal();
+      }
+      listenerOptions.onHeightChange?.(height);
+    },
+    onAppearanceReady: () => {
+      appearanceReady = true;
+      tryReveal();
+      if (!revealed && fallbackRevealTimer === undefined) {
+        fallbackRevealTimer = setTimeout(() => {
+          reveal();
+        }, 1500);
+      }
+      listenerOptions.onAppearanceReady?.();
+    },
+  });
+
+  return {
+    iframe,
+    update(patch) {
+      controller.update(patch);
+      if (!revealed && "appearance" in patch) {
+        appearance = patch.appearance;
+        skeleton.update({ ...skeletonOptions, appearance });
+      }
+    },
+    destroy() {
+      if (heightTransitionTimer !== undefined) {
+        clearTimeout(heightTransitionTimer);
+      }
+      if (fallbackRevealTimer !== undefined) {
+        clearTimeout(fallbackRevealTimer);
+      }
+      controller.destroy();
+      wrapper.remove();
+    },
+  };
 }
 
 /**
@@ -120,6 +263,9 @@ export type AmosPaymentMethodFormMountController =
  * element. Returns a controller exposing the underlying iframe, an
  * `update()` method, and a `destroy()` method.
  *
+ * A field-shaped skeleton is shown immediately and replaced by the
+ * iframe once appearance is applied.
+ *
  * Use the returned `controller.iframe` when calling
  * {@link validateForm}, {@link confirmPaymentIntent}, or
  * {@link confirmSetupIntent}.
@@ -149,28 +295,18 @@ export function mountAmosCreditCardPaymentMethodForm(
       billingAddressRequirement,
     ),
   });
-  host.appendChild(iframe);
 
-  const controller = attachPaymentMethodFormListeners(iframe, {
-    ...listenerOptions,
-    onHeightChange: (height) => {
-      iframe.style.height = height;
-      listenerOptions.onHeightChange?.(height);
-    },
-    onAppearanceReady: () => {
-      iframe.style.opacity = "1";
-      listenerOptions.onAppearanceReady?.();
+  return mountPaymentMethodFormWithSkeleton({
+    host,
+    iframe,
+    listenerOptions,
+    skeletonOptions: {
+      kind: "card",
+      appearance: listenerOptions.appearance,
+      additionalFields,
+      billingAddressRequirement,
     },
   });
-
-  return {
-    iframe,
-    update: controller.update,
-    destroy() {
-      controller.destroy();
-      iframe.remove();
-    },
-  };
 }
 
 /**
@@ -198,6 +334,9 @@ export type AmosBankAccountPaymentMethodFormOptions =
  * element. Returns a controller exposing the underlying iframe, an
  * `update()` method, and a `destroy()` method.
  *
+ * A field-shaped skeleton is shown immediately and replaced by the
+ * iframe once appearance is applied.
+ *
  * Use the returned `controller.iframe` when calling
  * {@link validateForm}, {@link confirmPaymentIntent}, or
  * {@link confirmSetupIntent}.
@@ -219,28 +358,17 @@ export function mountAmosBankAccountPaymentMethodForm(
     name: "amos-bank-account-payment-method-form",
     height: getBankAccountFormInitialHeight(billingAddressRequirement),
   });
-  host.appendChild(iframe);
 
-  const controller = attachPaymentMethodFormListeners(iframe, {
-    ...listenerOptions,
-    onHeightChange: (height) => {
-      iframe.style.height = height;
-      listenerOptions.onHeightChange?.(height);
-    },
-    onAppearanceReady: () => {
-      iframe.style.opacity = "1";
-      listenerOptions.onAppearanceReady?.();
+  return mountPaymentMethodFormWithSkeleton({
+    host,
+    iframe,
+    listenerOptions,
+    skeletonOptions: {
+      kind: "bank",
+      appearance: listenerOptions.appearance,
+      billingAddressRequirement,
     },
   });
-
-  return {
-    iframe,
-    update: controller.update,
-    destroy() {
-      controller.destroy();
-      iframe.remove();
-    },
-  };
 }
 
 /**

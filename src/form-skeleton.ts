@@ -1,0 +1,244 @@
+import type {
+  BillingAddressRequirement,
+  CreditCardAdditionalFields,
+} from "./payment-method-form";
+import type { Appearance, AppearanceLabels, ThemeVariable } from "./types";
+
+const STYLE_ID = "amos-js-form-skeleton-styles";
+
+const SKELETON_THEME_DEFAULTS: Record<string, string> = {
+  "--accent": "oklch(0.97 0 0)",
+  "--radius": "0.625rem",
+  "--input-height": "2.25rem",
+  "--floating-input-height": "3.25rem",
+  "--field-gap": "1rem",
+  "--control-gap": "0.5rem",
+  "--label-font-size": "0.875rem",
+};
+
+const SKELETON_STYLES = `
+.amos-js-form-skeleton {
+  box-sizing: border-box;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--field-gap);
+  margin: 0 -4px;
+  padding-block: 0.25rem;
+  pointer-events: none;
+  width: calc(100% + 8px);
+}
+.amos-js-form-skeleton-field {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+}
+.amos-js-form-skeleton-label {
+  flex-shrink: 0;
+  font-size: var(--label-font-size);
+  height: 1.75rem;
+  line-height: 1.75rem;
+}
+.amos-js-form-skeleton-input {
+  animation: amos-js-skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: var(--accent);
+  border-radius: calc(var(--radius) * 0.8);
+  box-sizing: border-box;
+  height: var(--input-height);
+  width: 100%;
+}
+.amos-js-form-skeleton-input-floating {
+  height: var(--floating-input-height);
+}
+.amos-js-form-skeleton-row {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--control-gap);
+  width: 100%;
+}
+.amos-js-form-skeleton-row-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--field-gap);
+  width: 100%;
+}
+@container (min-width: 24rem) {
+  .amos-js-form-skeleton-row-stack {
+    align-items: flex-start;
+    flex-direction: row;
+    gap: var(--control-gap);
+  }
+}
+@keyframes amos-js-skeleton-pulse {
+  50% { opacity: 0.5; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .amos-js-form-skeleton-input {
+    animation: none;
+  }
+}
+`;
+
+function ensureSkeletonStyles(): void {
+  if (document.getElementById(STYLE_ID)) {
+    return;
+  }
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = SKELETON_STYLES;
+  document.head.appendChild(style);
+}
+
+function applyTheme(
+  element: HTMLElement,
+  appearance: Appearance | undefined,
+): void {
+  for (const [property, value] of Object.entries(SKELETON_THEME_DEFAULTS)) {
+    element.style.setProperty(property, value);
+  }
+  const themeVariables = appearance?.themeVariables;
+  if (!themeVariables) {
+    return;
+  }
+  for (const [property, value] of Object.entries(themeVariables) as Array<
+    [ThemeVariable, string | undefined]
+  >) {
+    if (typeof value === "string" && value.trim() !== "") {
+      element.style.setProperty(property, value.trim());
+    }
+  }
+}
+
+function div(className: string, children?: Array<HTMLElement>): HTMLDivElement {
+  const node = document.createElement("div");
+  node.className = className;
+  if (children) {
+    for (const child of children) {
+      node.appendChild(child);
+    }
+  }
+  return node;
+}
+
+function field(labels: AppearanceLabels, grow?: number): HTMLDivElement {
+  const wrap = div("amos-js-form-skeleton-field");
+  if (grow !== undefined) {
+    wrap.style.flexGrow = String(grow);
+  }
+  if (labels === "above") {
+    wrap.appendChild(div("amos-js-form-skeleton-label"));
+  }
+  const input = div("amos-js-form-skeleton-input");
+  if (labels === "floating") {
+    input.classList.add("amos-js-form-skeleton-input-floating");
+  }
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function row(children: Array<HTMLElement>, wrapAtSm: boolean): HTMLDivElement {
+  return div(
+    wrapAtSm ? "amos-js-form-skeleton-row-stack" : "amos-js-form-skeleton-row",
+    children,
+  );
+}
+
+function billingFields({
+  labels,
+  requirement,
+  wrapCountryZip,
+}: {
+  labels: AppearanceLabels;
+  requirement: BillingAddressRequirement;
+  wrapCountryZip: boolean;
+}): Array<HTMLElement> {
+  if (requirement === "full") {
+    return [
+      field(labels),
+      field(labels),
+      row([field(labels, 1.4), field(labels, 0.7), field(labels, 0.8)], false),
+      field(labels),
+    ];
+  }
+  return [row([field(labels), field(labels)], wrapCountryZip)];
+}
+
+export type PaymentMethodFormSkeletonKind = "card" | "bank";
+
+export type PaymentMethodFormSkeletonOptions = {
+  kind: PaymentMethodFormSkeletonKind;
+  appearance?: Appearance;
+  additionalFields?: CreditCardAdditionalFields;
+  billingAddressRequirement?: BillingAddressRequirement;
+};
+
+function buildChildren(
+  options: PaymentMethodFormSkeletonOptions,
+): Array<HTMLElement> {
+  const labels = options.appearance?.labels ?? "above";
+  const billingAddressRequirement =
+    options.billingAddressRequirement ?? "country";
+
+  if (options.kind === "card") {
+    const children: Array<HTMLElement> = [
+      field(labels),
+      row([field(labels), field(labels)], false),
+    ];
+    if (options.additionalFields?.cardholderName) {
+      children.push(field(labels));
+    }
+    children.push(
+      ...billingFields({
+        labels,
+        requirement: billingAddressRequirement,
+        wrapCountryZip: false,
+      }),
+    );
+    return children;
+  }
+
+  return [
+    field(labels),
+    row([field(labels), field(labels)], true),
+    field(labels),
+    row([field("above"), field("above")], true),
+    ...billingFields({
+      labels,
+      requirement: billingAddressRequirement,
+      wrapCountryZip: true,
+    }),
+  ];
+}
+
+export type PaymentMethodFormSkeleton = {
+  element: HTMLElement;
+  update: (options: PaymentMethodFormSkeletonOptions) => void;
+};
+
+/**
+ * Host-page placeholder that mirrors card/bank field layout using the
+ * same appearance variables the iframe will apply. Shown immediately
+ * while the iframe document loads, then removed when appearance is
+ * ready.
+ */
+export function createPaymentMethodFormSkeleton(
+  options: PaymentMethodFormSkeletonOptions,
+): PaymentMethodFormSkeleton {
+  ensureSkeletonStyles();
+  const element = div("amos-js-form-skeleton");
+  element.setAttribute("aria-hidden", "true");
+
+  function render(next: PaymentMethodFormSkeletonOptions): void {
+    applyTheme(element, next.appearance);
+    element.replaceChildren(...buildChildren(next));
+  }
+
+  render(options);
+
+  return {
+    element,
+    update: render,
+  };
+}
