@@ -10,10 +10,12 @@ import {
   sendParentReadyMessage,
   updateAmount as sendUpdateAmount,
   updateAppearance as sendUpdateAppearance,
+  updateApplePayButton as sendUpdateApplePayButton,
   updateMerchantName as sendUpdateMerchantName,
 } from "./messaging";
 import {
   type Appearance,
+  type ApplePayButtonElementProps,
   type ConfirmationResult,
   createMessage,
   type Message,
@@ -36,7 +38,7 @@ export function getApplePayButtonInitialHeight(): string {
 /**
  * Options accepted by {@link attachApplePayButtonListeners}.
  */
-export type ApplePayButtonListenerOptions = {
+export type ApplePayButtonListenerOptions = ApplePayButtonElementProps & {
   /** The amount of the payment, in the same format passed in props. */
   amount: string;
   /** A user-visible merchant name. */
@@ -83,7 +85,9 @@ export type ApplePayButtonController = {
   /**
    * Update one or more listener options without re-attaching the
    * message listener. Pass `amount` or `merchantName` to push the new
-   * value into the iframe; pass `appearance` to update theme variables.
+   * value into the iframe; pass `appearance` to update theme variables;
+   * pass `buttonstyle`, `type`, `locale`, or `style` to restyle the
+   * Apple Pay button.
    */
   update: (patch: Partial<ApplePayButtonListenerOptions>) => void;
   /**
@@ -126,6 +130,10 @@ export function attachApplePayButtonListeners(
     sendUpdateMerchantName({ iframe, merchantName: current.merchantName });
   }
 
+  function pushButtonProps() {
+    sendUpdateApplePayButton({ iframe, props: current });
+  }
+
   function handleMessage(event: MessageEvent<Message>) {
     // Ignore messages from other frames / windows.
     if (event.source !== iframe.contentWindow) {
@@ -138,6 +146,7 @@ export function attachApplePayButtonListeners(
         sendUpdateAppearance({ iframe, appearance: current.appearance });
         pushAmount();
         pushMerchantName();
+        pushButtonProps();
         break;
 
       case "UPDATE_HEIGHT":
@@ -199,6 +208,11 @@ export function attachApplePayButtonListeners(
       const hadAppearance = "appearance" in patch;
       const hadAmount = "amount" in patch;
       const hadMerchantName = "merchantName" in patch;
+      const hadButtonProps =
+        "buttonstyle" in patch ||
+        "type" in patch ||
+        "locale" in patch ||
+        "style" in patch;
       current = { ...current, ...patch };
       if (hadAppearance) {
         sendUpdateAppearance({ iframe, appearance: current.appearance });
@@ -208,6 +222,9 @@ export function attachApplePayButtonListeners(
       }
       if (hadMerchantName) {
         pushMerchantName();
+      }
+      if (hadButtonProps) {
+        pushButtonProps();
       }
     },
     destroy() {

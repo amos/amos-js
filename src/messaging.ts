@@ -1,6 +1,14 @@
 import type { components } from "@amos.com/node";
 import { decodeJwt } from "./jwt";
-import { type Appearance, createMessage, type Message } from "./types";
+import {
+  type Appearance,
+  type ApplePayButtonElementProps,
+  createMessage,
+  type GooglePayButtonElementProps,
+  type Message,
+  pickApplePayButtonElementProps,
+  pickGooglePayButtonElementProps,
+} from "./types";
 
 type Iframe = HTMLIFrameElement | null | undefined;
 
@@ -51,6 +59,52 @@ export function updateAppearance({
 
   iframe.contentWindow.postMessage(
     createMessage({ type: "UPDATE_APPEARANCE", appearance }),
+    getIframeTargetOrigin(iframe),
+  );
+}
+
+/**
+ * Push Apple Pay button visual options into the embedded iframe.
+ */
+export function updateApplePayButton({
+  iframe,
+  props,
+}: {
+  iframe: Iframe;
+  props: ApplePayButtonElementProps;
+}): void {
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
+    createMessage({
+      type: "UPDATE_APPLE_PAY_BUTTON",
+      props: pickApplePayButtonElementProps(props),
+    }),
+    getIframeTargetOrigin(iframe),
+  );
+}
+
+/**
+ * Push Google Pay button visual options into the embedded iframe.
+ */
+export function updateGooglePayButton({
+  iframe,
+  props,
+}: {
+  iframe: Iframe;
+  props: GooglePayButtonElementProps;
+}): void {
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
+    createMessage({
+      type: "UPDATE_GOOGLE_PAY_BUTTON",
+      props: pickGooglePayButtonElementProps(props),
+    }),
     getIframeTargetOrigin(iframe),
   );
 }

@@ -289,15 +289,43 @@ Mount the secure Google Pay button (express checkout) into a container element.
 
 - `onResult` (`(result: ConfirmationResult) => void`) — required. Called when the interactive confirmation attempt finishes (`succeeded`, `failed`, or `incomplete` with `reason`). Not settlement proof; verify via webhooks.
 
-**Optional `options`:** `appearance`, `onHeightChange`, `onAppearanceReady`.
+**Optional `options`:** `appearance`, `onHeightChange`, `onAppearanceReady`, plus Google Pay button visual options using the same names as `@google-pay/button-react`:
+
+- `buttonType` (`"book" | "buy" | "checkout" | "donate" | "order" | "pay" | "plain" | "subscribe" | "short" | "long"`, defaults to `"short"`)
+- `buttonColor` (`"default" | "black" | "white"`)
+- `buttonRadius` (`number`, 0–20)
+- `buttonSizeMode` (`"static" | "fill"`)
+- `buttonLocale` (`string`, e.g. `"en"`)
+- `buttonBorderType` (`"no_border" | "default_border"`)
+- `style` (`{ [property: string]: string | number }`) — applied to the Google Pay button inside the iframe (e.g. `{ height: "48px", width: "100%" }`). Combined with `buttonSizeMode: "fill"` to stretch the button.
 
 **Returns** `AmosGooglePayButtonMountController`:
 
-- `iframe`, `update(patch)`, `destroy()`. Use `update({ amount, merchantName })` to push new values into the iframe.
+- `iframe`, `update(patch)`, `destroy()`. Use `update({ amount, merchantName })` to push new values into the iframe. Use `update({ buttonType, style, ... })` to restyle the button.
 
 ### `mountAmosApplePayButton(container, options)`
 
-Mount the secure Apple Pay button (express checkout). Same options and return shape as `mountAmosGooglePayButton`.
+Mount the secure Apple Pay button (express checkout). Same required options and return shape as `mountAmosGooglePayButton`.
+
+**Optional visual options** use Apple's `<apple-pay-button>` attribute names:
+
+- `buttonstyle` (`"black" | "white" | "white-outline"`, defaults to `"black"`)
+- `type` (`"plain" | "buy" | "set-up" | "donate" | "check-out" | "book" | "subscribe" | "reload" | "add-money" | "top-up" | "order" | "rent" | "support" | "contribute" | "tip"`, defaults to `"plain"`)
+- `locale` (`string`, BCP 47, defaults to `"en-US"`)
+- `style` — applied to the `<apple-pay-button>` inside the iframe. Apple sizes the button with CSS custom properties, not CSS `height`:
+
+```ts
+button.update({
+  buttonstyle: "white-outline",
+  type: "buy",
+  locale: "en-GB",
+  style: {
+    "--apple-pay-button-height": "48px",
+    "--apple-pay-button-width": "100%",
+    width: "100%",
+  },
+});
+```
 
 ### `validateForm({ iframe })`
 

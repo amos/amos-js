@@ -7,9 +7,15 @@ import {
   sendParentReadyMessage,
   updateAmount as sendUpdateAmount,
   updateAppearance as sendUpdateAppearance,
+  updateGooglePayButton as sendUpdateGooglePayButton,
   updateMerchantName as sendUpdateMerchantName,
 } from "./messaging";
-import type { Appearance, ConfirmationResult, Message } from "./types";
+import type {
+  Appearance,
+  ConfirmationResult,
+  GooglePayButtonElementProps,
+  Message,
+} from "./types";
 
 /**
  * Build the iframe `src` URL for the embedded Google Pay button.
@@ -28,7 +34,7 @@ export function getGooglePayButtonInitialHeight(): string {
 /**
  * Options accepted by {@link attachGooglePayButtonListeners}.
  */
-export type GooglePayButtonListenerOptions = {
+export type GooglePayButtonListenerOptions = GooglePayButtonElementProps & {
   /** The amount of the payment, in the same format passed in props. */
   amount: string;
   /** A user-visible merchant name. */
@@ -75,7 +81,10 @@ export type GooglePayButtonController = {
   /**
    * Update one or more listener options without re-attaching the
    * message listener. Pass `amount` or `merchantName` to push the new
-   * value into the iframe; pass `appearance` to update theme variables.
+   * value into the iframe; pass `appearance` to update theme variables;
+   * pass `buttonType`, `buttonColor`, `buttonRadius`, `buttonSizeMode`,
+   * `buttonLocale`, `buttonBorderType`, or `style` to restyle the
+   * Google Pay button.
    */
   update: (patch: Partial<GooglePayButtonListenerOptions>) => void;
   /**
@@ -106,6 +115,10 @@ export function attachGooglePayButtonListeners(
     sendUpdateMerchantName({ iframe, merchantName: current.merchantName });
   }
 
+  function pushButtonProps() {
+    sendUpdateGooglePayButton({ iframe, props: current });
+  }
+
   function handleMessage(event: MessageEvent<Message>) {
     if (event.source !== iframe.contentWindow) {
       return;
@@ -117,6 +130,7 @@ export function attachGooglePayButtonListeners(
         sendUpdateAppearance({ iframe, appearance: current.appearance });
         pushAmount();
         pushMerchantName();
+        pushButtonProps();
         break;
 
       case "UPDATE_HEIGHT":
@@ -163,6 +177,14 @@ export function attachGooglePayButtonListeners(
       const hadAppearance = "appearance" in patch;
       const hadAmount = "amount" in patch;
       const hadMerchantName = "merchantName" in patch;
+      const hadButtonProps =
+        "buttonType" in patch ||
+        "buttonColor" in patch ||
+        "buttonRadius" in patch ||
+        "buttonSizeMode" in patch ||
+        "buttonLocale" in patch ||
+        "buttonBorderType" in patch ||
+        "style" in patch;
       current = { ...current, ...patch };
       if (hadAppearance) {
         sendUpdateAppearance({ iframe, appearance: current.appearance });
@@ -172,6 +194,9 @@ export function attachGooglePayButtonListeners(
       }
       if (hadMerchantName) {
         pushMerchantName();
+      }
+      if (hadButtonProps) {
+        pushButtonProps();
       }
     },
     destroy() {

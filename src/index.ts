@@ -32,6 +32,8 @@ export {
   sendParentReadyMessage,
   updateAmount,
   updateAppearance,
+  updateApplePayButton,
+  updateGooglePayButton,
   updateMerchantName,
   validateForm,
 } from "./messaging";
@@ -66,9 +68,19 @@ export {
 export type {
   Appearance,
   AppearanceLabels,
+  ApplePayButtonElementProps,
+  ApplePayButtonStyle,
+  ApplePayButtonType,
   ConfirmationIncompleteReason,
   ConfirmationResult,
+  GooglePayButtonElementProps,
   Message,
   ThemeVariable,
+  WalletButtonStyle,
 } from "./types";
-export { createMessage } from "./types";
+export {
+  createMessage,
+  pickApplePayButtonElementProps,
+  pickGooglePayButtonElementProps,
+  serializeWalletButtonStyle,
+} from "./types";

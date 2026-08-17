@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.10
+
+### Patch Changes
+
+- Forward props to Apple Pay and Google Pay
+
 ## 0.9.9
 
 ### Patch Changes
