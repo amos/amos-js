@@ -148,6 +148,19 @@ export type ThemeVariable =
    */
   | "--input-font-size"
   /*
+   * Font size of floating labels when the field is focused or filled
+   * (e.g. `0.75rem`, `12px`). Does not affect the typed input value.
+   *
+   * Default: 0.75rem
+   */
+  | "--floating-label-font-size"
+  /*
+   * Font weight of floating labels (e.g. `400`, `500`, `normal`, `bold`).
+   *
+   * Default: 500
+   */
+  | "--floating-label-font-weight"
+  /*
    * Focus ring and outline color for inputs and buttons.
    *
    * Default: oklch(0.708 0 0)
