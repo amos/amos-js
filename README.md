@@ -235,9 +235,11 @@ Radio groups (e.g. account type) always use an above-style group label regardles
 | `--input-border-width`         | Input field border width                                         | `1px`                       |
 | `--input-shadow`               | Input field box shadow                                           | `0 1px 2px 0 rgb(0 0 0 / 0.05)` |
 | `--floating-input-height`      | Height of inputs when labels are floating                        | `3.25rem`                   |
-| `--floating-label-font-size`   | Font size of floating labels when focused or filled              | `0.75rem`                   |
-| `--floating-label-font-weight` | Font weight of floating labels                                   | `500`                       |
-| `--floating-label-color`       | Color of floating labels                                         | `var(--muted-foreground)`   |
+| `--floating-label-font-size`        | Font size of floating labels when focused or filled              | `0.75rem`                   |
+| `--floating-label-empty-font-size`  | Font size of floating labels when empty (unfocused)              | `var(--input-font-size)`    |
+| `--floating-label-font-weight`      | Font weight of floating labels                                   | `500`                       |
+| `--floating-label-color`            | Color of floating labels when empty (unfocused)                  | `var(--muted-foreground)`   |
+| `--floating-label-floated-color`    | Color of floating labels when focused or filled                  | `var(--muted-foreground)`   |
 | `--floating-label-offset`      | Top offset of the shrunk floating label                          | `0.625rem`                  |
 | `--label-font-size`            | Font size of above-style field labels                            | `0.875rem`                  |
 | `--label-font-weight`          | Font weight of above-style field labels                          | `500`                       |

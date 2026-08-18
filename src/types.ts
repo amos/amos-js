@@ -220,17 +220,31 @@ export type ThemeVariable =
    */
   | "--floating-label-font-size"
   /*
+   * Font size of floating labels in the empty / unfocused position
+   * (e.g. `0.9375rem`, `15px`). Falls back to `--input-font-size` when unset.
+   *
+   * Default: var(--input-font-size)
+   */
+  | "--floating-label-empty-font-size"
+  /*
    * Font weight of floating labels (e.g. `400`, `500`, `normal`, `bold`).
    *
    * Default: 500
    */
   | "--floating-label-font-weight"
   /*
-   * Color of floating labels. Defaults to `--muted-foreground`.
+   * Color of floating labels in the empty / unfocused position.
    *
    * Default: var(--muted-foreground)
    */
   | "--floating-label-color"
+  /*
+   * Color of floating labels when focused or filled. Falls back to
+   * `--floating-label-color` when unset.
+   *
+   * Default: var(--muted-foreground)
+   */
+  | "--floating-label-floated-color"
   /*
    * Top offset of the shrunk floating label inside the control (e.g. `0.625rem`).
    *
