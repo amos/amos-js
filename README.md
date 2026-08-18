@@ -295,13 +295,28 @@ Mount the secure Google Pay button (express checkout) into a container element.
 
 **Optional `options`:** `appearance`, `onHeightChange`, `onAppearanceReady`, plus Google Pay button visual options using the same names as `@google-pay/button-react`:
 
+- `fullWidth` (`boolean`, defaults to `false`) — fills the mount container without changing the compact default
 - `buttonType` (`"book" | "buy" | "checkout" | "donate" | "order" | "pay" | "plain" | "subscribe" | "short" | "long"`, defaults to `"short"`)
 - `buttonColor` (`"default" | "black" | "white"`)
 - `buttonRadius` (`number`, 0–20)
 - `buttonSizeMode` (`"static" | "fill"`)
 - `buttonLocale` (`string`, e.g. `"en"`)
 - `buttonBorderType` (`"no_border" | "default_border"`)
-- `style` (`{ [property: string]: string | number }`) — applied to the Google Pay button inside the iframe (e.g. `{ height: "48px", width: "100%" }`). Combined with `buttonSizeMode: "fill"` to stretch the button.
+- `style` (`{ [property: string]: string | number }`) — applied to the Google Pay button inside the iframe (e.g. `{ height: "48px" }`)
+
+For a full-width 48px button:
+
+```ts
+mountAmosGooglePayButton("#google-pay", {
+  // ...required options
+  fullWidth: true,
+  style: { height: "48px" },
+});
+```
+
+The wallet iframe itself is flush with its mount container (`width: 100%`,
+zero margin). `style` targets the button inside that iframe. For advanced host
+layout overrides, use the returned controller's `iframe` element.
 
 **Returns** `AmosGooglePayButtonMountController`:
 
@@ -313,6 +328,7 @@ Mount the secure Apple Pay button (express checkout). Same required options and 
 
 **Optional visual options** use Apple's `<apple-pay-button>` attribute names:
 
+- `fullWidth` (`boolean`, defaults to `false`) — fills the mount container without changing the compact default
 - `buttonstyle` (`"black" | "white" | "white-outline"`, defaults to `"black"`)
 - `type` (`"plain" | "buy" | "set-up" | "donate" | "check-out" | "book" | "subscribe" | "reload" | "add-money" | "top-up" | "order" | "rent" | "support" | "contribute" | "tip"`, defaults to `"plain"`)
 - `locale` (`string`, BCP 47, defaults to `"en-US"`)
@@ -320,13 +336,12 @@ Mount the secure Apple Pay button (express checkout). Same required options and 
 
 ```ts
 button.update({
+  fullWidth: true,
   buttonstyle: "white-outline",
   type: "buy",
   locale: "en-GB",
   style: {
     "--apple-pay-button-height": "48px",
-    "--apple-pay-button-width": "100%",
-    width: "100%",
   },
 });
 ```

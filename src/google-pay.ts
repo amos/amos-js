@@ -178,6 +178,7 @@ export function attachGooglePayButtonListeners(
       const hadAmount = "amount" in patch;
       const hadMerchantName = "merchantName" in patch;
       const hadButtonProps =
+        "fullWidth" in patch ||
         "buttonType" in patch ||
         "buttonColor" in patch ||
         "buttonRadius" in patch ||

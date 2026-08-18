@@ -362,6 +362,13 @@ export type ApplePayButtonType =
  */
 export type ApplePayButtonElementProps = {
   /**
+   * Stretch the button to the iframe width while preserving its default
+   * compact size when omitted.
+   *
+   * @default false
+   */
+  fullWidth?: boolean;
+  /**
    * Apple Pay button color.
    *
    * @default "black"
@@ -394,6 +401,13 @@ export type ApplePayButtonElementProps = {
  * @see https://developers.google.com/pay/api/web/guides/resources/customize
  */
 export type GooglePayButtonElementProps = {
+  /**
+   * Stretch the button to the iframe width while preserving its default
+   * compact size when omitted.
+   *
+   * @default false
+   */
+  fullWidth?: boolean;
   /**
    * Button label / verb.
    *
@@ -452,6 +466,9 @@ export function pickApplePayButtonElementProps(
   options: ApplePayButtonElementProps,
 ): ApplePayButtonElementProps {
   const props: ApplePayButtonElementProps = {};
+  if (options.fullWidth !== undefined) {
+    props.fullWidth = options.fullWidth;
+  }
   if (options.buttonstyle !== undefined) {
     props.buttonstyle = options.buttonstyle;
   }
@@ -474,6 +491,9 @@ export function pickGooglePayButtonElementProps(
   options: GooglePayButtonElementProps,
 ): GooglePayButtonElementProps {
   const props: GooglePayButtonElementProps = {};
+  if (options.fullWidth !== undefined) {
+    props.fullWidth = options.fullWidth;
+  }
   if (options.buttonType !== undefined) {
     props.buttonType = options.buttonType;
   }

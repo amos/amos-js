@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.13
+
+### Patch Changes
+
+- Styling improvements
+
 ## 0.9.12
 
 ### Patch Changes

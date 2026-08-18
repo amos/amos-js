@@ -43,10 +43,18 @@ function resolveContainer(container: Container): HTMLElement {
   return container;
 }
 
-const SHARED_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
+const FORM_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   width: "calc(100% + 8px)",
   transition: "opacity 150ms ease-in, height 200ms ease-in-out",
   margin: "0 -4px",
+  opacity: "0",
+  border: "0",
+};
+
+const WALLET_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
+  width: "100%",
+  transition: "height 200ms ease-in-out",
+  margin: "0",
   opacity: "0",
   border: "0",
 };
@@ -69,12 +77,14 @@ function createIframe({
   name,
   height,
   allow,
+  style = FORM_IFRAME_STYLE,
 }: {
   src: string;
   title: string;
   name: string;
   height: string;
   allow?: string;
+  style?: Partial<CSSStyleDeclaration>;
 }): HTMLIFrameElement {
   const iframe = document.createElement("iframe");
   iframe.src = src;
@@ -85,7 +95,7 @@ function createIframe({
   if (allow) {
     iframe.allow = allow;
   }
-  Object.assign(iframe.style, SHARED_IFRAME_STYLE, { height });
+  Object.assign(iframe.style, style, { height });
   return iframe;
 }
 
@@ -146,7 +156,7 @@ function mountPaymentMethodFormWithSkeleton({
     iframe.style.position = "";
     iframe.style.top = "";
     iframe.style.left = "";
-    iframe.style.margin = SHARED_IFRAME_STYLE.margin ?? "";
+    iframe.style.margin = FORM_IFRAME_STYLE.margin ?? "";
     iframe.style.height = `${revealPx}px`;
     iframe.style.opacity = "1";
     iframe.style.pointerEvents = "";
@@ -412,6 +422,7 @@ export function mountAmosGooglePayButton(
     name: "amos-google-pay-button",
     height: getGooglePayButtonInitialHeight(),
     allow: "payment",
+    style: WALLET_IFRAME_STYLE,
   });
   host.appendChild(iframe);
 
@@ -478,6 +489,7 @@ export function mountAmosApplePayButton(
     name: "amos-apple-pay-button",
     height: getApplePayButtonInitialHeight(),
     allow: "payment",
+    style: WALLET_IFRAME_STYLE,
   });
   host.appendChild(iframe);
 

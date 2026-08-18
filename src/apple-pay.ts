@@ -209,6 +209,7 @@ export function attachApplePayButtonListeners(
       const hadAmount = "amount" in patch;
       const hadMerchantName = "merchantName" in patch;
       const hadButtonProps =
+        "fullWidth" in patch ||
         "buttonstyle" in patch ||
         "type" in patch ||
         "locale" in patch ||
