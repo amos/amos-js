@@ -32,7 +32,7 @@ export function getApplePayButtonSrc(renderToken: string): string {
  * Default iframe pixel height for the Apple Pay button.
  */
 export function getApplePayButtonInitialHeight(): string {
-  return "40px";
+  return "48px";
 }
 
 /**

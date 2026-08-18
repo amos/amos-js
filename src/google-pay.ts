@@ -28,7 +28,7 @@ export function getGooglePayButtonSrc(renderToken: string): string {
  * Default iframe pixel height for the Google Pay button.
  */
 export function getGooglePayButtonInitialHeight(): string {
-  return "40px";
+  return "48px";
 }
 
 /**
