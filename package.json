@@ -1,6 +1,6 @@
 {
   "name": "@amos.com/amos-js",
-  "version": "0.9.13",
+  "version": "0.9.14",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
