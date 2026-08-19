@@ -101,7 +101,7 @@ The following flow is for credit card and bank account payment method types only
 4. **Create payment intent on your server**: use your server-side Amos client to call `POST /payment_intents`. You may also associate this payment intent with a new or existing customer via `POST /customers`. This must be server-side because it uses your private API key.
 5. **Return the payment intent token to the browser**: your backend responds with the embed token (`components["schemas"]["EmbedToken"]`) needed for confirmation.
 6. **Confirm the payment intent from the client**: call `confirmPaymentIntent({ iframe: form.iframe, token })` in the browser to continue the payment flow.
-7. **Handle UX**: show the user a "processing" state when the "Pay now" button is clicked, and handle `onResult`. Do not treat `onResult` as settlement proof — verify payment success on your backend via webhooks. Recoverable field errors are shown in the iframe (`status: "incomplete"`).
+7. **Handle UX**: show the user a "processing" state when the "Pay now" button is clicked, and handle `onResult`. Do not treat `onResult` as settlement proof — verify payment success on your backend via webhooks. Recoverable field errors are shown in the iframe (`status: "incomplete"` with `reason`: `"field_errors"` or `"validation_failed"`).
 
 ### Google Pay & Apple Pay
 
@@ -114,44 +114,56 @@ The key differences between the express and non-express payment flows are:
 - You do not call `confirmPaymentIntent` in an express flow (this is done after `onInitiatePaymentIntentRequest` returns a token).
 
 ```ts
-import { mountAmosGooglePayButton } from "@amos.com/amos-js";
+import {
+  mountAmosApplePayButton,
+  mountAmosGooglePayButton,
+  type ConfirmationResult,
+} from "@amos.com/amos-js";
+import type { components } from "@amos.com/node";
 
-const button = mountAmosGooglePayButton(
-  document.querySelector("#google-pay")!,
-  {
-    renderToken: "the-render-token-created-on-dashboard.amos.com",
-    amount: "5000", // $50.00 in cents, as a string
-    merchantName: "your-user-facing-merchant-name",
-    onInitiatePaymentIntentRequest: async ({
-      paymentIntentCreateAttributes,
-      customerCreateAttributes,
-    }) => {
-      const response = await fetch("/api/payment-intents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer: customerCreateAttributes,
-          paymentIntent: paymentIntentCreateAttributes,
-        }),
-      });
-      const { token } = await response.json();
-      return token;
-    },
-    onResult: (result) => {
-      if (result.status === "succeeded") {
-        console.log("Google Pay confirm returned:", result);
-      } else if (result.status === "failed") {
-        console.error("Google Pay failed:", result.errorMessage);
-      }
-    },
+async function createPaymentIntentToken({
+  paymentIntentCreateAttributes,
+  customerCreateAttributes,
+}: {
+  paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
+  customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
+}): Promise<string> {
+  const response = await fetch("/api/payment-intents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      customer: customerCreateAttributes,
+      paymentIntent: paymentIntentCreateAttributes,
+    }),
+  });
+  const { token } = (await response.json()) as { token: string };
+  return token;
+}
+
+const shared = {
+  renderToken: "the-render-token-created-on-dashboard.amos.com",
+  amount: "5000",
+  merchantName: "Example Store",
+  onInitiatePaymentIntentRequest: createPaymentIntentToken,
+  onResult: (result: ConfirmationResult) => {
+    if (result.status === "succeeded") {
+      console.log("Confirm returned:", result);
+    } else if (result.status === "failed") {
+      console.error("Confirm failed:", result.errorMessage);
+    }
   },
-);
+};
 
-// Updating amount/merchant name later just works:
-button.update({ amount: "7500" });
+const googlePay = mountAmosGooglePayButton("#google-pay", shared);
+const applePay = mountAmosApplePayButton("#apple-pay", shared);
+
+googlePay.update({ amount: "7500" });
+applePay.update({ amount: "7500" });
 ```
 
-Apple Pay uses the same express-checkout flow and options — swap `mountAmosGooglePayButton` for `mountAmosApplePayButton`. When Apple Pay Code opens in a separate window, the SDK shows a host-page waiting overlay and tears it down when the session ends.
+Do not call `validateForm` or `confirmPaymentIntent` — return the embed token from `onInitiatePaymentIntentRequest` and the SDK confirms. Size the mount slot; omitted `buttonProps` keep paint defaults and fill the iframe.
+
+On Safari, Apple Pay uses the native payment sheet. On other browsers, Apple's QR handoff opens in a popup (`pay.apple.com`); while that popup is open, the SDK shows a waiting overlay with **Cancel payment**.
 
 ## Understanding the flow for creating and confirming setup intents
 
@@ -339,6 +351,8 @@ button.update({
 });
 ```
 
+Only Amos domains need Apple merchant registration. The button and `ApplePaySession` run inside the Amos embed iframe. On Safari, the native payment sheet is used. On other browsers, Apple's QR handoff opens in a popup (`pay.apple.com`); while that popup is open, the SDK automatically shows a full-viewport waiting overlay on the host page with instructions and a **Cancel payment** button. You do not need to implement popup or overlay handling yourself.
+
 ### `validateForm({ iframe })`
 
 Validates the embedded card/bank iframe form. Returns `Promise<boolean>` (resolves to `false` after 5 seconds if the iframe does not respond).
@@ -375,13 +389,15 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 
 ### Exported types
 
-`Message`, `Appearance`, `ThemeVariable`, `FormattedGooglePayPaymentData`, `PaymentMethodFormValidityChangeEvent`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
+`ConfirmationResult`, `ConfirmationIncompleteReason`, `Message`, `Appearance`, `ThemeVariable`, `FormattedGooglePayPaymentData`, `PaymentMethodFormValidityChangeEvent`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
 
 ## Notes and potential gotchas
 
 - **`iframe` argument**: every messaging helper (`validateForm`, `confirmPaymentIntent`, `confirmSetupIntent`, `resetForm`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
+- **`onResult` is not settlement proof**: `onResult` tells you when to stop waiting (e.g. dismiss a spinner). Verify payment or setup success on your backend via webhooks. On `status: "incomplete"`, unlock your UI — the customer can fix fields in the iframe and retry. Use `result.reason` (`"field_errors"` or `"validation_failed"`) to distinguish recoverable states.
 - **Same components for payment vs setup intents**: `mountAmosCreditCardPaymentMethodForm` and `mountAmosBankAccountPaymentMethodForm` support both payment intents and setup intents. The flow differs only by which server call you make and which confirmation function you use. Handle both outcomes via `onResult`.
 - **Amount format**: for `mountAmosGooglePayButton` and `mountAmosApplePayButton`, `amount` is a string (e.g. `"5000"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server, `amount` is a number in cents (e.g. `5000`).
+- **Apple Pay waiting overlay**: on browsers where Apple's QR handoff opens in a popup (non-Safari), `mountAmosApplePayButton` shows a fixed full-viewport overlay on the host page until payment completes, the popup closes, or the user clicks **Cancel payment**. Avoid stacking other fixed UI above it.
 - **Browser-only**: the mount and messaging helpers require `window` and the DOM. They are not safe to call during server-side rendering — call them from client-side code only (for example, inside a `useEffect`-like hook in your framework of choice).
 
 ---
