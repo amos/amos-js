@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.15
+
+### Patch Changes
+
+- Breaking API changes
+
 ## 0.9.14
 
 ### Patch Changes

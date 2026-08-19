@@ -330,71 +330,28 @@ export type Appearance = {
 };
 
 /**
- * Inline style bag sent through `postMessage` to the wallet-button iframe.
+ * Apple's `<apple-pay-button>` attributes. `@types/applepayjs` only
+ * covers `ApplePaySession`, so this bag is the custom element's HTML
+ * attributes plus inner `style`. Posted as-is on `buttonProps`.
  *
- * Matches the serializable subset of a CSSStyleDeclaration / React
- * `CSSProperties` object (string or number values). Custom properties such
- * as `--apple-pay-button-height` are allowed.
- */
-export type WalletButtonStyle = {
-  [property: string]: string | number | undefined;
-};
-
-/**
- * `buttonstyle` attribute on Apple's `<apple-pay-button>`.
- *
- * @see https://developer.apple.com/documentation/apple_pay_on_the_web/apple-pay-button
- */
-export type ApplePayButtonStyle = "black" | "white" | "white-outline";
-
-/**
- * `type` attribute on Apple's `<apple-pay-button>`.
- *
- * @see https://developer.apple.com/documentation/apple_pay_on_the_web/apple-pay-button
- */
-export type ApplePayButtonType =
-  | "plain"
-  | "buy"
-  | "set-up"
-  | "donate"
-  | "check-out"
-  | "book"
-  | "subscribe"
-  | "reload"
-  | "add-money"
-  | "top-up"
-  | "order"
-  | "rent"
-  | "support"
-  | "contribute"
-  | "tip";
-
-/**
- * Visual props for Apple's `<apple-pay-button>`, using Apple's attribute
- * names. Applied inside the Amos embed iframe.
+ * Omitted fields keep the painted button's defaults. Height belongs on
+ * the mount `height` option.
  *
  * @see https://developer.apple.com/documentation/apple_pay_on_the_web/apple-pay-button
  */
 export type ApplePayButtonElementProps = {
   /**
-   * Stretch the button to the iframe width while preserving its default
-   * compact size when omitted.
-   *
-   * @default false
-   */
-  fullWidth?: boolean;
-  /**
    * Apple Pay button color.
    *
    * @default "black"
    */
-  buttonstyle?: ApplePayButtonStyle;
+  buttonstyle?: string;
   /**
    * Apple Pay button label / verb.
    *
    * @default "plain"
    */
-  type?: ApplePayButtonType;
+  type?: string;
   /**
    * BCP 47 locale for the button label (e.g. `"en-US"`).
    *
@@ -402,139 +359,33 @@ export type ApplePayButtonElementProps = {
    */
   locale?: string;
   /**
-   * Inline style for the `<apple-pay-button>`. Height is controlled with
-   * `--apple-pay-button-height` (Apple ignores CSS `height`). Width uses
-   * `--apple-pay-button-width` or CSS `width`.
+   * Inline style for the `<apple-pay-button>`. Omitted keys keep fill
+   * (`width: 100%` and `--apple-pay-button-width`).
    */
-  style?: WalletButtonStyle;
+  style?: Record<string, string | number | undefined>;
 };
 
 /**
- * Visual props for Google's Pay button, using `@google-pay/button-react`
- * / Google Pay API names. Applied inside the Amos embed iframe.
+ * Google Pay button visuals: {@link google.payments.api.ButtonOptions}
+ * without the fields that cannot go through `postMessage`, plus inner
+ * `style`. Posted as-is on `buttonProps`.
+ *
+ * Omitted fields keep the painted button's defaults (`buttonType:
+ * "plain"`, `buttonSizeMode: "fill"`). Height belongs on the mount
+ * `height` option.
  *
  * @see https://developers.google.com/pay/api/web/guides/resources/customize
  */
-export type GooglePayButtonElementProps = {
+export type GooglePayButtonElementProps = Omit<
+  google.payments.api.ButtonOptions,
+  "onClick" | "buttonRootNode" | "allowedPaymentMethods"
+> & {
   /**
-   * Stretch the button to the iframe width while preserving its default
-   * compact size when omitted.
-   *
-   * @default false
+   * Inline style for the Google Pay button wrapper. Omitted keys keep
+   * fill (`width: 100%`).
    */
-  fullWidth?: boolean;
-  /**
-   * Button label / verb.
-   *
-   * @default "short"
-   */
-  buttonType?: google.payments.api.ButtonType;
-  /** Button color. */
-  buttonColor?: google.payments.api.ButtonColor;
-  /** Corner radius in pixels (0–20). */
-  buttonRadius?: number;
-  /**
-   * `"fill"` stretches the button to the container width; `"static"`
-   * uses Google's default size.
-   */
-  buttonSizeMode?: google.payments.api.ButtonSizeMode;
-  /** BCP 47 locale for the button label (e.g. `"en"`). */
-  buttonLocale?: string;
-  /** Whether the button draws a border. */
-  buttonBorderType?: google.payments.api.ButtonBorderType;
-  /**
-   * Inline style for the Google Pay button wrapper. Use `height` /
-   * `width` here (unlike Apple Pay, Google honors CSS `height`).
-   */
-  style?: WalletButtonStyle;
+  style?: Record<string, string | number | undefined>;
 };
-
-/**
- * Keep only JSON-cloneable string/number declarations from a style object
- * before sending it through `postMessage`.
- */
-export function serializeWalletButtonStyle(
-  style: WalletButtonStyle | undefined,
-): Record<string, string | number> | undefined {
-  if (!style || typeof style !== "object") {
-    return undefined;
-  }
-
-  const result: Record<string, string | number> = {};
-  for (const [key, value] of Object.entries(style)) {
-    if (typeof value === "string") {
-      if (value.length === 0) {
-        continue;
-      }
-      result[key] = value;
-      continue;
-    }
-    if (typeof value === "number" && Number.isFinite(value)) {
-      result[key] = value;
-    }
-  }
-
-  return Object.keys(result).length > 0 ? result : undefined;
-}
-
-export function pickApplePayButtonElementProps(
-  options: ApplePayButtonElementProps,
-): ApplePayButtonElementProps {
-  const props: ApplePayButtonElementProps = {};
-  if (options.fullWidth !== undefined) {
-    props.fullWidth = options.fullWidth;
-  }
-  if (options.buttonstyle !== undefined) {
-    props.buttonstyle = options.buttonstyle;
-  }
-  if (options.type !== undefined) {
-    props.type = options.type;
-  }
-  if (options.locale !== undefined) {
-    props.locale = options.locale;
-  }
-  if (options.style !== undefined) {
-    const style = serializeWalletButtonStyle(options.style);
-    if (style) {
-      props.style = style;
-    }
-  }
-  return props;
-}
-
-export function pickGooglePayButtonElementProps(
-  options: GooglePayButtonElementProps,
-): GooglePayButtonElementProps {
-  const props: GooglePayButtonElementProps = {};
-  if (options.fullWidth !== undefined) {
-    props.fullWidth = options.fullWidth;
-  }
-  if (options.buttonType !== undefined) {
-    props.buttonType = options.buttonType;
-  }
-  if (options.buttonColor !== undefined) {
-    props.buttonColor = options.buttonColor;
-  }
-  if (options.buttonRadius !== undefined) {
-    props.buttonRadius = options.buttonRadius;
-  }
-  if (options.buttonSizeMode !== undefined) {
-    props.buttonSizeMode = options.buttonSizeMode;
-  }
-  if (options.buttonLocale !== undefined) {
-    props.buttonLocale = options.buttonLocale;
-  }
-  if (options.buttonBorderType !== undefined) {
-    props.buttonBorderType = options.buttonBorderType;
-  }
-  if (options.style !== undefined) {
-    const style = serializeWalletButtonStyle(options.style);
-    if (style) {
-      props.style = style;
-    }
-  }
-  return props;
-}
 
 /**
  * Typed `postMessage` payloads exchanged between the host page and the
@@ -570,17 +421,15 @@ export type Message =
       appearance: Appearance;
     }
   | {
-      /**
-       * Parent → embed: visual options for the Apple Pay button. Nested
-       * under `props` so Apple's `type` attribute does not collide with
-       * this message discriminant.
-       */
+      /** Parent → embed: visual options for the Apple Pay button. */
       type: "UPDATE_APPLE_PAY_BUTTON";
+      height?: string;
       props: ApplePayButtonElementProps;
     }
   | {
       /** Parent → embed: visual options for the Google Pay button. */
       type: "UPDATE_GOOGLE_PAY_BUTTON";
+      height?: string;
       props: GooglePayButtonElementProps;
     }
   | {

@@ -77,6 +77,7 @@ function createIframe({
   name,
   height,
   allow,
+  className,
   style = FORM_IFRAME_STYLE,
 }: {
   src: string;
@@ -84,6 +85,7 @@ function createIframe({
   name: string;
   height: string;
   allow?: string;
+  className?: string;
   style?: Partial<CSSStyleDeclaration>;
 }): HTMLIFrameElement {
   const iframe = document.createElement("iframe");
@@ -94,6 +96,9 @@ function createIframe({
   iframe.scrolling = "no";
   if (allow) {
     iframe.allow = allow;
+  }
+  if (className != null) {
+    iframe.className = className;
   }
   Object.assign(iframe.style, style, { height });
   return iframe;
@@ -392,6 +397,13 @@ export type AmosGooglePayButtonOptions = GooglePayButtonListenerOptions & {
    * https://dashboard.amos.com.
    */
   renderToken: string;
+  /** Class names applied to the host-page `<iframe>` element. */
+  iframeClassName?: string;
+  /**
+   * Inline style applied to the host-page `<iframe>` element. Use CSS
+   * lengths with units (`{ borderRadius: "8px" }`).
+   */
+  iframeStyle?: Partial<CSSStyleDeclaration>;
 };
 
 /**
@@ -414,16 +426,19 @@ export function mountAmosGooglePayButton(
   options: AmosGooglePayButtonOptions,
 ): AmosGooglePayButtonMountController {
   const host = resolveContainer(container);
-  const { renderToken, ...listenerOptions } = options;
+  const { renderToken, iframeClassName, iframeStyle, ...listenerOptions } =
+    options;
 
   const iframe = createIframe({
     src: getGooglePayButtonSrc(renderToken),
     title: "Secure Google Pay button powered by Amos",
     name: "amos-google-pay-button",
-    height: getGooglePayButtonInitialHeight(),
+    height: listenerOptions.height ?? getGooglePayButtonInitialHeight(),
     allow: "payment",
+    className: iframeClassName,
     style: WALLET_IFRAME_STYLE,
   });
+  Object.assign(iframe.style, iframeStyle);
   host.appendChild(iframe);
 
   const controller = attachGooglePayButtonListeners(iframe, {
@@ -459,6 +474,13 @@ export type AmosApplePayButtonOptions = ApplePayButtonListenerOptions & {
    * https://dashboard.amos.com.
    */
   renderToken: string;
+  /** Class names applied to the host-page `<iframe>` element. */
+  iframeClassName?: string;
+  /**
+   * Inline style applied to the host-page `<iframe>` element. Use CSS
+   * lengths with units (`{ borderRadius: "8px" }`).
+   */
+  iframeStyle?: Partial<CSSStyleDeclaration>;
 };
 
 /**
@@ -481,16 +503,19 @@ export function mountAmosApplePayButton(
   options: AmosApplePayButtonOptions,
 ): AmosApplePayButtonMountController {
   const host = resolveContainer(container);
-  const { renderToken, ...listenerOptions } = options;
+  const { renderToken, iframeClassName, iframeStyle, ...listenerOptions } =
+    options;
 
   const iframe = createIframe({
     src: getApplePayButtonSrc(renderToken),
     title: "Secure Apple Pay button powered by Amos",
     name: "amos-apple-pay-button",
-    height: getApplePayButtonInitialHeight(),
+    height: listenerOptions.height ?? getApplePayButtonInitialHeight(),
     allow: "payment",
+    className: iframeClassName,
     style: WALLET_IFRAME_STYLE,
   });
+  Object.assign(iframe.style, iframeStyle);
   host.appendChild(iframe);
 
   const controller = attachApplePayButtonListeners(iframe, {

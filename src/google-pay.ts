@@ -11,7 +11,6 @@ import {
   updateMerchantName as sendUpdateMerchantName,
 } from "./messaging";
 import type {
-  Appearance,
   ConfirmationResult,
   GooglePayButtonElementProps,
   Message,
@@ -28,22 +27,30 @@ export function getGooglePayButtonSrc(renderToken: string): string {
  * Default iframe pixel height for the Google Pay button.
  */
 export function getGooglePayButtonInitialHeight(): string {
-  return "40px";
+  return "48px";
 }
 
 /**
  * Options accepted by {@link attachGooglePayButtonListeners}.
  */
-export type GooglePayButtonListenerOptions = GooglePayButtonElementProps & {
+export type GooglePayButtonListenerOptions = {
   /** The amount of the payment, in the same format passed in props. */
   amount: string;
   /** A user-visible merchant name. */
   merchantName: string;
   /**
-   * Custom appearance to apply when the iframe first becomes ready and
-   * whenever the appearance changes.
+   * Painted Google Pay button height. CSS length (e.g. `"48px"`).
+   * @default "48px"
    */
-  appearance?: Appearance;
+  height?: string;
+  /**
+   * Native Google Pay button attributes and inner style. Omitted fields
+   * keep Amos paint defaults (`buttonType: "plain"`,
+   * `buttonSizeMode: "fill"`). The button fills the iframe — size the
+   * mount slot, not the button. Compact: `buttonSizeMode: "static"` and
+   * `style.width`.
+   */
+  buttonProps?: GooglePayButtonElementProps;
   /**
    * Called whenever the iframe asks the host page to resize it. Update
    * the iframe's `height` style here.
@@ -81,10 +88,8 @@ export type GooglePayButtonController = {
   /**
    * Update one or more listener options without re-attaching the
    * message listener. Pass `amount` or `merchantName` to push the new
-   * value into the iframe; pass `appearance` to update theme variables;
-   * pass `buttonType`, `buttonColor`, `buttonRadius`, `buttonSizeMode`,
-   * `buttonLocale`, `buttonBorderType`, or `style` to restyle the
-   * Google Pay button.
+   * value into the iframe; pass `height` or `buttonProps` to restyle
+   * the Google Pay button.
    */
   update: (patch: Partial<GooglePayButtonListenerOptions>) => void;
   /**
@@ -103,9 +108,12 @@ export type GooglePayButtonController = {
  */
 export function attachGooglePayButtonListeners(
   iframe: HTMLIFrameElement,
-  options: GooglePayButtonListenerOptions,
+  { height = "48px", ...options }: GooglePayButtonListenerOptions,
 ): GooglePayButtonController {
-  let current = { ...options };
+  let current: GooglePayButtonListenerOptions = {
+    ...options,
+    height,
+  };
 
   function pushAmount() {
     sendUpdateAmount({ iframe, amount: current.amount });
@@ -116,7 +124,11 @@ export function attachGooglePayButtonListeners(
   }
 
   function pushButtonProps() {
-    sendUpdateGooglePayButton({ iframe, props: current });
+    sendUpdateGooglePayButton({
+      iframe,
+      height: current.height ?? "48px",
+      props: current.buttonProps ?? {},
+    });
   }
 
   function handleMessage(event: MessageEvent<Message>) {
@@ -127,7 +139,7 @@ export function attachGooglePayButtonListeners(
     switch (event.data.type) {
       case "IFRAME_READY":
         sendParentReadyMessage(iframe);
-        sendUpdateAppearance({ iframe, appearance: current.appearance });
+        sendUpdateAppearance({ iframe, appearance: {} });
         pushAmount();
         pushMerchantName();
         pushButtonProps();
@@ -174,22 +186,10 @@ export function attachGooglePayButtonListeners(
 
   return {
     update(patch) {
-      const hadAppearance = "appearance" in patch;
       const hadAmount = "amount" in patch;
       const hadMerchantName = "merchantName" in patch;
-      const hadButtonProps =
-        "fullWidth" in patch ||
-        "buttonType" in patch ||
-        "buttonColor" in patch ||
-        "buttonRadius" in patch ||
-        "buttonSizeMode" in patch ||
-        "buttonLocale" in patch ||
-        "buttonBorderType" in patch ||
-        "style" in patch;
+      const hadButtonProps = "height" in patch || "buttonProps" in patch;
       current = { ...current, ...patch };
-      if (hadAppearance) {
-        sendUpdateAppearance({ iframe, appearance: current.appearance });
-      }
       if (hadAmount) {
         pushAmount();
       }
