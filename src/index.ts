@@ -45,7 +45,6 @@ export type {
   AmosGooglePayButtonMountController,
   AmosGooglePayButtonOptions,
   AmosPaymentMethodFormMountController,
-  WalletIframeStyle,
 } from "./mount";
 export {
   mountAmosApplePayButton,

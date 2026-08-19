@@ -299,7 +299,7 @@ Mount the secure Google Pay button (express checkout) into a container element.
 - `height` (`string`, defaults to `"48px"`) — painted button height. CSS length (e.g. `"48px"`).
 - `buttonProps` — native Google Pay button options. Omitted fields keep `"plain"` / `"fill"`. The button fills the iframe; size the mount slot, not the button. Compact: `buttonProps: { buttonSizeMode: "static", style: { width: "240px" } }`.
 
-- `iframeClassName` / `iframeStyle` — applied to the host-page `<iframe>` element. Use CSS values with units (`{ borderRadius: "8px" }`); unitless numbers are coerced to `px`.
+- `iframeClassName` / `iframeStyle` — applied to the host-page `<iframe>` element. Use CSS values with units (`{ borderRadius: "8px" }`).
 
 ```ts
 mountAmosGooglePayButton("#google-pay", {

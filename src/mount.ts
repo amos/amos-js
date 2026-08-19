@@ -59,57 +59,6 @@ const WALLET_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   border: "0",
 };
 
-const CSS_UNITLESS_PROPERTIES = new Set([
-  "opacity",
-  "zIndex",
-  "flex",
-  "flexGrow",
-  "flexShrink",
-  "fontWeight",
-  "lineHeight",
-  "order",
-]);
-
-/** Host-page iframe chrome. Numbers are coerced to `px` like React. */
-export type WalletIframeStyle = {
-  [property: string]: string | number | undefined;
-};
-
-function assignIframeStyle(
-  iframe: HTMLIFrameElement,
-  style: WalletIframeStyle | undefined,
-): void {
-  if (!style) {
-    return;
-  }
-  for (const [key, value] of Object.entries(style)) {
-    if (value == null) {
-      continue;
-    }
-    const cssValue =
-      typeof value === "number" && !CSS_UNITLESS_PROPERTIES.has(key)
-        ? `${value}px`
-        : String(value);
-    Reflect.set(iframe.style, key, cssValue);
-  }
-}
-
-function applyWalletIframeChrome(
-  iframe: HTMLIFrameElement,
-  {
-    iframeClassName,
-    iframeStyle,
-  }: {
-    iframeClassName?: string;
-    iframeStyle?: WalletIframeStyle;
-  },
-): void {
-  if (iframeClassName != null) {
-    iframe.className = iframeClassName;
-  }
-  assignIframeStyle(iframe, iframeStyle);
-}
-
 const SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   position: "absolute",
   top: "0",
@@ -128,6 +77,7 @@ function createIframe({
   name,
   height,
   allow,
+  className,
   style = FORM_IFRAME_STYLE,
 }: {
   src: string;
@@ -135,6 +85,7 @@ function createIframe({
   name: string;
   height: string;
   allow?: string;
+  className?: string;
   style?: Partial<CSSStyleDeclaration>;
 }): HTMLIFrameElement {
   const iframe = document.createElement("iframe");
@@ -145,6 +96,9 @@ function createIframe({
   iframe.scrolling = "no";
   if (allow) {
     iframe.allow = allow;
+  }
+  if (className != null) {
+    iframe.className = className;
   }
   Object.assign(iframe.style, style, { height });
   return iframe;
@@ -446,11 +400,10 @@ export type AmosGooglePayButtonOptions = GooglePayButtonListenerOptions & {
   /** Class names applied to the host-page `<iframe>` element. */
   iframeClassName?: string;
   /**
-   * Inline style applied to the host-page `<iframe>` element. Unitless
-   * numbers are coerced to `px` (except `opacity`, `zIndex`, `flex`,
-   * `fontWeight`, and similar). Prefer `"8px"` over `8` in docs.
+   * Inline style applied to the host-page `<iframe>` element. Use CSS
+   * lengths with units (`{ borderRadius: "8px" }`).
    */
-  iframeStyle?: WalletIframeStyle;
+  iframeStyle?: Partial<CSSStyleDeclaration>;
 };
 
 /**
@@ -482,9 +435,10 @@ export function mountAmosGooglePayButton(
     name: "amos-google-pay-button",
     height: listenerOptions.height ?? getGooglePayButtonInitialHeight(),
     allow: "payment",
+    className: iframeClassName,
     style: WALLET_IFRAME_STYLE,
   });
-  applyWalletIframeChrome(iframe, { iframeClassName, iframeStyle });
+  Object.assign(iframe.style, iframeStyle);
   host.appendChild(iframe);
 
   const controller = attachGooglePayButtonListeners(iframe, {
@@ -523,11 +477,10 @@ export type AmosApplePayButtonOptions = ApplePayButtonListenerOptions & {
   /** Class names applied to the host-page `<iframe>` element. */
   iframeClassName?: string;
   /**
-   * Inline style applied to the host-page `<iframe>` element. Unitless
-   * numbers are coerced to `px` (except `opacity`, `zIndex`, `flex`,
-   * `fontWeight`, and similar). Prefer `"8px"` over `8` in docs.
+   * Inline style applied to the host-page `<iframe>` element. Use CSS
+   * lengths with units (`{ borderRadius: "8px" }`).
    */
-  iframeStyle?: WalletIframeStyle;
+  iframeStyle?: Partial<CSSStyleDeclaration>;
 };
 
 /**
@@ -559,9 +512,10 @@ export function mountAmosApplePayButton(
     name: "amos-apple-pay-button",
     height: listenerOptions.height ?? getApplePayButtonInitialHeight(),
     allow: "payment",
+    className: iframeClassName,
     style: WALLET_IFRAME_STYLE,
   });
-  applyWalletIframeChrome(iframe, { iframeClassName, iframeStyle });
+  Object.assign(iframe.style, iframeStyle);
   host.appendChild(iframe);
 
   const controller = attachApplePayButtonListeners(iframe, {
