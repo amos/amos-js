@@ -45,6 +45,7 @@ export type {
   AmosGooglePayButtonMountController,
   AmosGooglePayButtonOptions,
   AmosPaymentMethodFormMountController,
+  WalletIframeStyle,
 } from "./mount";
 export {
   mountAmosApplePayButton,
@@ -69,19 +70,11 @@ export type {
   Appearance,
   AppearanceLabels,
   ApplePayButtonElementProps,
-  ApplePayButtonStyle,
-  ApplePayButtonType,
   ConfirmationIncompleteReason,
   ConfirmationResult,
   GooglePayButtonElementProps,
   Message,
   PaymentMethodFormValidityChangeEvent,
   ThemeVariable,
-  WalletButtonStyle,
 } from "./types";
-export {
-  createMessage,
-  pickApplePayButtonElementProps,
-  pickGooglePayButtonElementProps,
-  serializeWalletButtonStyle,
-} from "./types";
+export { createMessage } from "./types";

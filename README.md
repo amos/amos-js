@@ -179,7 +179,7 @@ In short, your app orchestrates the payment flow, while sensitive payment data s
 
 ## Appearance
 
-Every mount function (and the `attach*Listeners` helpers) accepts an optional `appearance` option that controls the look of the iframe UI. It contains a `themeVariables` object whose keys are CSS custom-property names and whose values are strings, and an optional `labels` setting for field label placement. You can update appearance after page load via the controller's `update({ appearance })` method.
+Card and bank mount functions (and `attachPaymentMethodFormListeners`) accept an optional `appearance` option that controls the look of the iframe UI. It contains a `themeVariables` object whose keys are CSS custom-property names and whose values are strings, and an optional `labels` setting for field label placement. You can update appearance after page load via the controller's `update({ appearance })` method. Wallet buttons do not take `appearance`.
 
 ```ts
 form.update({
@@ -295,55 +295,78 @@ Mount the secure Google Pay button (express checkout) into a container element.
 
 - `onResult` (`(result: ConfirmationResult) => void`) — required. Called when the interactive confirmation attempt finishes (`succeeded`, `failed`, or `incomplete` with `reason`). Not settlement proof; verify via webhooks.
 
-**Optional `options`:** `appearance`, `onHeightChange`, `onAppearanceReady`, plus Google Pay button visual options using the same names as `@google-pay/button-react`:
+**Optional `options`:** `onHeightChange`, `onAppearanceReady`, plus:
 
-- `fullWidth` (`boolean`, defaults to `false`) — fills the mount container without changing the compact default
-- `buttonType` (`"book" | "buy" | "checkout" | "donate" | "order" | "pay" | "plain" | "subscribe" | "short" | "long"`, defaults to `"short"`)
-- `buttonColor` (`"default" | "black" | "white"`)
-- `buttonRadius` (`number`, 0–20)
-- `buttonSizeMode` (`"static" | "fill"`)
-- `buttonLocale` (`string`, e.g. `"en"`)
-- `buttonBorderType` (`"no_border" | "default_border"`)
-- `style` (`{ [property: string]: string | number }`) — applied to the Google Pay button inside the iframe (e.g. `{ height: "48px" }`)
+- `height` (`string | number`, defaults to `"48px"`) — painted button height. Unitless numbers become `px`.
+- `buttonProps` — native Google Pay button options. Defaults (override any field):
 
-For a full-width 48px button:
+```ts
+{
+  buttonType: "short",
+  buttonSizeMode: "fill",
+  style: { width: "100%" },
+}
+```
+
+Override any field. Compact button: `buttonProps={{ buttonSizeMode: "static", style: { width: "240px" } }}`.
+- `iframeClassName` / `iframeStyle` — applied to the host-page `<iframe>` element. Use CSS values with units (`{ borderRadius: "8px" }`); unitless numbers are coerced to `px`.
 
 ```ts
 mountAmosGooglePayButton("#google-pay", {
   // ...required options
-  fullWidth: true,
-  style: { height: "48px" },
+  buttonProps: {
+    buttonType: "donate",
+    buttonBorderType: "no_border",
+  },
+  iframeStyle: { borderRadius: "8px" },
 });
 ```
 
-The wallet iframe itself is flush with its mount container (`width: 100%`,
-zero margin). `style` targets the button inside that iframe. For advanced host
-layout overrides, use the returned controller's `iframe` element.
+The wallet iframe is flush with its mount container (`width: 100%`, zero margin). The branded button fills that iframe at 48px tall. For advanced host layout overrides, use the returned controller's `iframe` element.
 
 **Returns** `AmosGooglePayButtonMountController`:
 
-- `iframe`, `update(patch)`, `destroy()`. Use `update({ amount, merchantName })` to push new values into the iframe. Use `update({ buttonType, style, ... })` to restyle the button.
+- `iframe`, `update(patch)`, `destroy()`. Use `update({ amount, merchantName })` to push new values into the iframe. Use `update({ height, buttonProps })` to restyle the button.
+
+### Migration from flat wallet props
+
+| Before | After |
+| ------ | ----- |
+| `buttonstyle`, `type`, `locale` | `buttonProps.buttonstyle`, `buttonProps.type`, `buttonProps.locale` |
+| Google `buttonType`, `buttonColor`, … | `buttonProps.buttonType`, `buttonProps.buttonColor`, … |
+| `style` / inner button CSS | `height` + `buttonProps.style` (`buttonProps.style.height` wins if both are set) |
+| `iframeStyle` / `iframeClassName` | unchanged names; inner button `style` is no longer top-level |
+| `fullWidth` / `buttonSizeMode: "fill"` | default `buttonProps` (`buttonSizeMode: "fill"` + `style.width: "100%"`; Apple also sets `--apple-pay-button-width: "100%"`) |
+| wallet `appearance` | removed |
+| default painted height `40px` | `"48px"` |
 
 ### `mountAmosApplePayButton(container, options)`
 
 Mount the secure Apple Pay button (express checkout). Same required options and return shape as `mountAmosGooglePayButton`.
 
-**Optional visual options** use Apple's `<apple-pay-button>` attribute names:
+**Optional visual options:**
 
-- `fullWidth` (`boolean`, defaults to `false`) — fills the mount container without changing the compact default
-- `buttonstyle` (`"black" | "white" | "white-outline"`, defaults to `"black"`)
-- `type` (`"plain" | "buy" | "set-up" | "donate" | "check-out" | "book" | "subscribe" | "reload" | "add-money" | "top-up" | "order" | "rent" | "support" | "contribute" | "tip"`, defaults to `"plain"`)
-- `locale` (`string`, BCP 47, defaults to `"en-US"`)
-- `style` — applied to the `<apple-pay-button>` inside the iframe. Apple sizes the button with CSS custom properties, not CSS `height`:
+- `height` (`string | number`, defaults to `"48px"`) — painted button height. Apple ignores CSS `height`; Amos maps this for you.
+- `buttonProps` — native `<apple-pay-button>` attributes. Defaults (override any field):
+
+```ts
+{
+  buttonstyle: "black",
+  type: "plain",
+  locale: "en-US",
+  style: { display: "block", width: "100%", "--apple-pay-button-width": "100%" },
+}
+```
+
+Override any field. `style.width` also updates `--apple-pay-button-width` unless you set that custom property yourself.
+- `iframeClassName` / `iframeStyle` — host-page `<iframe>` chrome.
 
 ```ts
 button.update({
-  fullWidth: true,
-  buttonstyle: "white-outline",
-  type: "buy",
-  locale: "en-GB",
-  style: {
-    "--apple-pay-button-height": "48px",
+  buttonProps: {
+    buttonstyle: "white-outline",
+    type: "buy",
+    locale: "en-GB",
   },
 });
 ```

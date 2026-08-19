@@ -14,7 +14,6 @@ import {
   updateMerchantName as sendUpdateMerchantName,
 } from "./messaging";
 import {
-  type Appearance,
   type ApplePayButtonElementProps,
   type ConfirmationResult,
   createMessage,
@@ -32,22 +31,33 @@ export function getApplePayButtonSrc(renderToken: string): string {
  * Default iframe pixel height for the Apple Pay button.
  */
 export function getApplePayButtonInitialHeight(): string {
-  return "40px";
+  return "48px";
 }
 
 /**
  * Options accepted by {@link attachApplePayButtonListeners}.
  */
-export type ApplePayButtonListenerOptions = ApplePayButtonElementProps & {
+export type ApplePayButtonListenerOptions = {
   /** The amount of the payment, in the same format passed in props. */
   amount: string;
   /** A user-visible merchant name. */
   merchantName: string;
   /**
-   * Custom appearance to apply when the iframe first becomes ready and
-   * whenever the appearance changes.
+   * Painted Apple Pay button height. CSS length or unitless pixels.
+   * @default "48px"
    */
-  appearance?: Appearance;
+  height?: string | number;
+  /**
+   * Native `<apple-pay-button>` attributes and inner style.
+   *
+   * @default {
+   *   buttonstyle: "black",
+   *   type: "plain",
+   *   locale: "en-US",
+   *   style: { display: "block", width: "100%", "--apple-pay-button-width": "100%" },
+   * }
+   */
+  buttonProps?: ApplePayButtonElementProps;
   /**
    * Called whenever the iframe asks the host page to resize it. Update
    * the iframe's `height` style here.
@@ -85,9 +95,8 @@ export type ApplePayButtonController = {
   /**
    * Update one or more listener options without re-attaching the
    * message listener. Pass `amount` or `merchantName` to push the new
-   * value into the iframe; pass `appearance` to update theme variables;
-   * pass `buttonstyle`, `type`, `locale`, or `style` to restyle the
-   * Apple Pay button.
+   * value into the iframe; pass `height` or `buttonProps` to restyle
+   * the Apple Pay button.
    */
   update: (patch: Partial<ApplePayButtonListenerOptions>) => void;
   /**
@@ -118,9 +127,26 @@ function sendApplePayCancel(iframe: HTMLIFrameElement): void {
  */
 export function attachApplePayButtonListeners(
   iframe: HTMLIFrameElement,
-  options: ApplePayButtonListenerOptions,
+  {
+    height = "48px",
+    buttonProps = {
+      buttonstyle: "black",
+      type: "plain",
+      locale: "en-US",
+      style: {
+        display: "block",
+        width: "100%",
+        "--apple-pay-button-width": "100%",
+      },
+    },
+    ...options
+  }: ApplePayButtonListenerOptions,
 ): ApplePayButtonController {
-  let current = { ...options };
+  let current: ApplePayButtonListenerOptions = {
+    ...options,
+    height,
+    buttonProps,
+  };
 
   function pushAmount() {
     sendUpdateAmount({ iframe, amount: current.amount });
@@ -131,7 +157,14 @@ export function attachApplePayButtonListeners(
   }
 
   function pushButtonProps() {
-    sendUpdateApplePayButton({ iframe, props: current });
+    sendUpdateApplePayButton({
+      iframe,
+      height:
+        typeof current.height === "number"
+          ? `${current.height}px`
+          : (current.height ?? "48px"),
+      props: current.buttonProps ?? {},
+    });
   }
 
   function handleMessage(event: MessageEvent<Message>) {
@@ -143,7 +176,7 @@ export function attachApplePayButtonListeners(
     switch (event.data.type) {
       case "IFRAME_READY":
         sendParentReadyMessage(iframe);
-        sendUpdateAppearance({ iframe, appearance: current.appearance });
+        sendUpdateAppearance({ iframe, appearance: {} });
         pushAmount();
         pushMerchantName();
         pushButtonProps();
@@ -205,19 +238,10 @@ export function attachApplePayButtonListeners(
 
   return {
     update(patch) {
-      const hadAppearance = "appearance" in patch;
       const hadAmount = "amount" in patch;
       const hadMerchantName = "merchantName" in patch;
-      const hadButtonProps =
-        "fullWidth" in patch ||
-        "buttonstyle" in patch ||
-        "type" in patch ||
-        "locale" in patch ||
-        "style" in patch;
+      const hadButtonProps = "height" in patch || "buttonProps" in patch;
       current = { ...current, ...patch };
-      if (hadAppearance) {
-        sendUpdateAppearance({ iframe, appearance: current.appearance });
-      }
       if (hadAmount) {
         pushAmount();
       }

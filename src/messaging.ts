@@ -6,8 +6,6 @@ import {
   createMessage,
   type GooglePayButtonElementProps,
   type Message,
-  pickApplePayButtonElementProps,
-  pickGooglePayButtonElementProps,
 } from "./types";
 
 type Iframe = HTMLIFrameElement | null | undefined;
@@ -69,9 +67,11 @@ export function updateAppearance({
 export function updateApplePayButton({
   iframe,
   props,
+  height,
 }: {
   iframe: Iframe;
   props: ApplePayButtonElementProps;
+  height?: string;
 }): void {
   if (!iframe?.contentWindow) {
     return;
@@ -80,7 +80,8 @@ export function updateApplePayButton({
   iframe.contentWindow.postMessage(
     createMessage({
       type: "UPDATE_APPLE_PAY_BUTTON",
-      props: pickApplePayButtonElementProps(props),
+      height,
+      props,
     }),
     getIframeTargetOrigin(iframe),
   );
@@ -92,9 +93,11 @@ export function updateApplePayButton({
 export function updateGooglePayButton({
   iframe,
   props,
+  height,
 }: {
   iframe: Iframe;
   props: GooglePayButtonElementProps;
+  height?: string;
 }): void {
   if (!iframe?.contentWindow) {
     return;
@@ -103,7 +106,8 @@ export function updateGooglePayButton({
   iframe.contentWindow.postMessage(
     createMessage({
       type: "UPDATE_GOOGLE_PAY_BUTTON",
-      props: pickGooglePayButtonElementProps(props),
+      height,
+      props,
     }),
     getIframeTargetOrigin(iframe),
   );
