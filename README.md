@@ -297,17 +297,7 @@ Mount the secure Google Pay button (express checkout) into a container element.
 **Optional `options`:** `onHeightChange`, `onAppearanceReady`, plus:
 
 - `height` (`string | number`, defaults to `"48px"`) — painted button height. Unitless numbers become `px`.
-- `buttonProps` — native Google Pay button options. Defaults (override any field):
-
-```ts
-{
-  buttonType: "short",
-  buttonSizeMode: "fill",
-  style: { width: "100%" },
-}
-```
-
-Override any field. Compact button: `buttonProps={{ buttonSizeMode: "static", style: { width: "240px" } }}`.
+- `buttonProps` — native Google Pay button options. Omitted fields keep `"short"` / `"fill"`. The button fills the iframe; size the mount slot, not the button. Compact: `buttonProps: { buttonSizeMode: "static", style: { width: "240px" } }`.
 
 - `iframeClassName` / `iframeStyle` — applied to the host-page `<iframe>` element. Use CSS values with units (`{ borderRadius: "8px" }`); unitless numbers are coerced to `px`.
 
@@ -335,18 +325,7 @@ Mount the secure Apple Pay button (express checkout). Same required options and 
 **Optional visual options:**
 
 - `height` (`string | number`, defaults to `"48px"`) — painted button height. Apple ignores CSS `height`; Amos maps this for you.
-- `buttonProps` — native `<apple-pay-button>` attributes. Defaults (override any field):
-
-```ts
-{
-  buttonstyle: "black",
-  type: "plain",
-  locale: "en-US",
-  style: { display: "block", width: "100%", "--apple-pay-button-width": "100%" },
-}
-```
-
-Override any field. `style.width` also updates `--apple-pay-button-width` unless you set that custom property yourself.
+- `buttonProps` — native `<apple-pay-button>` attributes. Omitted fields keep Apple's `black` / `plain` / `en-US`. The button fills the iframe; size the mount slot, not the button. `style.width` also updates `--apple-pay-button-width` unless you set that custom property yourself.
 
 - `iframeClassName` / `iframeStyle` — host-page `<iframe>` chrome.
 

@@ -44,13 +44,11 @@ export type GooglePayButtonListenerOptions = {
    */
   height?: string | number;
   /**
-   * Native Google Pay button attributes and inner style.
-   *
-   * @default {
-   *   buttonType: "short",
-   *   buttonSizeMode: "fill",
-   *   style: { width: "100%" },
-   * }
+   * Native Google Pay button attributes and inner style. Omitted fields
+   * keep Amos paint defaults (`buttonType: "short"`,
+   * `buttonSizeMode: "fill"`). The button fills the iframe — size the
+   * mount slot, not the button. Compact: `buttonSizeMode: "static"` and
+   * `style.width`.
    */
   buttonProps?: GooglePayButtonElementProps;
   /**
@@ -110,20 +108,11 @@ export type GooglePayButtonController = {
  */
 export function attachGooglePayButtonListeners(
   iframe: HTMLIFrameElement,
-  {
-    height = "48px",
-    buttonProps = {
-      buttonType: "short",
-      buttonSizeMode: "fill",
-      style: { width: "100%" },
-    },
-    ...options
-  }: GooglePayButtonListenerOptions,
+  { height = "48px", ...options }: GooglePayButtonListenerOptions,
 ): GooglePayButtonController {
   let current: GooglePayButtonListenerOptions = {
     ...options,
     height,
-    buttonProps,
   };
 
   function pushAmount() {

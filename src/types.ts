@@ -334,7 +334,8 @@ export type Appearance = {
  * covers `ApplePaySession`, so this bag is the custom element's HTML
  * attributes plus inner `style`. Posted as-is on `buttonProps`.
  *
- * Height belongs on the mount `height` option.
+ * Omitted fields keep the painted button's defaults. Height belongs on
+ * the mount `height` option.
  *
  * @see https://developer.apple.com/documentation/apple_pay_on_the_web/apple-pay-button
  */
@@ -358,9 +359,8 @@ export type ApplePayButtonElementProps = {
    */
   locale?: string;
   /**
-   * Inline style for the `<apple-pay-button>`.
-   *
-   * @default { display: "block", width: "100%", "--apple-pay-button-width": "100%" }
+   * Inline style for the `<apple-pay-button>`. Omitted keys keep fill
+   * (`width: 100%` and `--apple-pay-button-width`).
    */
   style?: Record<string, string | number | undefined>;
 };
@@ -370,7 +370,9 @@ export type ApplePayButtonElementProps = {
  * without the fields that cannot go through `postMessage`, plus inner
  * `style`. Posted as-is on `buttonProps`.
  *
- * Height belongs on the mount `height` option.
+ * Omitted fields keep the painted button's defaults (`buttonType:
+ * "short"`, `buttonSizeMode: "fill"`). Height belongs on the mount
+ * `height` option.
  *
  * @see https://developers.google.com/pay/api/web/guides/resources/customize
  */
@@ -379,9 +381,8 @@ export type GooglePayButtonElementProps = Omit<
   "onClick" | "buttonRootNode" | "allowedPaymentMethods"
 > & {
   /**
-   * Inline style for the Google Pay button wrapper.
-   *
-   * @default { width: "100%" }
+   * Inline style for the Google Pay button wrapper. Omitted keys keep
+   * fill (`width: 100%`).
    */
   style?: Record<string, string | number | undefined>;
 };

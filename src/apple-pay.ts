@@ -48,14 +48,9 @@ export type ApplePayButtonListenerOptions = {
    */
   height?: string | number;
   /**
-   * Native `<apple-pay-button>` attributes and inner style.
-   *
-   * @default {
-   *   buttonstyle: "black",
-   *   type: "plain",
-   *   locale: "en-US",
-   *   style: { display: "block", width: "100%", "--apple-pay-button-width": "100%" },
-   * }
+   * Native `<apple-pay-button>` attributes and inner style. Omitted
+   * fields keep Apple's defaults (`black` / `plain` / `en-US`). The
+   * button fills the iframe — size the mount slot, not the button.
    */
   buttonProps?: ApplePayButtonElementProps;
   /**
@@ -127,25 +122,11 @@ function sendApplePayCancel(iframe: HTMLIFrameElement): void {
  */
 export function attachApplePayButtonListeners(
   iframe: HTMLIFrameElement,
-  {
-    height = "48px",
-    buttonProps = {
-      buttonstyle: "black",
-      type: "plain",
-      locale: "en-US",
-      style: {
-        display: "block",
-        width: "100%",
-        "--apple-pay-button-width": "100%",
-      },
-    },
-    ...options
-  }: ApplePayButtonListenerOptions,
+  { height = "48px", ...options }: ApplePayButtonListenerOptions,
 ): ApplePayButtonController {
   let current: ApplePayButtonListenerOptions = {
     ...options,
     height,
-    buttonProps,
   };
 
   function pushAmount() {
