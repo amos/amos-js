@@ -199,57 +199,57 @@ form.update({
 
 Set `labels` to control how field labels are rendered in card and bank account forms:
 
-| Value | Behavior |
-| ----- | -------- |
-| `above` (default) | Label text above each input |
-| `floating` | Label inside the control; moves up when focused or filled |
-| `placeholder` | No visible label; placeholder and `aria-label` only |
+| Value             | Behavior                                                  |
+| ----------------- | --------------------------------------------------------- |
+| `above` (default) | Label text above each input                               |
+| `floating`        | Label inside the control; moves up when focused or filled |
+| `placeholder`     | No visible label; placeholder and `aria-label` only       |
 
 Radio groups (e.g. account type) always use an above-style group label regardless of this setting.
 
 ### Available theme variables
 
-| Variable                 | Purpose                                        | Default                     |
-| ------------------------ | ---------------------------------------------- | --------------------------- |
-| `--background`           | Page body and base surface color               | `oklch(1 0 0)`              |
-| `--foreground`           | Default text color                             | `oklch(0.145 0 0)`          |
-| `--primary`              | Button fill and input text-selection highlight | `oklch(0.205 0 0)`          |
-| `--primary-foreground`   | Text on primary-colored surfaces               | `oklch(0.985 0 0)`          |
-| `--secondary`            | Secondary button fill                          | `oklch(0.97 0 0)`           |
-| `--secondary-foreground` | Text on secondary-colored surfaces             | `oklch(0.205 0 0)`          |
-| `--muted`                      | Muted surface color                                              | `oklch(0.97 0 0)`           |
-| `--muted-foreground`           | Placeholder text, helper labels, muted icons                     | `oklch(0.556 0 0)`          |
-| `--accent`                     | Hover/focus highlight for interactive items                      | `oklch(0.97 0 0)`           |
-| `--accent-foreground`          | Text on accent-highlighted items                                 | `oklch(0.205 0 0)`          |
-| `--destructive`                | Error/invalid state borders, icons, and field error text         | `oklch(0.577 0.245 27.325)` |
-| `--destructive-foreground`     | Text on destructive-colored surfaces                             | `oklch(0.45 0.24 27.325)`   |
-| `--border`                     | General border color                                             | `oklch(0.922 0 0)`          |
-| `--popover`                    | Dropdown / popover panel background                              | `oklch(1 0 0)`              |
-| `--popover-foreground`         | Dropdown / popover panel text color                              | `oklch(0.145 0 0)`          |
-| `--input`                      | Input field border color                                         | `oklch(0.922 0 0)`          |
-| `--input-background`           | Input field background fill                                      | `var(--background)`         |
-| `--input-height`               | Height of text inputs and form controls                          | `2.25rem`                   |
-| `--input-font-size`            | Font size of text inputs and dropdown fields                     | `0.875rem`                  |
-| `--input-font-weight`          | Font weight of typed input values                                | `400`                       |
-| `--input-padding`              | Horizontal padding inside inputs                                 | `0.75rem`                   |
-| `--input-border-width`         | Input field border width                                         | `1px`                       |
-| `--input-shadow`               | Input field box shadow                                           | `0 1px 2px 0 rgb(0 0 0 / 0.05)` |
-| `--floating-input-height`      | Height of inputs when labels are floating                        | `3.25rem`                   |
-| `--floating-label-font-size`        | Font size of floating labels when focused or filled              | `0.75rem`                   |
-| `--floating-label-empty-font-size`  | Font size of floating labels when empty (unfocused)              | `var(--input-font-size)`    |
-| `--floating-label-font-weight`      | Font weight of floating labels                                   | `500`                       |
-| `--floating-label-color`            | Color of floating labels when empty (unfocused)                  | `var(--muted-foreground)`   |
-| `--floating-label-floated-color`    | Color of floating labels when focused or filled                  | `var(--floating-label-color)` |
-| `--floating-label-offset`           | Top offset of the shrunk floating label                          | `0.625rem`                  |
-| `--label-font-size`            | Font size of above-style field labels                            | `0.875rem`                  |
-| `--label-font-weight`          | Font weight of above-style field labels                          | `500`                       |
-| `--field-gap`                  | Vertical gap between stacked form fields                         | `1rem`                      |
-| `--control-gap`                | Horizontal gap between side-by-side controls                     | `0.5rem`                    |
-| `--error-font-size`            | Font size of field-level error messages                          | `0.875rem`                  |
-| `--radio-size`                 | Size of radio buttons on the bank account form                   | `1rem`                      |
-| `--ring`                       | Focus ring and outline color                                     | `oklch(0.708 0 0)`          |
-| `--ring-width`                 | Focus ring width                                                 | `3px`                       |
-| `--radius`                     | Base border-radius (derived into sm/md/lg/xl)                    | `0.625rem`                  |
+| Variable                           | Purpose                                                  | Default                         |
+| ---------------------------------- | -------------------------------------------------------- | ------------------------------- |
+| `--background`                     | Page body and base surface color                         | `oklch(1 0 0)`                  |
+| `--foreground`                     | Default text color                                       | `oklch(0.145 0 0)`              |
+| `--primary`                        | Button fill and input text-selection highlight           | `oklch(0.205 0 0)`              |
+| `--primary-foreground`             | Text on primary-colored surfaces                         | `oklch(0.985 0 0)`              |
+| `--secondary`                      | Secondary button fill                                    | `oklch(0.97 0 0)`               |
+| `--secondary-foreground`           | Text on secondary-colored surfaces                       | `oklch(0.205 0 0)`              |
+| `--muted`                          | Muted surface color                                      | `oklch(0.97 0 0)`               |
+| `--muted-foreground`               | Placeholder text, helper labels, muted icons             | `oklch(0.556 0 0)`              |
+| `--accent`                         | Hover/focus highlight for interactive items              | `oklch(0.97 0 0)`               |
+| `--accent-foreground`              | Text on accent-highlighted items                         | `oklch(0.205 0 0)`              |
+| `--destructive`                    | Error/invalid state borders, icons, and field error text | `oklch(0.577 0.245 27.325)`     |
+| `--destructive-foreground`         | Text on destructive-colored surfaces                     | `oklch(0.45 0.24 27.325)`       |
+| `--border`                         | General border color                                     | `oklch(0.922 0 0)`              |
+| `--popover`                        | Dropdown / popover panel background                      | `oklch(1 0 0)`                  |
+| `--popover-foreground`             | Dropdown / popover panel text color                      | `oklch(0.145 0 0)`              |
+| `--input`                          | Input field border color                                 | `oklch(0.922 0 0)`              |
+| `--input-background`               | Input field background fill                              | `var(--background)`             |
+| `--input-height`                   | Height of text inputs and form controls                  | `2.25rem`                       |
+| `--input-font-size`                | Font size of text inputs and dropdown fields             | `0.875rem`                      |
+| `--input-font-weight`              | Font weight of typed input values                        | `400`                           |
+| `--input-padding`                  | Horizontal padding inside inputs                         | `0.75rem`                       |
+| `--input-border-width`             | Input field border width                                 | `1px`                           |
+| `--input-shadow`                   | Input field box shadow                                   | `0 1px 2px 0 rgb(0 0 0 / 0.05)` |
+| `--floating-input-height`          | Height of inputs when labels are floating                | `3.25rem`                       |
+| `--floating-label-font-size`       | Font size of floating labels when focused or filled      | `0.75rem`                       |
+| `--floating-label-empty-font-size` | Font size of floating labels when empty (unfocused)      | `var(--input-font-size)`        |
+| `--floating-label-font-weight`     | Font weight of floating labels                           | `500`                           |
+| `--floating-label-color`           | Color of floating labels when empty (unfocused)          | `var(--muted-foreground)`       |
+| `--floating-label-floated-color`   | Color of floating labels when focused or filled          | `var(--floating-label-color)`   |
+| `--floating-label-offset`          | Top offset of the shrunk floating label                  | `0.625rem`                      |
+| `--label-font-size`                | Font size of above-style field labels                    | `0.875rem`                      |
+| `--label-font-weight`              | Font weight of above-style field labels                  | `500`                           |
+| `--field-gap`                      | Vertical gap between stacked form fields                 | `1rem`                          |
+| `--control-gap`                    | Horizontal gap between side-by-side controls             | `0.5rem`                        |
+| `--error-font-size`                | Font size of field-level error messages                  | `0.875rem`                      |
+| `--radio-size`                     | Size of radio buttons on the bank account form           | `1rem`                          |
+| `--ring`                           | Focus ring and outline color                             | `oklch(0.708 0 0)`              |
+| `--ring-width`                     | Focus ring width                                         | `3px`                           |
+| `--radius`                         | Base border-radius (derived into sm/md/lg/xl)            | `0.625rem`                      |
 
 ## API reference
 
@@ -267,7 +267,6 @@ Mount the secure credit-card payment method form into a container element (an `H
 - `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder" }`)
 - `additionalFields` (`{ cardholderName: boolean }`, defaults to `{ cardholderName: false }`)
 - `billingAddressRequirement` (`"country" | "full"`, defaults to `"country"`) — how much billing address the iframe collects. `country` collects country / region and, for CA / PR / GB / US, a postal code (labeled ZIP for the United States). `full` shows a full street address form with Smarty autocomplete.
-
 
 - `onValidityChange` (`(event: { isValid: boolean }) => void`) — called when form validity changes. `isValid` is true when all required fields are present and valid. Does not include PCI data. Use this to enable or disable your checkout button.
 - `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic). The skeleton is removed and the iframe faded in when `onAppearanceReady` fires.
@@ -309,6 +308,7 @@ Mount the secure Google Pay button (express checkout) into a container element.
 ```
 
 Override any field. Compact button: `buttonProps={{ buttonSizeMode: "static", style: { width: "240px" } }}`.
+
 - `iframeClassName` / `iframeStyle` — applied to the host-page `<iframe>` element. Use CSS values with units (`{ borderRadius: "8px" }`); unitless numbers are coerced to `px`.
 
 ```ts
@@ -327,18 +327,6 @@ The wallet iframe is flush with its mount container (`width: 100%`, zero margin)
 **Returns** `AmosGooglePayButtonMountController`:
 
 - `iframe`, `update(patch)`, `destroy()`. Use `update({ amount, merchantName })` to push new values into the iframe. Use `update({ height, buttonProps })` to restyle the button.
-
-### Migration from flat wallet props
-
-| Before | After |
-| ------ | ----- |
-| `buttonstyle`, `type`, `locale` | `buttonProps.buttonstyle`, `buttonProps.type`, `buttonProps.locale` |
-| Google `buttonType`, `buttonColor`, … | `buttonProps.buttonType`, `buttonProps.buttonColor`, … |
-| `style` / inner button CSS | `height` + `buttonProps.style` (`buttonProps.style.height` wins if both are set) |
-| `iframeStyle` / `iframeClassName` | unchanged names; inner button `style` is no longer top-level |
-| `fullWidth` / `buttonSizeMode: "fill"` | default `buttonProps` (`buttonSizeMode: "fill"` + `style.width: "100%"`; Apple also sets `--apple-pay-button-width: "100%"`) |
-| wallet `appearance` | removed |
-| default painted height `40px` | `"48px"` |
 
 ### `mountAmosApplePayButton(container, options)`
 
@@ -359,6 +347,7 @@ Mount the secure Apple Pay button (express checkout). Same required options and 
 ```
 
 Override any field. `style.width` also updates `--apple-pay-button-width` unless you set that custom property yourself.
+
 - `iframeClassName` / `iframeStyle` — host-page `<iframe>` chrome.
 
 ```ts
