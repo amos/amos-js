@@ -38,7 +38,11 @@ export function getApplePayButtonInitialHeight(): string {
  * Options accepted by {@link attachApplePayButtonListeners}.
  */
 export type ApplePayButtonListenerOptions = {
-  /** The amount of the payment, in the same format passed in props. */
+  /**
+   * Major-currency decimal string shown in the Apple Pay sheet
+   * (e.g. `"50.00"` for $50.00). Converted to cents in
+   * `paymentIntentCreateAttributes.amount`.
+   */
   amount: string;
   /** A user-visible merchant name. */
   merchantName: string;

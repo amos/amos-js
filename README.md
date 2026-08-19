@@ -142,7 +142,7 @@ async function createPaymentIntentToken({
 
 const shared = {
   renderToken: "the-render-token-created-on-dashboard.amos.com",
-  amount: "5000",
+  amount: "50.00",
   merchantName: "Example Store",
   onInitiatePaymentIntentRequest: createPaymentIntentToken,
   onResult: (result: ConfirmationResult) => {
@@ -157,8 +157,8 @@ const shared = {
 const googlePay = mountAmosGooglePayButton("#google-pay", shared);
 const applePay = mountAmosApplePayButton("#apple-pay", shared);
 
-googlePay.update({ amount: "7500" });
-applePay.update({ amount: "7500" });
+googlePay.update({ amount: "75.00" });
+applePay.update({ amount: "75.00" });
 ```
 
 Do not call `validateForm` or `confirmPaymentIntent` — return the embed token from `onInitiatePaymentIntentRequest` and the SDK confirms. Size the mount slot; omitted `buttonProps` keep paint defaults and fill the iframe.
@@ -300,7 +300,7 @@ Mount the secure Google Pay button (express checkout) into a container element.
 **Required `options`:**
 
 - `renderToken` (`string`)
-- `amount` (`string`)
+- `amount` (`string`) — major-currency decimal string shown in the wallet sheet (e.g. `"50.00"` for $50.00). The iframe converts this to cents in `paymentIntentCreateAttributes.amount`.
 - `merchantName` (`string`)
 - `onInitiatePaymentIntentRequest` (`({ paymentIntentCreateAttributes, customerCreateAttributes }) => Promise<components["schemas"]["EmbedToken"]["token"]>`)
 
@@ -396,7 +396,7 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 - **`iframe` argument**: every messaging helper (`validateForm`, `confirmPaymentIntent`, `confirmSetupIntent`, `resetForm`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
 - **`onResult` is not settlement proof**: `onResult` tells you when to stop waiting (e.g. dismiss a spinner). Verify payment or setup success on your backend via webhooks. On `status: "incomplete"`, unlock your UI — the customer can fix fields in the iframe and retry. Use `result.reason` (`"field_errors"` or `"validation_failed"`) to distinguish recoverable states.
 - **Same components for payment vs setup intents**: `mountAmosCreditCardPaymentMethodForm` and `mountAmosBankAccountPaymentMethodForm` support both payment intents and setup intents. The flow differs only by which server call you make and which confirmation function you use. Handle both outcomes via `onResult`.
-- **Amount format**: for `mountAmosGooglePayButton` and `mountAmosApplePayButton`, `amount` is a string (e.g. `"5000"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server, `amount` is a number in cents (e.g. `5000`).
+- **Amount format**: for `mountAmosGooglePayButton` and `mountAmosApplePayButton`, `amount` is a major-currency decimal string (e.g. `"50.00"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server (card/bank create, and the object the wallet iframe sends to `onInitiatePaymentIntentRequest`), `amount` is a number in cents (e.g. `5000`).
 - **Apple Pay waiting overlay**: on browsers where Apple's QR handoff opens in a popup (non-Safari), `mountAmosApplePayButton` shows a fixed full-viewport overlay on the host page until payment completes, the popup closes, or the user clicks **Cancel payment**. Avoid stacking other fixed UI above it.
 - **Browser-only**: the mount and messaging helpers require `window` and the DOM. They are not safe to call during server-side rendering — call them from client-side code only (for example, inside a `useEffect`-like hook in your framework of choice).
 

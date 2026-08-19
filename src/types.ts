@@ -406,7 +406,10 @@ export type Message =
       height: string;
     }
   | {
-      /** Parent → embed: express-checkout amount changed. */
+      /**
+       * Parent → embed: express-checkout amount changed. Major-currency
+       * decimal string (e.g. `"50.00"` for $50.00).
+       */
       type: "UPDATE_AMOUNT";
       amount: string;
     }

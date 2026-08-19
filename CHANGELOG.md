@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.16
+
+### Patch Changes
+
+- Improve comments
+
 ## 0.9.15
 
 ### Patch Changes

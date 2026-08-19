@@ -114,7 +114,8 @@ export function updateGooglePayButton({
 }
 
 /**
- * Push the express-checkout amount into the embedded Google Pay iframe.
+ * Push the express-checkout amount into the embedded wallet iframe.
+ * `amount` is a major-currency decimal string (e.g. `"50.00"` for $50.00).
  */
 export function updateAmount({
   iframe,
