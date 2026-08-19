@@ -39,10 +39,10 @@ export type GooglePayButtonListenerOptions = {
   /** A user-visible merchant name. */
   merchantName: string;
   /**
-   * Painted Google Pay button height. CSS length or unitless pixels.
+   * Painted Google Pay button height. CSS length (e.g. `"48px"`).
    * @default "48px"
    */
-  height?: string | number;
+  height?: string;
   /**
    * Native Google Pay button attributes and inner style. Omitted fields
    * keep Amos paint defaults (`buttonType: "plain"`,
@@ -126,10 +126,7 @@ export function attachGooglePayButtonListeners(
   function pushButtonProps() {
     sendUpdateGooglePayButton({
       iframe,
-      height:
-        typeof current.height === "number"
-          ? `${current.height}px`
-          : (current.height ?? "48px"),
+      height: current.height ?? "48px",
       props: current.buttonProps ?? {},
     });
   }

@@ -480,10 +480,7 @@ export function mountAmosGooglePayButton(
     src: getGooglePayButtonSrc(renderToken),
     title: "Secure Google Pay button powered by Amos",
     name: "amos-google-pay-button",
-    height:
-      typeof listenerOptions.height === "number"
-        ? `${listenerOptions.height}px`
-        : (listenerOptions.height ?? getGooglePayButtonInitialHeight()),
+    height: listenerOptions.height ?? getGooglePayButtonInitialHeight(),
     allow: "payment",
     style: WALLET_IFRAME_STYLE,
   });
@@ -560,10 +557,7 @@ export function mountAmosApplePayButton(
     src: getApplePayButtonSrc(renderToken),
     title: "Secure Apple Pay button powered by Amos",
     name: "amos-apple-pay-button",
-    height:
-      typeof listenerOptions.height === "number"
-        ? `${listenerOptions.height}px`
-        : (listenerOptions.height ?? getApplePayButtonInitialHeight()),
+    height: listenerOptions.height ?? getApplePayButtonInitialHeight(),
     allow: "payment",
     style: WALLET_IFRAME_STYLE,
   });

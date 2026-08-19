@@ -43,10 +43,10 @@ export type ApplePayButtonListenerOptions = {
   /** A user-visible merchant name. */
   merchantName: string;
   /**
-   * Painted Apple Pay button height. CSS length or unitless pixels.
+   * Painted Apple Pay button height. CSS length (e.g. `"48px"`).
    * @default "48px"
    */
-  height?: string | number;
+  height?: string;
   /**
    * Native `<apple-pay-button>` attributes and inner style. Omitted
    * fields keep Apple's defaults (`black` / `plain` / `en-US`). The
@@ -140,10 +140,7 @@ export function attachApplePayButtonListeners(
   function pushButtonProps() {
     sendUpdateApplePayButton({
       iframe,
-      height:
-        typeof current.height === "number"
-          ? `${current.height}px`
-          : (current.height ?? "48px"),
+      height: current.height ?? "48px",
       props: current.buttonProps ?? {},
     });
   }

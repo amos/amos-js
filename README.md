@@ -296,7 +296,7 @@ Mount the secure Google Pay button (express checkout) into a container element.
 
 **Optional `options`:** `onHeightChange`, `onAppearanceReady`, plus:
 
-- `height` (`string | number`, defaults to `"48px"`) — painted button height. Unitless numbers become `px`.
+- `height` (`string`, defaults to `"48px"`) — painted button height. CSS length (e.g. `"48px"`).
 - `buttonProps` — native Google Pay button options. Omitted fields keep `"plain"` / `"fill"`. The button fills the iframe; size the mount slot, not the button. Compact: `buttonProps: { buttonSizeMode: "static", style: { width: "240px" } }`.
 
 - `iframeClassName` / `iframeStyle` — applied to the host-page `<iframe>` element. Use CSS values with units (`{ borderRadius: "8px" }`); unitless numbers are coerced to `px`.
@@ -324,7 +324,7 @@ Mount the secure Apple Pay button (express checkout). Same required options and 
 
 **Optional visual options:**
 
-- `height` (`string | number`, defaults to `"48px"`) — painted button height. Apple ignores CSS `height`; Amos maps this for you.
+- `height` (`string`, defaults to `"48px"`) — painted button height. CSS length (e.g. `"48px"`). Apple ignores CSS `height`; Amos maps this for you.
 - `buttonProps` — native `<apple-pay-button>` attributes. Omitted fields keep Apple's `black` / `plain` / `en-US`. The button fills the iframe; size the mount slot, not the button. `style.width` also updates `--apple-pay-button-width` unless you set that custom property yourself.
 
 - `iframeClassName` / `iframeStyle` — host-page `<iframe>` chrome.
