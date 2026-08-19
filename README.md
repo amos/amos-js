@@ -14,7 +14,7 @@ npm install @amos.com/amos-js
 
 - **Types** for the `postMessage` protocol used between your page and the Amos iframe (`Message`, `Appearance`, `ThemeVariable`). OpenAPI schema types (for example `components["schemas"]["PaymentIntent"]`) come from `@amos.com/node`.
 - **Iframe-targeted helpers** to validate the form, confirm a payment intent, confirm a setup intent, update appearance, etc.
-- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height/opacity, show a field-shaped loading skeleton for card/bank forms, and return a small controller for updating options and tearing it down.
+- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height/opacity, show a loading skeleton (field-shaped for card/bank forms, button-shaped for Google Pay / Apple Pay), and return a small controller for updating options and tearing it down.
 - **Lower-level building blocks** (`getCreditCardFormSrc`, `attachPaymentMethodFormListeners`, `attachGooglePayButtonListeners`, `attachApplePayButtonListeners`, ...) for integrators (such as `@amos.com/react-amos-js`) that want to render the iframe element themselves.
 
 > **Note:** A server-side SDK (for example `@amos.com/node`) must be used alongside `@amos.com/amos-js` for end-to-end payment processing. `@amos.com/amos-js` is the client-side half.
@@ -295,7 +295,7 @@ Same shape as `mountAmosCreditCardPaymentMethodForm`, minus `additionalFields`. 
 
 ### `mountAmosGooglePayButton(container, options)`
 
-Mount the secure Google Pay button (express checkout) into a container element.
+Mount the secure Google Pay button (express checkout) into a container element. A button-shaped skeleton is shown immediately and replaced by the iframe once appearance is applied.
 
 **Required `options`:**
 
@@ -328,11 +328,11 @@ The wallet iframe is flush with its mount container (`width: 100%`, zero margin)
 
 **Returns** `AmosGooglePayButtonMountController`:
 
-- `iframe`, `update(patch)`, `destroy()`. Use `update({ amount, merchantName })` to push new values into the iframe. Use `update({ height, buttonProps })` to restyle the button.
+- `iframe`, `update(patch)`, `destroy()`. `destroy()` removes the iframe and any loading skeleton. Use `update({ amount, merchantName })` to push new values into the iframe. Use `update({ height, buttonProps })` to restyle the button.
 
 ### `mountAmosApplePayButton(container, options)`
 
-Mount the secure Apple Pay button (express checkout). Same required options and return shape as `mountAmosGooglePayButton`.
+Mount the secure Apple Pay button (express checkout). Same required options and return shape as `mountAmosGooglePayButton`. A button-shaped skeleton is shown immediately and replaced by the iframe once appearance is applied.
 
 **Optional visual options:**
 

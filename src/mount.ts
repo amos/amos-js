@@ -7,7 +7,11 @@ import {
 } from "./apple-pay";
 import {
   createPaymentMethodFormSkeleton,
+  createWalletButtonSkeleton,
   type PaymentMethodFormSkeletonOptions,
+  resolveWalletButtonSkeletonBorderRadius,
+  type WalletButtonSkeleton,
+  type WalletButtonSkeletonOptions,
 } from "./form-skeleton";
 import {
   attachGooglePayButtonListeners,
@@ -57,6 +61,19 @@ const WALLET_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   margin: "0",
   opacity: "0",
   border: "0",
+};
+
+const WALLET_SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
+  position: "absolute",
+  top: "0",
+  left: "0",
+  width: "100%",
+  height: "100%",
+  margin: "0",
+  opacity: "0",
+  // Do not interpolate opacity while the skeleton is showing.
+  transition: "none",
+  pointerEvents: "none",
 };
 
 const SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
@@ -222,6 +239,141 @@ function mountPaymentMethodFormWithSkeleton({
       if (heightTransitionTimer !== undefined) {
         clearTimeout(heightTransitionTimer);
       }
+      if (fallbackRevealTimer !== undefined) {
+        clearTimeout(fallbackRevealTimer);
+      }
+      controller.destroy();
+      wrapper.remove();
+    },
+  };
+}
+
+type WalletListenerOptions = {
+  height?: string;
+  onHeightChange?: (height: string) => void;
+  onAppearanceReady?: () => void;
+  buttonProps?: {
+    buttonRadius?: number;
+    style?: Record<string, string | number | undefined>;
+  };
+};
+
+type WalletListenerController<TOptions> = {
+  update: (patch: Partial<TOptions>) => void;
+  destroy: () => void;
+};
+
+function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
+  host,
+  iframe,
+  listenerOptions,
+  iframeStyle,
+  attachListeners,
+}: {
+  host: HTMLElement;
+  iframe: HTMLIFrameElement;
+  listenerOptions: TOptions;
+  iframeStyle?: Partial<CSSStyleDeclaration>;
+  attachListeners: (
+    iframe: HTMLIFrameElement,
+    options: TOptions,
+  ) => WalletListenerController<TOptions>;
+}): {
+  iframe: HTMLIFrameElement;
+  update: (patch: Partial<TOptions>) => void;
+  destroy: () => void;
+} {
+  const initialHeight = listenerOptions.height ?? "48px";
+  let skeletonOptions: WalletButtonSkeletonOptions = {
+    height: initialHeight,
+    borderRadius: resolveWalletButtonSkeletonBorderRadius({
+      iframeStyle,
+      buttonProps: listenerOptions.buttonProps,
+    }),
+  };
+  const skeleton: WalletButtonSkeleton =
+    createWalletButtonSkeleton(skeletonOptions);
+
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "relative";
+  wrapper.style.width = "100%";
+  wrapper.style.height = skeletonOptions.height;
+  wrapper.style.overflow = "hidden";
+  wrapper.setAttribute("aria-busy", "true");
+
+  Object.assign(iframe.style, WALLET_SKELETON_IFRAME_STYLE);
+  iframe.style.height = "100%";
+
+  wrapper.append(skeleton.element, iframe);
+  host.appendChild(wrapper);
+
+  let revealed = false;
+  let appearanceReady = false;
+  let fallbackRevealTimer: ReturnType<typeof setTimeout> | undefined;
+  let currentOptions = listenerOptions;
+
+  function reveal(): void {
+    if (revealed) {
+      return;
+    }
+    revealed = true;
+    if (fallbackRevealTimer !== undefined) {
+      clearTimeout(fallbackRevealTimer);
+      fallbackRevealTimer = undefined;
+    }
+
+    iframe.style.opacity = "1";
+    iframe.style.pointerEvents = "";
+    skeleton.element.remove();
+    wrapper.removeAttribute("aria-busy");
+  }
+
+  function tryReveal(): void {
+    if (revealed || !appearanceReady) {
+      return;
+    }
+    reveal();
+  }
+
+  const controller = attachListeners(iframe, {
+    ...listenerOptions,
+    onHeightChange: (height) => {
+      currentOptions.onHeightChange?.(height);
+    },
+    onAppearanceReady: () => {
+      appearanceReady = true;
+      tryReveal();
+      currentOptions.onAppearanceReady?.();
+    },
+  } as TOptions);
+
+  fallbackRevealTimer = setTimeout(() => {
+    reveal();
+  }, 1500);
+
+  return {
+    iframe,
+    update(patch) {
+      currentOptions = { ...currentOptions, ...patch };
+      // Keep the wrapped reveal listeners. Forwarding these would replace
+      // them and leave the iframe at opacity 0.
+      const rest = { ...patch };
+      delete rest.onAppearanceReady;
+      delete rest.onHeightChange;
+      controller.update(rest);
+      skeletonOptions = {
+        height: currentOptions.height ?? skeletonOptions.height,
+        borderRadius: resolveWalletButtonSkeletonBorderRadius({
+          iframeStyle,
+          buttonProps: currentOptions.buttonProps,
+        }),
+      };
+      wrapper.style.height = skeletonOptions.height;
+      if (!revealed) {
+        skeleton.update(skeletonOptions);
+      }
+    },
+    destroy() {
       if (fallbackRevealTimer !== undefined) {
         clearTimeout(fallbackRevealTimer);
       }
@@ -420,6 +572,9 @@ export type AmosGooglePayButtonMountController = GooglePayButtonController & {
  * Mount the secure Google Pay button (express checkout) into a
  * container element. Returns a controller exposing the underlying
  * iframe, an `update()` method, and a `destroy()` method.
+ *
+ * A button-shaped skeleton is shown immediately and replaced by the
+ * iframe once appearance is applied.
  */
 export function mountAmosGooglePayButton(
   container: Container,
@@ -439,28 +594,14 @@ export function mountAmosGooglePayButton(
     style: WALLET_IFRAME_STYLE,
   });
   Object.assign(iframe.style, iframeStyle);
-  host.appendChild(iframe);
 
-  const controller = attachGooglePayButtonListeners(iframe, {
-    ...listenerOptions,
-    onHeightChange: (height) => {
-      iframe.style.height = height;
-      listenerOptions.onHeightChange?.(height);
-    },
-    onAppearanceReady: () => {
-      iframe.style.opacity = "1";
-      listenerOptions.onAppearanceReady?.();
-    },
-  });
-
-  return {
+  return mountWalletButtonWithSkeleton({
+    host,
     iframe,
-    update: controller.update,
-    destroy() {
-      controller.destroy();
-      iframe.remove();
-    },
-  };
+    listenerOptions,
+    iframeStyle,
+    attachListeners: attachGooglePayButtonListeners,
+  });
 }
 
 /**
@@ -497,6 +638,9 @@ export type AmosApplePayButtonMountController = ApplePayButtonController & {
  * Mount the secure Apple Pay button (express checkout) into a
  * container element. Returns a controller exposing the underlying
  * iframe, an `update()` method, and a `destroy()` method.
+ *
+ * A button-shaped skeleton is shown immediately and replaced by the
+ * iframe once appearance is applied.
  */
 export function mountAmosApplePayButton(
   container: Container,
@@ -516,26 +660,12 @@ export function mountAmosApplePayButton(
     style: WALLET_IFRAME_STYLE,
   });
   Object.assign(iframe.style, iframeStyle);
-  host.appendChild(iframe);
 
-  const controller = attachApplePayButtonListeners(iframe, {
-    ...listenerOptions,
-    onHeightChange: (height) => {
-      iframe.style.height = height;
-      listenerOptions.onHeightChange?.(height);
-    },
-    onAppearanceReady: () => {
-      iframe.style.opacity = "1";
-      listenerOptions.onAppearanceReady?.();
-    },
-  });
-
-  return {
+  return mountWalletButtonWithSkeleton({
+    host,
     iframe,
-    update: controller.update,
-    destroy() {
-      controller.destroy();
-      iframe.remove();
-    },
-  };
+    listenerOptions,
+    iframeStyle,
+    attachListeners: attachApplePayButtonListeners,
+  });
 }

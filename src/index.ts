@@ -9,7 +9,20 @@ export {
   getApplePayButtonInitialHeight,
   getApplePayButtonSrc,
 } from "./apple-pay";
-
+export type {
+  PaymentMethodFormSkeleton,
+  PaymentMethodFormSkeletonKind,
+  PaymentMethodFormSkeletonOptions,
+  WalletButtonSkeleton,
+  WalletButtonSkeletonOptions,
+} from "./form-skeleton";
+export {
+  createPaymentMethodFormSkeleton,
+  createWalletButtonSkeleton,
+  ensureSkeletonStyles,
+  resolveWalletButtonSkeletonBorderRadius,
+  SKELETON_STYLES,
+} from "./form-skeleton";
 export type {
   FormattedGooglePayPaymentData,
   GooglePayButtonController,
@@ -21,7 +34,6 @@ export {
   getGooglePayButtonInitialHeight,
   getGooglePayButtonSrc,
 } from "./google-pay";
-
 export { decodeJwt, getEmbedOrigin } from "./jwt";
 
 export {

@@ -16,7 +16,7 @@ const SKELETON_THEME_DEFAULTS: Record<string, string> = {
   "--label-font-size": "0.875rem",
 };
 
-const SKELETON_STYLES = `
+export const SKELETON_STYLES = `
 .amos-js-form-skeleton {
   box-sizing: border-box;
   container-type: inline-size;
@@ -71,6 +71,10 @@ const SKELETON_STYLES = `
     gap: var(--control-gap);
   }
 }
+.amos-js-wallet-skeleton {
+  flex: none;
+  width: 100%;
+}
 @keyframes amos-js-skeleton-pulse {
   50% { opacity: 0.5; }
 }
@@ -81,7 +85,7 @@ const SKELETON_STYLES = `
 }
 `;
 
-function ensureSkeletonStyles(): void {
+export function ensureSkeletonStyles(): void {
   if (document.getElementById(STYLE_ID)) {
     return;
   }
@@ -241,4 +245,75 @@ export function createPaymentMethodFormSkeleton(
     element,
     update: render,
   };
+}
+
+export type WalletButtonSkeletonOptions = {
+  /** Painted height of the wallet button slot (CSS length). */
+  height: string;
+  /** Corner radius matching the iframe / native button. */
+  borderRadius?: string;
+};
+
+export type WalletButtonSkeleton = {
+  element: HTMLElement;
+  update: (options: WalletButtonSkeletonOptions) => void;
+};
+
+/**
+ * Host-page placeholder for Google Pay / Apple Pay: a pulsing bar at
+ * the button's height. Shown immediately while the iframe loads, then
+ * removed when appearance is ready.
+ */
+export function createWalletButtonSkeleton(
+  options: WalletButtonSkeletonOptions,
+): WalletButtonSkeleton {
+  ensureSkeletonStyles();
+  const element = div("amos-js-form-skeleton-input amos-js-wallet-skeleton");
+  element.setAttribute("aria-hidden", "true");
+
+  function render(next: WalletButtonSkeletonOptions): void {
+    applyTheme(element, undefined);
+    element.style.height = next.height;
+    element.style.borderRadius = next.borderRadius ?? "4px";
+  }
+
+  render(options);
+
+  return {
+    element,
+    update: render,
+  };
+}
+
+function cssLength(value: unknown): string | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `${value}px`;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    return value.trim();
+  }
+  return undefined;
+}
+
+/**
+ * Corner radius for a wallet-button skeleton. Prefers host iframe
+ * chrome, then native Google / Apple button radius, then 4px.
+ */
+export function resolveWalletButtonSkeletonBorderRadius({
+  iframeStyle,
+  buttonProps,
+}: {
+  iframeStyle?: { borderRadius?: string | number };
+  buttonProps?: {
+    buttonRadius?: number;
+    style?: Record<string, string | number | undefined>;
+  };
+}): string {
+  return (
+    cssLength(iframeStyle?.borderRadius) ??
+    cssLength(buttonProps?.buttonRadius) ??
+    cssLength(buttonProps?.style?.["borderRadius"]) ??
+    cssLength(buttonProps?.style?.["--apple-pay-button-border-radius"]) ??
+    "4px"
+  );
 }
