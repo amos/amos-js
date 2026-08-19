@@ -297,7 +297,7 @@ Mount the secure Google Pay button (express checkout) into a container element.
 **Optional `options`:** `onHeightChange`, `onAppearanceReady`, plus:
 
 - `height` (`string | number`, defaults to `"48px"`) — painted button height. Unitless numbers become `px`.
-- `buttonProps` — native Google Pay button options. Omitted fields keep `"short"` / `"fill"`. The button fills the iframe; size the mount slot, not the button. Compact: `buttonProps: { buttonSizeMode: "static", style: { width: "240px" } }`.
+- `buttonProps` — native Google Pay button options. Omitted fields keep `"plain"` / `"fill"`. The button fills the iframe; size the mount slot, not the button. Compact: `buttonProps: { buttonSizeMode: "static", style: { width: "240px" } }`.
 
 - `iframeClassName` / `iframeStyle` — applied to the host-page `<iframe>` element. Use CSS values with units (`{ borderRadius: "8px" }`); unitless numbers are coerced to `px`.
 

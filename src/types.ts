@@ -371,7 +371,7 @@ export type ApplePayButtonElementProps = {
  * `style`. Posted as-is on `buttonProps`.
  *
  * Omitted fields keep the painted button's defaults (`buttonType:
- * "short"`, `buttonSizeMode: "fill"`). Height belongs on the mount
+ * "plain"`, `buttonSizeMode: "fill"`). Height belongs on the mount
  * `height` option.
  *
  * @see https://developers.google.com/pay/api/web/guides/resources/customize
