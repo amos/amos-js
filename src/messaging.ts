@@ -1,5 +1,6 @@
 import type { components } from "@amos.com/node";
 import { decodeJwt } from "./jwt";
+import { getBankPlaidCredentials, getBankPlaidSession } from "./plaid-session";
 import {
   type Appearance,
   type ApplePayButtonElementProps,
@@ -163,6 +164,11 @@ export function updateMerchantName({
  * `false` if the iframe does not respond within 5 seconds.
  */
 export function validateForm({ iframe }: { iframe: Iframe }): Promise<boolean> {
+  const session = getBankPlaidSession(iframe);
+  if (session?.requiresVerification) {
+    return Promise.resolve(Boolean(session.plaid));
+  }
+
   const requestId = crypto.randomUUID();
 
   return new Promise((resolve) => {
@@ -193,11 +199,68 @@ export function validateForm({ iframe }: { iframe: Iframe }): Promise<boolean> {
   });
 }
 
+const PLAID_LINK_TOKEN_TIMEOUT_MS = 10_000;
+
+/**
+ * Ask the bank iframe to mint a Plaid Link token (`POST /plaid_link_tokens`
+ * on embed). Resolves with `link_token`, or rejects on error / timeout.
+ */
+export function requestPlaidLinkToken({
+  iframe,
+}: {
+  iframe: Iframe;
+}): Promise<string> {
+  const requestId = crypto.randomUUID();
+
+  return new Promise((resolve, reject) => {
+    if (!iframe?.contentWindow) {
+      reject(new Error("Bank form is not ready."));
+      return;
+    }
+
+    const contentWindow = iframe.contentWindow;
+    contentWindow.postMessage(
+      createMessage({ type: "CREATE_PLAID_LINK_TOKEN", requestId }),
+      getIframeTargetOrigin(iframe),
+    );
+
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener("message", handleMessage);
+      reject(new Error("Timed out waiting for Plaid Link token."));
+    }, PLAID_LINK_TOKEN_TIMEOUT_MS);
+
+    function handleMessage(event: MessageEvent<Message>) {
+      if (event.source !== contentWindow) {
+        return;
+      }
+      if (
+        event.data.type !== "PLAID_LINK_TOKEN" ||
+        event.data.requestId !== requestId
+      ) {
+        return;
+      }
+      window.removeEventListener("message", handleMessage);
+      clearTimeout(timeoutId);
+      if (event.data.link_token) {
+        resolve(event.data.link_token);
+        return;
+      }
+      reject(
+        new Error(event.data.error ?? "Could not create Plaid Link token."),
+      );
+    }
+
+    window.addEventListener("message", handleMessage);
+  });
+}
+
 /**
  * Clear all field values and API errors in the embedded credit-card or
  * bank-account iframe form.
  */
 export function resetForm({ iframe }: { iframe: Iframe }): void {
+  getBankPlaidSession(iframe)?.clearLinked?.();
+
   if (!iframe?.contentWindow) {
     return;
   }
@@ -227,11 +290,13 @@ export function confirmPaymentIntent({
 
   const { payment_intent_id: id }: components["schemas"]["EmbedTokenJwt"] =
     decodeJwt(token).payload;
+  const plaid = getBankPlaidCredentials(iframe);
   iframe.contentWindow.postMessage(
     createMessage({
       type: "CONFIRM_PAYMENT_INTENT",
       token,
       id: id ?? undefined,
+      ...(plaid ? { plaid } : {}),
     }),
     getIframeTargetOrigin(iframe),
   );
@@ -256,11 +321,13 @@ export function confirmSetupIntent({
 
   const { setup_intent_id: id }: components["schemas"]["EmbedTokenJwt"] =
     decodeJwt(token).payload;
+  const plaid = getBankPlaidCredentials(iframe);
   iframe.contentWindow.postMessage(
     createMessage({
       type: "CONFIRM_SETUP_INTENT",
       token,
       id: id ?? undefined,
+      ...(plaid ? { plaid } : {}),
     }),
     getIframeTargetOrigin(iframe),
   );

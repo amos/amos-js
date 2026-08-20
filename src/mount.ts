@@ -31,6 +31,7 @@ import {
   type PaymentMethodFormController,
   type PaymentMethodFormListenerOptions,
 } from "./payment-method-form";
+import { attachPlaidBankUi } from "./plaid-bank-ui";
 
 type Container = HTMLElement | string;
 
@@ -426,6 +427,17 @@ export type AmosPaymentMethodFormMountController =
   };
 
 /**
+ * Controller returned by {@link mountAmosBankAccountPaymentMethodForm}.
+ * `update()` also accepts `amount` (cents) when the charge changes.
+ */
+export type AmosBankAccountPaymentMethodFormMountController = Omit<
+  AmosPaymentMethodFormMountController,
+  "update"
+> & {
+  update: (patch: Partial<AmosBankAccountPaymentMethodFormOptions>) => void;
+};
+
+/**
  * Mount the secure credit-card payment method form into a container
  * element. Returns a controller exposing the underlying iframe, an
  * `update()` method, and a `destroy()` method.
@@ -494,6 +506,14 @@ export type AmosBankAccountPaymentMethodFormOptions =
      * @default "country"
      */
     billingAddressRequirement?: BillingAddressRequirement;
+    /**
+     * Charge amount in minor units (cents). Compared to the merchant
+     * ACH threshold fetched by the iframe. Omit for setup intents or
+     * when the charge is unknown — if a threshold is set, Plaid is
+     * required. Unlike Google Pay / Apple Pay, this is not a
+     * major-currency string.
+     */
+    amount?: number;
   };
 
 /**
@@ -501,8 +521,12 @@ export type AmosBankAccountPaymentMethodFormOptions =
  * element. Returns a controller exposing the underlying iframe, an
  * `update()` method, and a `destroy()` method.
  *
- * A field-shaped skeleton is shown immediately and replaced by the
- * iframe once appearance is applied.
+ * When the iframe reports an ACH threshold and `amount` meets it (or
+ * `amount` is omitted), a Connect bank button is rendered in the parent
+ * document and Plaid Link is opened on click. The button uses the same
+ * `appearance.themeVariables` as the iframe (and inherits host-page
+ * tokens when those variables are unset). Otherwise a field-shaped
+ * skeleton is shown and replaced by the iframe once appearance is applied.
  *
  * Use the returned `controller.iframe` when calling
  * {@link validateForm}, {@link confirmPaymentIntent}, or
@@ -511,11 +535,12 @@ export type AmosBankAccountPaymentMethodFormOptions =
 export function mountAmosBankAccountPaymentMethodForm(
   container: Container,
   options: AmosBankAccountPaymentMethodFormOptions,
-): AmosPaymentMethodFormMountController {
+): AmosBankAccountPaymentMethodFormMountController {
   const host = resolveContainer(container);
   const {
     renderToken,
     billingAddressRequirement = "country",
+    amount,
     ...listenerOptions
   } = options;
 
@@ -526,7 +551,7 @@ export function mountAmosBankAccountPaymentMethodForm(
     height: getBankAccountFormInitialHeight(billingAddressRequirement),
   });
 
-  return mountPaymentMethodFormWithSkeleton({
+  const iframeMount = mountPaymentMethodFormWithSkeleton({
     host,
     iframe,
     listenerOptions,
@@ -536,6 +561,28 @@ export function mountAmosBankAccountPaymentMethodForm(
       billingAddressRequirement,
     },
   });
+
+  const plaidUi = attachPlaidBankUi({
+    host,
+    iframe,
+    options: {
+      amount,
+      appearance: listenerOptions.appearance,
+      onValidityChange: listenerOptions.onValidityChange,
+    },
+  });
+
+  return {
+    iframe,
+    update(patch) {
+      iframeMount.update(patch as Partial<PaymentMethodFormListenerOptions>);
+      plaidUi.update(patch);
+    },
+    destroy() {
+      plaidUi.destroy();
+      iframeMount.destroy();
+    },
+  };
 }
 
 /**
