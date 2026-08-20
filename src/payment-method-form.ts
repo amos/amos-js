@@ -3,6 +3,7 @@ import {
   sendParentReadyMessage,
   updateAppearance as sendUpdateAppearance,
 } from "./messaging";
+import { getBankPlaidSession } from "./plaid-session";
 import type {
   Appearance,
   ConfirmationResult,
@@ -203,6 +204,9 @@ export function attachPaymentMethodFormListeners(
         break;
 
       case "FORM_VALIDITY_CHANGE":
+        if (getBankPlaidSession(iframe)?.requiresVerification) {
+          break;
+        }
         current.onValidityChange?.({ isValid: event.data.isValid });
         break;
 

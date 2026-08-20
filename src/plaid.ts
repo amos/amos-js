@@ -89,6 +89,14 @@ export function linkedBankLabelFromMetadata(
 
 let plaidScriptPromise: Promise<void> | undefined;
 
+function removePlaidScriptTags(): void {
+  for (const node of document.querySelectorAll(
+    `script[src="${PLAID_SCRIPT_SRC}"]`,
+  )) {
+    node.remove();
+  }
+}
+
 export function loadPlaidScript(): Promise<void> {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Plaid Link requires a browser"));
@@ -100,32 +108,35 @@ export function loadPlaidScript(): Promise<void> {
     return plaidScriptPromise;
   }
 
-  plaidScriptPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector(
-      `script[src="${PLAID_SCRIPT_SRC}"]`,
-    );
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener(
-        "error",
-        () => reject(new Error("Failed to load Plaid Link")),
-        { once: true },
-      );
-      return;
-    }
+  // A previous failed attempt leaves a <script> whose load/error already
+  // fired. Waiting on that tag hangs; drop it and inject a new one.
+  removePlaidScriptTags();
 
+  plaidScriptPromise = new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = PLAID_SCRIPT_SRC;
     script.async = true;
-    script.addEventListener("load", () => resolve(), { once: true });
+
+    const fail = (message: string) => {
+      script.remove();
+      plaidScriptPromise = undefined;
+      reject(new Error(message));
+    };
+
     script.addEventListener(
-      "error",
+      "load",
       () => {
-        plaidScriptPromise = undefined;
-        reject(new Error("Failed to load Plaid Link"));
+        if (window.Plaid) {
+          resolve();
+          return;
+        }
+        fail("Plaid Link failed to initialize");
       },
       { once: true },
     );
+    script.addEventListener("error", () => fail("Failed to load Plaid Link"), {
+      once: true,
+    });
     document.head.append(script);
   });
 

@@ -1,4 +1,4 @@
-import { requestPlaidLinkToken } from "./messaging";
+import { requestPlaidLinkToken, validateForm } from "./messaging";
 import type { PaymentMethodFormListenerOptions } from "./payment-method-form";
 import {
   linkedBankLabelFromMetadata,
@@ -187,6 +187,8 @@ export function attachPlaidBankUi({
   let requireVerification = false;
   let cachedLinkToken: string | undefined;
   let opening = false;
+  let plaidMode = false;
+  let lastEmittedValid: boolean | undefined;
   let destroyLink: (() => void) | undefined;
   let linked:
     | { credentials: PlaidCredentials; bankName: string; last4: string }
@@ -245,8 +247,19 @@ export function attachPlaidBankUi({
     });
   }
 
+  function publishPlaidValidity(): void {
+    const isValid = Boolean(linked);
+    if (lastEmittedValid === isValid) {
+      return;
+    }
+    lastEmittedValid = isValid;
+    current.onValidityChange?.({ isValid });
+  }
+
   function syncSession(): void {
     const requiresVerification = requiresConnect();
+    const leaving = plaidMode && !requiresVerification;
+    plaidMode = requiresVerification;
     setBankPlaidSession(iframe, {
       requiresVerification,
       plaid: requiresVerification ? linked?.credentials : undefined,
@@ -257,6 +270,14 @@ export function attachPlaidBankUi({
       panel.dataset["mode"] = "hidden";
       if (formWrapper) {
         formWrapper.style.display = "";
+      }
+      lastEmittedValid = undefined;
+      if (leaving) {
+        void validateForm({ iframe }).then((isValid) => {
+          if (!requiresConnect()) {
+            current.onValidityChange?.({ isValid });
+          }
+        });
       }
       return;
     }
@@ -271,6 +292,7 @@ export function attachPlaidBankUi({
         ? `****${linked.last4}`
         : "Connected";
     }
+    publishPlaidValidity();
   }
 
   function unlink(): void {
@@ -280,7 +302,6 @@ export function attachPlaidBankUi({
     destroyLink = undefined;
     setError(undefined);
     syncSession();
-    current.onValidityChange?.({ isValid: false });
   }
 
   function handleIframeMessage(event: MessageEvent<Message>): void {
@@ -340,7 +361,6 @@ export function attachPlaidBankUi({
             };
             cachedLinkToken = undefined;
             syncSession();
-            current.onValidityChange?.({ isValid: true });
           },
           onExit: (error) => {
             if (error?.error_code === "INVALID_LINK_TOKEN") {

@@ -1,6 +1,6 @@
 import type { components } from "@amos.com/node";
 import { decodeJwt } from "./jwt";
-import { getBankPlaidCredentials, getBankPlaidSession } from "./plaid-session";
+import { getBankPlaidSession } from "./plaid-session";
 import {
   type Appearance,
   type ApplePayButtonElementProps,
@@ -260,13 +260,45 @@ export function requestPlaidLinkToken({
  */
 export function resetForm({ iframe }: { iframe: Iframe }): void {
   getBankPlaidSession(iframe)?.clearLinked?.();
+  resetIframeFields(iframe);
+}
 
+function resetIframeFields(iframe: Iframe): void {
   if (!iframe?.contentWindow) {
     return;
   }
 
   iframe.contentWindow.postMessage(
     createMessage({ type: "RESET_FORM" }),
+    getIframeTargetOrigin(iframe),
+  );
+}
+
+function postConfirmIntent({
+  iframe,
+  type,
+  token,
+  id,
+}: {
+  iframe: HTMLIFrameElement;
+  type: "CONFIRM_PAYMENT_INTENT" | "CONFIRM_SETUP_INTENT";
+  token: string | undefined;
+  id: string | undefined;
+}): void {
+  const session = getBankPlaidSession(iframe);
+  const plaid = session?.plaid;
+  // Plaid mode: do not confirm leftover routing/account numbers.
+  if (session?.requiresVerification && !plaid) {
+    resetIframeFields(iframe);
+  }
+
+  iframe.contentWindow?.postMessage(
+    createMessage({
+      type,
+      token,
+      id,
+      ...(plaid ? { plaid } : {}),
+    }),
     getIframeTargetOrigin(iframe),
   );
 }
@@ -290,16 +322,12 @@ export function confirmPaymentIntent({
 
   const { payment_intent_id: id }: components["schemas"]["EmbedTokenJwt"] =
     decodeJwt(token).payload;
-  const plaid = getBankPlaidCredentials(iframe);
-  iframe.contentWindow.postMessage(
-    createMessage({
-      type: "CONFIRM_PAYMENT_INTENT",
-      token,
-      id: id ?? undefined,
-      ...(plaid ? { plaid } : {}),
-    }),
-    getIframeTargetOrigin(iframe),
-  );
+  postConfirmIntent({
+    iframe,
+    type: "CONFIRM_PAYMENT_INTENT",
+    token,
+    id: id ?? undefined,
+  });
 }
 
 /**
@@ -321,16 +349,12 @@ export function confirmSetupIntent({
 
   const { setup_intent_id: id }: components["schemas"]["EmbedTokenJwt"] =
     decodeJwt(token).payload;
-  const plaid = getBankPlaidCredentials(iframe);
-  iframe.contentWindow.postMessage(
-    createMessage({
-      type: "CONFIRM_SETUP_INTENT",
-      token,
-      id: id ?? undefined,
-      ...(plaid ? { plaid } : {}),
-    }),
-    getIframeTargetOrigin(iframe),
-  );
+  postConfirmIntent({
+    iframe,
+    type: "CONFIRM_SETUP_INTENT",
+    token,
+    id: id ?? undefined,
+  });
 }
 
 /**
