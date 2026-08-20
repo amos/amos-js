@@ -53,6 +53,8 @@ declare global {
  * - No `achThreshold`: always manual ACH (backward compatible).
  * - `amount` omitted: Plaid (setup / unknown future charge).
  * - Otherwise: Plaid when `amount >= achThreshold`.
+ *
+ * `amount` and `achThreshold` are integer minor units (cents).
  */
 export function requiresAchVerification({
   amount,
@@ -68,6 +70,25 @@ export function requiresAchVerification({
     return true;
   }
   return amount >= achThreshold;
+}
+
+/**
+ * Convert a major-currency decimal string (e.g. `"50.00"`) to integer
+ * cents. Empty / invalid values are omitted.
+ */
+export function majorAmountToMinorUnits(amount?: string): number | undefined {
+  if (amount == null) {
+    return undefined;
+  }
+  const trimmed = amount.trim();
+  if (trimmed === "") {
+    return undefined;
+  }
+  const major = Number(trimmed.replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(major)) {
+    return undefined;
+  }
+  return Math.round(major * 100);
 }
 
 export function plaidAccountIdFromMetadata(

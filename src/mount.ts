@@ -428,7 +428,8 @@ export type AmosPaymentMethodFormMountController =
 
 /**
  * Controller returned by {@link mountAmosBankAccountPaymentMethodForm}.
- * `update()` also accepts `amount` (cents) when the charge changes.
+ * `update()` also accepts `amount` (major-currency decimal string) when
+ * the charge changes.
  */
 export type AmosBankAccountPaymentMethodFormMountController = Omit<
   AmosPaymentMethodFormMountController,
@@ -507,13 +508,13 @@ export type AmosBankAccountPaymentMethodFormOptions =
      */
     billingAddressRequirement?: BillingAddressRequirement;
     /**
-     * Charge amount in minor units (cents). Compared to the merchant
-     * ACH threshold fetched by the iframe. Omit for setup intents or
-     * when the charge is unknown — if a threshold is set, Plaid is
-     * required. Unlike Google Pay / Apple Pay, this is not a
-     * major-currency string.
+     * Charge amount as a major-currency decimal string (e.g. `"50.00"`
+     * for $50.00), the same format as Google Pay / Apple Pay. Compared
+     * to the merchant ACH threshold fetched by the iframe. Omit for
+     * setup intents or when the charge is unknown — if a threshold is
+     * set, Plaid is required.
      */
-    amount?: number;
+    amount?: string;
   };
 
 /**

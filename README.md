@@ -297,22 +297,22 @@ When the charge meets the merchant’s ACH verification threshold, the SDK hides
 
 **Additional `options` (ACH verification):**
 
-- `amount` (`number`, cents / minor units) — compared to the threshold the iframe fetches. This is **not** the Google Pay / Apple Pay `amount` string. Omit to always Connect once a threshold exists (setup-intent save, or when you do not know the charge yet). Pass `amount` and `update({ amount })` when it changes if charges under the threshold should stay on the manual form.
+- `amount` (`string`, major-currency decimal, e.g. `"50.00"`) — same format as Google Pay / Apple Pay. Compared to the threshold the iframe fetches (cents). Omit to always Connect once a threshold exists (setup-intent save, or when you do not know the charge yet). Pass `amount` and `update({ amount })` when it changes if charges under the threshold should stay on the manual form.
 
-Compare locally once the iframe posts `ACH_THRESHOLD`: Plaid when `amount >= achThreshold`, or when `amount` is omitted and a threshold is set. No threshold (or `null`) keeps the manual bank form. If `amount` later drops under the threshold, Plaid credentials are dropped and the iframe form is shown again.
+Compare locally once the iframe posts `ACH_THRESHOLD`: Plaid when the amount (converted to cents) is `>= achThreshold`, or when `amount` is omitted and a threshold is set. No threshold (or `null`) keeps the manual bank form. If `amount` later drops under the threshold, Plaid credentials are dropped and the iframe form is shown again.
 
 ```ts
 import { mountAmosBankAccountPaymentMethodForm } from "@amos.com/amos-js";
 
 const bank = mountAmosBankAccountPaymentMethodForm("#bank-form", {
   renderToken,
-  amount: 5000, // $50.00 in cents; omit to always Connect
+  amount: "50.00", // omit to always Connect
   onResult: (result) => {
     /* … */
   },
 });
 
-bank.update({ amount: 2500 });
+bank.update({ amount: "25.00" });
 ```
 
 `validateForm` / `confirmPaymentIntent` / `confirmSetupIntent` stay iframe-based. When Plaid succeeded, confirm sends `payment_method.plaid` (`public_token`, `account_id`) and does not require typed account numbers.
@@ -422,7 +422,7 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 - **`iframe` argument**: every messaging helper (`validateForm`, `confirmPaymentIntent`, `confirmSetupIntent`, `resetForm`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
 - **`onResult` is not settlement proof**: `onResult` tells you when to stop waiting (e.g. dismiss a spinner). Verify payment or setup success on your backend via webhooks. On `status: "incomplete"`, unlock your UI — the customer can fix fields in the iframe and retry. Use `result.reason` (`"field_errors"` or `"validation_failed"`) to distinguish recoverable states.
 - **Same components for payment vs setup intents**: `mountAmosCreditCardPaymentMethodForm` and `mountAmosBankAccountPaymentMethodForm` support both payment intents and setup intents. The flow differs only by which server call you make and which confirmation function you use. Handle both outcomes via `onResult`.
-- **Amount format**: for `mountAmosGooglePayButton` and `mountAmosApplePayButton`, `amount` is a major-currency decimal string (e.g. `"50.00"` for $50.00). For `mountAmosBankAccountPaymentMethodForm`, `amount` is a number in cents (e.g. `5000`). For `components["schemas"]["CreatePaymentIntentInput"]` on the server (card/bank create, and the object the wallet iframe sends to `onInitiatePaymentIntentRequest`), `amount` is a number in cents (e.g. `5000`).
+- **Amount format**: for `mountAmosGooglePayButton`, `mountAmosApplePayButton`, and `mountAmosBankAccountPaymentMethodForm`, `amount` is a major-currency decimal string (e.g. `"50.00"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server (card/bank create, and the object the wallet iframe sends to `onInitiatePaymentIntentRequest`), `amount` is a number in cents (e.g. `5000`).
 - **Plaid Link (ACH verification)**: load `cdn.plaid.com` from the **parent** document (see CSP above). Merchants do not proxy Pay API; the bank iframe fetches the ACH threshold and mints link tokens. Confirm still goes through the bank iframe so Amos can attach `plaid` to the payment method.
 - **Apple Pay waiting overlay**: on browsers where Apple's QR handoff opens in a popup (non-Safari), `mountAmosApplePayButton` shows a fixed full-viewport overlay on the host page until payment completes, the popup closes, or the user clicks **Cancel payment**. Avoid stacking other fixed UI above it.
 - **Browser-only**: the mount and messaging helpers require `window` and the DOM. They are not safe to call during server-side rendering — call them from client-side code only (for example, inside a `useEffect`-like hook in your framework of choice).

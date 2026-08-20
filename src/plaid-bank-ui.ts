@@ -1,7 +1,8 @@
-import { requestPlaidLinkToken, validateForm } from "./messaging";
+import { requestPlaidLinkToken } from "./messaging";
 import type { PaymentMethodFormListenerOptions } from "./payment-method-form";
 import {
   linkedBankLabelFromMetadata,
+  majorAmountToMinorUnits,
   openPlaidLink,
   type PlaidCredentials,
   plaidAccountIdFromMetadata,
@@ -154,7 +155,7 @@ function applyTheme(
 }
 
 export type PlaidBankUiOptions = {
-  amount?: number;
+  amount?: string;
   appearance?: PaymentMethodFormListenerOptions["appearance"];
   onValidityChange?: PaymentMethodFormListenerOptions["onValidityChange"];
 };
@@ -187,7 +188,6 @@ export function attachPlaidBankUi({
   let requireVerification = false;
   let cachedLinkToken: string | undefined;
   let opening = false;
-  let plaidMode = false;
   let lastEmittedValid: boolean | undefined;
   let destroyLink: (() => void) | undefined;
   let linked:
@@ -242,7 +242,7 @@ export function attachPlaidBankUi({
       return true;
     }
     return requiresAchVerification({
-      amount: current.amount,
+      amount: majorAmountToMinorUnits(current.amount),
       achThreshold,
     });
   }
@@ -258,8 +258,6 @@ export function attachPlaidBankUi({
 
   function syncSession(): void {
     const requiresVerification = requiresConnect();
-    const leaving = plaidMode && !requiresVerification;
-    plaidMode = requiresVerification;
     setBankPlaidSession(iframe, {
       requiresVerification,
       plaid: requiresVerification ? linked?.credentials : undefined,
@@ -272,13 +270,6 @@ export function attachPlaidBankUi({
         formWrapper.style.display = "";
       }
       lastEmittedValid = undefined;
-      if (leaving) {
-        void validateForm({ iframe }).then((isValid) => {
-          if (!requiresConnect()) {
-            current.onValidityChange?.({ isValid });
-          }
-        });
-      }
       return;
     }
 
