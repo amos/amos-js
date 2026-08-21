@@ -171,6 +171,11 @@ export type OpenPlaidLinkInput = {
     metadata: PlaidLinkOnSuccessMetadata,
   ) => void;
   onExit?: (error: { error_code?: string } | null) => void;
+  /**
+   * When aborted (e.g. the bank form was unmounted), skip opening Link
+   * and destroy the handler if it was already created.
+   */
+  signal?: AbortSignal;
 };
 
 /**
@@ -181,8 +186,12 @@ export async function openPlaidLink({
   token,
   onSuccess,
   onExit,
+  signal,
 }: OpenPlaidLinkInput): Promise<() => void> {
   await loadPlaidScript();
+  if (signal?.aborted) {
+    return () => {};
+  }
   if (!window.Plaid) {
     throw new Error("Plaid Link failed to initialize");
   }
@@ -194,6 +203,10 @@ export async function openPlaidLink({
       onExit?.(error);
     },
   });
+  if (signal?.aborted) {
+    handler.destroy();
+    return () => {};
+  }
   handler.open();
 
   return () => {

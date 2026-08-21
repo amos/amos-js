@@ -190,6 +190,7 @@ export function attachPlaidBankUi({
   let opening = false;
   let lastEmittedValid: boolean | undefined;
   let destroyLink: (() => void) | undefined;
+  const abort = new AbortController();
   let linked:
     | { credentials: PlaidCredentials; bankName: string; last4: string }
     | undefined;
@@ -321,7 +322,7 @@ export function attachPlaidBankUi({
 
   connectButton.addEventListener("click", () => {
     void (async () => {
-      if (opening) {
+      if (abort.signal.aborted || opening) {
         return;
       }
       opening = true;
@@ -331,11 +332,18 @@ export function attachPlaidBankUi({
         if (!cachedLinkToken) {
           cachedLinkToken = await requestPlaidLinkToken({ iframe });
         }
+        if (abort.signal.aborted) {
+          return;
+        }
         const token = cachedLinkToken;
         destroyLink?.();
         destroyLink = await openPlaidLink({
           token,
+          signal: abort.signal,
           onSuccess: (publicToken, metadata) => {
+            if (abort.signal.aborted) {
+              return;
+            }
             const accountId = plaidAccountIdFromMetadata(metadata);
             if (!accountId) {
               setError("Select a bank account to continue.");
@@ -354,19 +362,31 @@ export function attachPlaidBankUi({
             syncSession();
           },
           onExit: (error) => {
+            if (abort.signal.aborted) {
+              return;
+            }
             if (error?.error_code === "INVALID_LINK_TOKEN") {
               cachedLinkToken = undefined;
             }
           },
         });
+        if (abort.signal.aborted) {
+          destroyLink();
+          destroyLink = undefined;
+        }
       } catch (error) {
         cachedLinkToken = undefined;
+        if (abort.signal.aborted) {
+          return;
+        }
         setError(
           error instanceof Error ? error.message : "Could not connect bank.",
         );
       } finally {
         opening = false;
-        connectButton.disabled = false;
+        if (!abort.signal.aborted) {
+          connectButton.disabled = false;
+        }
       }
     })();
   });
@@ -390,8 +410,10 @@ export function attachPlaidBankUi({
       syncSession();
     },
     destroy() {
+      abort.abort();
       window.removeEventListener("message", handleIframeMessage);
       destroyLink?.();
+      destroyLink = undefined;
       clearBankPlaidSession(iframe);
       panel.remove();
     },
