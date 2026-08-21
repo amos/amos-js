@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.10.2
+
+### Patch Changes
+
+- Handle render token verification settings
+
 ## 0.10.1
 
 ### Patch Changes

@@ -536,10 +536,11 @@ export type Message =
     }
   | {
       /**
-       * Embed → parent: merchant ACH verification threshold for this
-       * render token. `achThreshold` is cents, or `null` when the
-       * merchant has no threshold (manual ACH). `requireVerification`
-       * is true when the fetch failed in production (fail closed).
+       * Embed → parent: ACH verification policy for this bank iframe.
+       * `achThreshold` is cents, or `null` when the merchant has no
+       * threshold (manual ACH). `requireVerification` is true for setup
+       * intents (always Plaid, no merchant lookup), and when a payment
+       * threshold fetch failed in production (fail closed).
        */
       type: "ACH_THRESHOLD";
       achThreshold?: number | null;

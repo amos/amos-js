@@ -514,9 +514,22 @@ export type AmosBankAccountPaymentMethodFormOptions =
      * `"0"`, which is typically under the threshold so Connect / Plaid
      * stays hidden until the host passes a real charge.
      *
+     * Ignored when {@link AmosBankAccountPaymentMethodFormOptions.intent}
+     * is `"setup"` — setup intents always show Connect (unless the render
+     * token disables Plaid verification).
+     *
      * @default "0"
      */
     amount?: string;
+    /**
+     * `"setup"` saves a bank account for later charges and always shows
+     * Connect / Plaid (no merchant threshold lookup). `"payment"`
+     * compares {@link AmosBankAccountPaymentMethodFormOptions.amount} to
+     * the merchant ACH threshold.
+     *
+     * @default "payment"
+     */
+    intent?: "payment" | "setup";
   };
 
 /**
@@ -528,7 +541,8 @@ export type AmosBankAccountPaymentMethodFormOptions =
  * Connect bank button is rendered in the parent document and Plaid Link
  * is opened on click. `amount` defaults to `"0"`, which is typically
  * under the threshold so Connect stays hidden on open-amount forms
- * until the host passes a real charge. The button uses the same
+ * until the host passes a real charge. Pass `intent: "setup"` to always
+ * show Connect without a merchant lookup. The button uses the same
  * `appearance.themeVariables` as the iframe (and inherits host-page
  * tokens when those variables are unset). Otherwise a field-shaped
  * skeleton is shown and replaced by the iframe once appearance is applied.
@@ -546,11 +560,12 @@ export function mountAmosBankAccountPaymentMethodForm(
     renderToken,
     billingAddressRequirement = "country",
     amount = "0",
+    intent = "payment",
     ...listenerOptions
   } = options;
 
   const iframe = createIframe({
-    src: getBankAccountFormSrc(renderToken, billingAddressRequirement),
+    src: getBankAccountFormSrc(renderToken, billingAddressRequirement, intent),
     title: "Secure bank account payment method form powered by Amos",
     name: "amos-bank-account-payment-method-form",
     height: getBankAccountFormInitialHeight(billingAddressRequirement),

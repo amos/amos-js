@@ -68,15 +68,22 @@ export function getCreditCardFormSrc(
 
 /**
  * Build the iframe `src` URL for the embedded bank-account form.
+ *
+ * Pass `intent: "setup"` so the iframe always requires Plaid (when the
+ * render token allows it) and does not `GET /merchants` for a threshold.
  */
 export function getBankAccountFormSrc(
   renderToken: string,
   billingAddressRequirement: BillingAddressRequirement = "country",
+  intent: "payment" | "setup" = "payment",
 ): string {
   const params = new URLSearchParams({
     token: renderToken,
     billingAddressRequirement,
   });
+  if (intent === "setup") {
+    params.set("intent", "setup");
+  }
 
   return `${getEmbedOrigin(renderToken)}/iframe/bank?${params}`;
 }

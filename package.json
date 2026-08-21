@@ -1,6 +1,6 @@
 {
   "name": "@amos.com/amos-js",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -35,11 +35,8 @@
   "author": "Amos",
   "license": "MIT",
   "description": "Amos JavaScript SDK for embedding payment methods via iframes.",
-  "peerDependencies": {
-    "@amos.com/node": ">=0.1.39"
-  },
   "devDependencies": {
-    "@amos.com/node": "0.1.39",
+    "@amos.com/node": "0.1.50",
     "@biomejs/biome": "2.5.7",
     "@changesets/cli": "2.31.1",
     "@types/node": "26.1.2",
@@ -50,5 +47,8 @@
   },
   "dependencies": {
     "@types/googlepay": "0.7.11"
+  },
+  "peerDependencies": {
+    "@amos.com/node": ">=0.1.50"
   }
 }
