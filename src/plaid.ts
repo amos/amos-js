@@ -51,8 +51,9 @@ declare global {
  * fields.
  *
  * - No `achThreshold`: always manual ACH (backward compatible).
- * - `amount` omitted: Plaid (setup / unknown future charge).
  * - Otherwise: Plaid when `amount >= achThreshold`.
+ * - Omitted `amount` is treated as `0` (typically under the threshold, so
+ *   Connect stays hidden until the host passes a charge).
  *
  * `amount` and `achThreshold` are integer minor units (cents).
  */
@@ -66,10 +67,7 @@ export function requiresAchVerification({
   if (achThreshold == null) {
     return false;
   }
-  if (amount == null) {
-    return true;
-  }
-  return amount >= achThreshold;
+  return (amount ?? 0) >= achThreshold;
 }
 
 /**

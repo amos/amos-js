@@ -298,16 +298,16 @@ When the charge meets the merchant’s ACH verification threshold, the SDK hides
 
 **Additional `options` (ACH verification):**
 
-- `amount` (`string`, major-currency decimal, e.g. `"50.00"`) — same format as Google Pay / Apple Pay. Compared to the threshold the iframe fetches (cents). Omit to always Connect once a threshold exists (setup-intent save, or when you do not know the charge yet). Pass `amount` and `update({ amount })` when it changes if charges under the threshold should stay on the manual form.
+- `amount` (`string`, major-currency decimal, e.g. `"50.00"`, **required**, defaults to `"0"`) — same format as Google Pay / Apple Pay. Compared to the threshold the iframe fetches (cents). Pass `"0"` (the default) on open-amount forms until the customer enters a charge — 0 is typically under the threshold, so Connect stays hidden. Pass `amount` and `update({ amount })` when it changes. For setup intents, pass an amount at or above the merchant ACH threshold (the expected future charge) to show Connect.
 
-Compare locally once the iframe posts `ACH_THRESHOLD`: Plaid when the amount (converted to cents) is `>= achThreshold`, or when `amount` is omitted and a threshold is set. No threshold (or `null`) keeps the manual bank form. If `amount` later drops under the threshold, Plaid credentials are dropped and the iframe form is shown again.
+Compare locally once the iframe posts `ACH_THRESHOLD`: Plaid when the amount (converted to cents, default `0`) is `>= achThreshold`. No threshold (or `null`) keeps the manual bank form. If `amount` later drops under the threshold, Plaid credentials are dropped and the iframe form is shown again.
 
 ```ts
 import { mountAmosBankAccountPaymentMethodForm } from "@amos.com/amos-js";
 
 const bank = mountAmosBankAccountPaymentMethodForm("#bank-form", {
   renderToken,
-  amount: "50.00", // omit to always Connect
+  amount: "50.00", // defaults to "0" (manual form until the charge meets the threshold)
   onResult: (result) => {
     /* … */
   },

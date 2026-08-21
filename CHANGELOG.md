@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.10.1
+
+### Patch Changes
+
+- Require amount for bank account form
+
 ## 0.10.0
 
 ### Minor Changes

@@ -181,7 +181,10 @@ export function attachPlaidBankUi({
 } {
   ensurePlaidBankUiStyles();
 
-  const current: PlaidBankUiOptions = { ...options };
+  const current: PlaidBankUiOptions = {
+    ...options,
+    amount: options.amount ?? "0",
+  };
   const appliedThemeKeys: Array<string> = [];
   let thresholdKnown = false;
   let achThreshold: number | undefined;
@@ -394,7 +397,7 @@ export function attachPlaidBankUi({
   return {
     update(patch) {
       if ("amount" in patch) {
-        current.amount = patch.amount;
+        current.amount = patch.amount ?? "0";
       }
       if ("onValidityChange" in patch) {
         current.onValidityChange = patch.onValidityChange;

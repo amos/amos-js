@@ -510,9 +510,11 @@ export type AmosBankAccountPaymentMethodFormOptions =
     /**
      * Charge amount as a major-currency decimal string (e.g. `"50.00"`
      * for $50.00), the same format as Google Pay / Apple Pay. Compared
-     * to the merchant ACH threshold fetched by the iframe. Omit for
-     * setup intents or when the charge is unknown — if a threshold is
-     * set, Plaid is required.
+     * to the merchant ACH threshold fetched by the iframe. Defaults to
+     * `"0"`, which is typically under the threshold so Connect / Plaid
+     * stays hidden until the host passes a real charge.
+     *
+     * @default "0"
      */
     amount?: string;
   };
@@ -522,9 +524,11 @@ export type AmosBankAccountPaymentMethodFormOptions =
  * element. Returns a controller exposing the underlying iframe, an
  * `update()` method, and a `destroy()` method.
  *
- * When the iframe reports an ACH threshold and `amount` meets it (or
- * `amount` is omitted), a Connect bank button is rendered in the parent
- * document and Plaid Link is opened on click. The button uses the same
+ * When the iframe reports an ACH threshold and `amount` meets it, a
+ * Connect bank button is rendered in the parent document and Plaid Link
+ * is opened on click. `amount` defaults to `"0"`, which is typically
+ * under the threshold so Connect stays hidden on open-amount forms
+ * until the host passes a real charge. The button uses the same
  * `appearance.themeVariables` as the iframe (and inherits host-page
  * tokens when those variables are unset). Otherwise a field-shaped
  * skeleton is shown and replaced by the iframe once appearance is applied.
@@ -541,7 +545,7 @@ export function mountAmosBankAccountPaymentMethodForm(
   const {
     renderToken,
     billingAddressRequirement = "country",
-    amount,
+    amount = "0",
     ...listenerOptions
   } = options;
 
