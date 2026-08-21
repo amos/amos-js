@@ -8,6 +8,7 @@ import type {
   Appearance,
   ConfirmationResult,
   Message,
+  PaymentMethodFormCardBrandChangeEvent,
   PaymentMethodFormValidityChangeEvent,
 } from "./types";
 
@@ -139,6 +140,13 @@ export type PaymentMethodFormListenerOptions = {
    */
   onValidityChange?: (event: PaymentMethodFormValidityChangeEvent) => void;
   /**
+   * Called when the detected card brand changes. `brand` is the matched
+   * network, or `null` when the field is empty or the digits do not
+   * match a known brand. Does not include PCI data. Credit-card form
+   * only — never fired for bank account.
+   */
+  onCardBrandChanged?: (event: PaymentMethodFormCardBrandChangeEvent) => void;
+  /**
    * Called when the interactive confirmation flow finishes (success or
    * terminal failure). Not settlement proof — verify via webhooks.
    * Recoverable validation posts `status: "incomplete"` with a `reason`
@@ -208,6 +216,10 @@ export function attachPaymentMethodFormListeners(
           break;
         }
         current.onValidityChange?.({ isValid: event.data.isValid });
+        break;
+
+      case "CARD_BRAND_CHANGE":
+        current.onCardBrandChanged?.({ brand: event.data.brand });
         break;
 
       case "CONFIRMATION_RESULT":

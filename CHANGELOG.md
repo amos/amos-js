@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.10.0
+
+### Minor Changes
+
+- Add onCardBrandChanged so hosts can react when the credit-card iframe detects Visa, Mastercard, Amex, Discover, Diners Club, or JCB.
+
 ## 0.9.18
 
 ### Patch Changes

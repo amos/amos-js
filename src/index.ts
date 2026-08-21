@@ -94,10 +94,12 @@ export type {
   Appearance,
   AppearanceLabels,
   ApplePayButtonElementProps,
+  CardBrand,
   ConfirmationIncompleteReason,
   ConfirmationResult,
   GooglePayButtonElementProps,
   Message,
+  PaymentMethodFormCardBrandChangeEvent,
   PaymentMethodFormValidityChangeEvent,
   ThemeVariable,
 } from "./types";

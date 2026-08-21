@@ -12,6 +12,26 @@ export type PaymentMethodFormValidityChangeEvent = {
 };
 
 /**
+ * Detected card network from the PAN prefix inside the iframe.
+ * `null` when the field is empty or the digits do not match a known brand.
+ */
+export type CardBrand =
+  | "visa"
+  | "mastercard"
+  | "amex"
+  | "discover"
+  | "diners"
+  | "jcb";
+
+/**
+ * PCI-safe card brand update from the credit-card iframe. Does not
+ * include the PAN, last4, or BIN.
+ */
+export type PaymentMethodFormCardBrandChangeEvent = {
+  brand: CardBrand | null;
+};
+
+/**
  * Why an interactive confirmation attempt ended with `status: "incomplete"`.
  *
  * Helps hosts distinguish recoverable iframe states for analytics and
@@ -504,6 +524,15 @@ export type Message =
        */
       type: "FORM_VALIDITY_CHANGE";
       isValid: boolean;
+    }
+  | {
+      /**
+       * Embed → parent: detected card brand changed. `brand` is the
+       * matched network, or `null` when the field is empty or the
+       * digits do not match a known brand. Does not include PCI data.
+       */
+      type: "CARD_BRAND_CHANGE";
+      brand: CardBrand | null;
     }
   | {
       /**
