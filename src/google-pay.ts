@@ -118,6 +118,9 @@ export function attachGooglePayButtonListeners(
     ...options,
     height,
   };
+  // React calls `update()` on first paint, before the iframe has left
+  // about:blank. Queue until IFRAME_READY so postMessage targetOrigin matches.
+  let ready = false;
 
   function pushAmount() {
     sendUpdateAmount({ iframe, amount: current.amount });
@@ -142,6 +145,7 @@ export function attachGooglePayButtonListeners(
 
     switch (event.data.type) {
       case "IFRAME_READY":
+        ready = true;
         sendParentReadyMessage(iframe);
         sendUpdateAppearance({ iframe, appearance: {} });
         pushAmount();
@@ -194,6 +198,9 @@ export function attachGooglePayButtonListeners(
       const hadMerchantName = "merchantName" in patch;
       const hadButtonProps = "height" in patch || "buttonProps" in patch;
       current = { ...current, ...patch };
+      if (!ready) {
+        return;
+      }
       if (hadAmount) {
         pushAmount();
       }

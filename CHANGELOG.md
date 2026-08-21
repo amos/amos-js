@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.10.6
+
+### Patch Changes
+
+- Improve postMessage flow
+
 ## 0.10.5
 
 ### Patch Changes

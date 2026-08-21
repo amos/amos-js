@@ -194,6 +194,9 @@ export function attachPaymentMethodFormListeners(
   options: PaymentMethodFormListenerOptions,
 ): PaymentMethodFormController {
   let current = { ...options };
+  // React calls `update()` on first paint, before the iframe has left
+  // about:blank. Queue until IFRAME_READY so postMessage targetOrigin matches.
+  let ready = false;
 
   function handleMessage(event: MessageEvent<Message>) {
     if (event.source !== iframe.contentWindow) {
@@ -202,6 +205,7 @@ export function attachPaymentMethodFormListeners(
 
     switch (event.data.type) {
       case "IFRAME_READY":
+        ready = true;
         sendParentReadyMessage(iframe);
         sendUpdateAppearance({ iframe, appearance: current.appearance });
         break;
@@ -241,7 +245,7 @@ export function attachPaymentMethodFormListeners(
     update(patch) {
       const hadAppearance = "appearance" in patch;
       current = { ...current, ...patch };
-      if (hadAppearance) {
+      if (hadAppearance && ready) {
         sendUpdateAppearance({ iframe, appearance: current.appearance });
       }
     },
