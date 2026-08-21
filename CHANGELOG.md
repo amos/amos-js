@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.10.3
+
+### Patch Changes
+
+- Debug
+
 ## 0.10.2
 
 ### Patch Changes

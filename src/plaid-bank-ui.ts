@@ -1,3 +1,4 @@
+import { reportParentInfoLog } from "./log";
 import { requestPlaidLinkToken } from "./messaging";
 import type { PaymentMethodFormListenerOptions } from "./payment-method-form";
 import {
@@ -309,6 +310,16 @@ export function attachPlaidBankUi({
     thresholdKnown = true;
     achThreshold = event.data.achThreshold ?? undefined;
     requireVerification = event.data.requireVerification === true;
+    reportParentInfoLog({
+      iframe,
+      message: "merchant ach_threshold",
+      endpoint: "ACH_THRESHOLD",
+      headers: { origin: event.origin },
+      body: {
+        achThreshold,
+        requireVerification,
+      },
+    });
     if (linked && !requiresConnect()) {
       unlink();
       return;
