@@ -557,17 +557,6 @@ export type Message =
       requestId: string;
       link_token?: string;
       error?: string;
-    }
-  | {
-      /**
-       * Parent → embed: info telemetry for Rollbar. The iframe reports
-       * `message` with `endpoint`, `headers`, and `body`.
-       */
-      type: "PARENT_INFO_LOG";
-      message: string;
-      endpoint?: string;
-      headers?: Record<string, string>;
-      body?: unknown;
     };
 
 /**

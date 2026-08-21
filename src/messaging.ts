@@ -1,6 +1,5 @@
 import type { components } from "@amos.com/node";
 import { decodeJwt } from "./jwt";
-import { reportParentInfoLog } from "./log";
 import { getBankPlaidSession } from "./plaid-session";
 import {
   type Appearance,
@@ -292,24 +291,6 @@ function postConfirmIntent({
   if (session?.requiresVerification && !plaid) {
     resetIframeFields(iframe);
   }
-
-  const origin = getIframeTargetOrigin(iframe);
-  reportParentInfoLog({
-    iframe,
-    message:
-      type === "CONFIRM_PAYMENT_INTENT"
-        ? "confirmPaymentIntent"
-        : "confirmSetupIntent",
-    endpoint:
-      type === "CONFIRM_PAYMENT_INTENT"
-        ? "POST /embed/payment_intents/{id}/confirm_with_payment_method"
-        : "POST /embed/setup_intents/{id}/confirm_with_payment_method",
-    headers: {
-      origin: window.location.origin,
-      "iframe-origin": origin,
-    },
-    body: { id, token, ...(plaid ? { plaid } : {}) },
-  });
 
   iframe.contentWindow?.postMessage(
     createMessage({
