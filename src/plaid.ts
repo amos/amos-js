@@ -1,0 +1,215 @@
+import type { components } from "@amos.com/node";
+
+const PLAID_SCRIPT_SRC =
+  "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
+
+export type PlaidCredentials = components["schemas"]["PlaidCredentialsInput"];
+
+export type PlaidLinkAccount = {
+  id?: string;
+  mask?: string;
+  name?: string;
+  subtype?: string | null;
+  type?: string;
+};
+
+export type PlaidLinkOnSuccessMetadata = {
+  institution?: { name?: string } | null;
+  accounts?: Array<PlaidLinkAccount>;
+  account?: PlaidLinkAccount;
+  account_id?: string;
+};
+
+type PlaidLinkHandler = {
+  open: () => void;
+  exit: (options?: { force?: boolean }) => void;
+  destroy: () => void;
+};
+
+type PlaidCreateConfig = {
+  token: string;
+  onSuccess: (
+    publicToken: string,
+    metadata: PlaidLinkOnSuccessMetadata,
+  ) => void;
+  onExit?: (
+    error: { error_code?: string; error_message?: string } | null,
+    metadata: unknown,
+  ) => void;
+};
+
+declare global {
+  interface Window {
+    Plaid?: {
+      create: (config: PlaidCreateConfig) => PlaidLinkHandler;
+    };
+  }
+}
+
+/**
+ * Whether the bank form should show Plaid Link instead of routing/account
+ * fields.
+ *
+ * - No `achThreshold`: always manual ACH (backward compatible).
+ * - `amount` omitted: Plaid (setup / unknown future charge).
+ * - Otherwise: Plaid when `amount >= achThreshold`.
+ *
+ * `amount` and `achThreshold` are integer minor units (cents).
+ */
+export function requiresAchVerification({
+  amount,
+  achThreshold,
+}: {
+  amount?: number;
+  achThreshold?: number;
+}): boolean {
+  if (achThreshold == null) {
+    return false;
+  }
+  if (amount == null) {
+    return true;
+  }
+  return amount >= achThreshold;
+}
+
+/**
+ * Convert a major-currency decimal string (e.g. `"50.00"`) to integer
+ * cents. Empty / invalid values are omitted.
+ */
+export function majorAmountToMinorUnits(amount?: string): number | undefined {
+  if (amount == null) {
+    return undefined;
+  }
+  const trimmed = amount.trim();
+  if (trimmed === "") {
+    return undefined;
+  }
+  const major = Number(trimmed.replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(major)) {
+    return undefined;
+  }
+  return Math.round(major * 100);
+}
+
+export function plaidAccountIdFromMetadata(
+  metadata: PlaidLinkOnSuccessMetadata,
+): string | undefined {
+  return (
+    metadata.account_id ?? metadata.account?.id ?? metadata.accounts?.[0]?.id
+  );
+}
+
+export function linkedBankLabelFromMetadata(
+  metadata: PlaidLinkOnSuccessMetadata,
+): { bankName: string; last4: string } {
+  const account = metadata.account ?? metadata.accounts?.[0];
+  const bankName = metadata.institution?.name ?? "Bank account";
+  const last4 = account?.mask ?? "";
+  return { bankName, last4 };
+}
+
+let plaidScriptPromise: Promise<void> | undefined;
+
+function removePlaidScriptTags(): void {
+  for (const node of document.querySelectorAll(
+    `script[src="${PLAID_SCRIPT_SRC}"]`,
+  )) {
+    node.remove();
+  }
+}
+
+export function loadPlaidScript(): Promise<void> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Plaid Link requires a browser"));
+  }
+  if (window.Plaid) {
+    return Promise.resolve();
+  }
+  if (plaidScriptPromise) {
+    return plaidScriptPromise;
+  }
+
+  // A previous failed attempt leaves a <script> whose load/error already
+  // fired. Waiting on that tag hangs; drop it and inject a new one.
+  removePlaidScriptTags();
+
+  plaidScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = PLAID_SCRIPT_SRC;
+    script.async = true;
+
+    const fail = (message: string) => {
+      script.remove();
+      plaidScriptPromise = undefined;
+      reject(new Error(message));
+    };
+
+    script.addEventListener(
+      "load",
+      () => {
+        if (window.Plaid) {
+          resolve();
+          return;
+        }
+        fail("Plaid Link failed to initialize");
+      },
+      { once: true },
+    );
+    script.addEventListener("error", () => fail("Failed to load Plaid Link"), {
+      once: true,
+    });
+    document.head.append(script);
+  });
+
+  return plaidScriptPromise;
+}
+
+export type OpenPlaidLinkInput = {
+  token: string;
+  onSuccess: (
+    publicToken: string,
+    metadata: PlaidLinkOnSuccessMetadata,
+  ) => void;
+  onExit?: (error: { error_code?: string } | null) => void;
+  /**
+   * When aborted (e.g. the bank form was unmounted), skip opening Link
+   * and destroy the handler if it was already created.
+   */
+  signal?: AbortSignal;
+};
+
+/**
+ * Load Plaid Link (if needed) and open it with the given `link_token`.
+ * Returns a destroy function for the Link handler.
+ */
+export async function openPlaidLink({
+  token,
+  onSuccess,
+  onExit,
+  signal,
+}: OpenPlaidLinkInput): Promise<() => void> {
+  await loadPlaidScript();
+  if (signal?.aborted) {
+    return () => {};
+  }
+  if (!window.Plaid) {
+    throw new Error("Plaid Link failed to initialize");
+  }
+
+  const handler = window.Plaid.create({
+    token,
+    onSuccess,
+    onExit: (error) => {
+      onExit?.(error);
+    },
+  });
+  if (signal?.aborted) {
+    handler.destroy();
+    return () => {};
+  }
+  handler.open();
+
+  return () => {
+    handler.destroy();
+  };
+}

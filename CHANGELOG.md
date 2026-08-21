@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.9.18
+
+### Patch Changes
+
+- Support Plaid
+
 ## 0.9.17
 
 ### Patch Changes

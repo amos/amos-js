@@ -52,6 +52,7 @@ export {
 export type {
   AmosApplePayButtonMountController,
   AmosApplePayButtonOptions,
+  AmosBankAccountPaymentMethodFormMountController,
   AmosBankAccountPaymentMethodFormOptions,
   AmosCreditCardPaymentMethodFormOptions,
   AmosGooglePayButtonMountController,
@@ -77,6 +78,18 @@ export {
   getCreditCardFormInitialHeight,
   getCreditCardFormSrc,
 } from "./payment-method-form";
+export type {
+  OpenPlaidLinkInput,
+  PlaidCredentials,
+  PlaidLinkOnSuccessMetadata,
+} from "./plaid";
+export {
+  linkedBankLabelFromMetadata,
+  loadPlaidScript,
+  openPlaidLink,
+  plaidAccountIdFromMetadata,
+  requiresAchVerification,
+} from "./plaid";
 export type {
   Appearance,
   AppearanceLabels,

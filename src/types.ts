@@ -454,12 +454,18 @@ export type Message =
       /** Parent → embed: confirm a payment intent with an embed token. */
       type: "CONFIRM_PAYMENT_INTENT";
     } & Pick<components["schemas"]["PaymentIntent"], "id"> &
-      Pick<components["schemas"]["EmbedToken"], "token">)
+      Pick<components["schemas"]["EmbedToken"], "token"> & {
+        /** Present when ACH verification completed via Plaid Link in the parent. */
+        plaid?: components["schemas"]["PlaidCredentialsInput"];
+      })
   | ({
       /** Parent → embed: confirm a setup intent with an embed token. */
       type: "CONFIRM_SETUP_INTENT";
     } & Pick<components["schemas"]["SetupIntent"], "id"> &
-      Pick<components["schemas"]["EmbedToken"], "token">)
+      Pick<components["schemas"]["EmbedToken"], "token"> & {
+        /** Present when ACH verification completed via Plaid Link in the parent. */
+        plaid?: components["schemas"]["PlaidCredentialsInput"];
+      })
   | {
       /**
        * Embed → parent: the interactive confirmation flow finished.
@@ -498,6 +504,29 @@ export type Message =
        */
       type: "FORM_VALIDITY_CHANGE";
       isValid: boolean;
+    }
+  | {
+      /**
+       * Embed → parent: merchant ACH verification threshold for this
+       * render token. `achThreshold` is cents, or `null` when the
+       * merchant has no threshold (manual ACH). `requireVerification`
+       * is true when the fetch failed in production (fail closed).
+       */
+      type: "ACH_THRESHOLD";
+      achThreshold?: number | null;
+      requireVerification?: boolean;
+    }
+  | {
+      /** Parent → embed: mint a Plaid Link token for Connect. */
+      type: "CREATE_PLAID_LINK_TOKEN";
+      requestId: string;
+    }
+  | {
+      /** Embed → parent: minted Plaid Link token, or `error`. */
+      type: "PLAID_LINK_TOKEN";
+      requestId: string;
+      link_token?: string;
+      error?: string;
     };
 
 /**
