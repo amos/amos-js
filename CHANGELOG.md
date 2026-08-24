@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.2
+
+### Patch Changes
+
+- Update dependencies
+
 ## 0.11.1
 
 ### Patch Changes
