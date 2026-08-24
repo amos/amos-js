@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.1
+
+### Patch Changes
+
+- Handle sync authorization
+
 ## 0.10.6
 
 ### Patch Changes

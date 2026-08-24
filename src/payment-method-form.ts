@@ -154,13 +154,11 @@ export type PaymentMethodFormListenerOptions = {
    */
   onCardBrandChanged?: (event: PaymentMethodFormCardBrandChangeEvent) => void;
   /**
-   * Called when the interactive confirmation flow finishes (success or
-   * terminal failure). Not settlement proof — verify via webhooks.
-   * Recoverable validation posts `status: "incomplete"` with a `reason`
-   * (`field_errors` or `validation_failed`) instead of invoking this for
-   * terminal outcomes only — hosts should unlock UI on `incomplete`.
+   * @deprecated Prefer `await confirmPayment()` / `await confirmSetup()`.
+   * Called when the interactive confirmation flow finishes. Recoverable
+   * validation posts `status: "incomplete"` with a `reason`.
    */
-  onResult: (result: ConfirmationResult) => void;
+  onResult?: (result: ConfirmationResult) => void;
 };
 
 /**
@@ -234,7 +232,7 @@ export function attachPaymentMethodFormListeners(
         break;
 
       case "CONFIRMATION_RESULT":
-        current.onResult(event.data.result);
+        current.onResult?.(event.data.result);
         break;
     }
   }

@@ -37,7 +37,9 @@ export {
 export { decodeJwt, getEmbedOrigin } from "./jwt";
 
 export {
+  confirmPayment,
   confirmPaymentIntent,
+  confirmSetup,
   confirmSetupIntent,
   resetForm,
   sendConfirmationResult,
@@ -97,6 +99,7 @@ export type {
   CardBrand,
   ConfirmationIncompleteReason,
   ConfirmationResult,
+  ConfirmResult,
   GooglePayButtonElementProps,
   Message,
   PaymentMethodFormCardBrandChangeEvent,

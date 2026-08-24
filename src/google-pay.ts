@@ -3,7 +3,7 @@
 import type { components } from "@amos.com/node";
 import { getEmbedOrigin } from "./jwt";
 import {
-  confirmPaymentIntent,
+  confirmPayment,
   sendParentReadyMessage,
   updateAmount as sendUpdateAmount,
   updateAppearance as sendUpdateAppearance,
@@ -11,7 +11,7 @@ import {
   updateMerchantName as sendUpdateMerchantName,
 } from "./messaging";
 import type {
-  ConfirmationResult,
+  ConfirmResult,
   GooglePayButtonElementProps,
   Message,
 } from "./types";
@@ -66,22 +66,18 @@ export type GooglePayButtonListenerOptions = {
    */
   onAppearanceReady?: () => void;
   /**
-   * Called when the user initiates a payment intent request via the
-   * Google Pay button. Your implementation should create a payment
-   * intent on your server and resolve with the resulting embed token.
+   * Called when the buyer authorizes in the Google Pay sheet. Create a
+   * payment intent on your server, then `await confirmPayment(token)`.
    */
-  onInitiatePaymentIntentRequest: ({
+  onConfirm: ({
     paymentIntentCreateAttributes,
     customerCreateAttributes,
+    confirmPayment,
   }: {
     paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
     customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
-  }) => Promise<components["schemas"]["EmbedToken"]["token"]>;
-  /**
-   * Called when the interactive confirmation flow finishes (success or
-   * terminal failure). Not settlement proof — verify via webhooks.
-   */
-  onResult: (result: ConfirmationResult) => void;
+    confirmPayment: (token: string) => Promise<ConfirmResult>;
+  }) => Promise<ConfirmResult>;
 };
 
 /**
@@ -166,26 +162,14 @@ export function attachGooglePayButtonListeners(
         break;
 
       case "CREATE_PAYMENT_INTENT":
-        current
-          .onInitiatePaymentIntentRequest({
+        void current
+          .onConfirm({
             paymentIntentCreateAttributes:
               event.data.paymentIntentCreateAttributes,
             customerCreateAttributes: event.data.customerCreateAttributes,
+            confirmPayment: (token) => confirmPayment({ iframe, token }),
           })
-          .then((token) => {
-            confirmPaymentIntent({ iframe, token });
-          })
-          .catch((error: unknown) => {
-            current.onResult({
-              status: "failed",
-              errorMessage:
-                error instanceof Error ? error.message : "Unknown error",
-            });
-          });
-        break;
-
-      case "CONFIRMATION_RESULT":
-        current.onResult(event.data.result);
+          .catch(() => ({ status: "failed" as const }));
         break;
     }
   }

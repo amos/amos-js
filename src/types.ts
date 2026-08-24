@@ -44,17 +44,19 @@ export type ConfirmationIncompleteReason =
   | "validation_failed";
 
 /**
- * Outcome of an interactive confirmation flow inside the Amos iframe.
+ * Outcome of `confirmPayment` / `confirmSetup`. Hosts already know which
+ * function they called; this is not settlement proof — capture may still
+ * finish asynchronously after a succeeded authorization.
+ */
+export type ConfirmResult = { status: "succeeded" } | { status: "failed" };
+
+/**
+ * @deprecated Use `confirmPayment` / `confirmSetup`, which
+ * resolve `{ status: "succeeded" | "failed" }`. `onResult` /
+ * `CONFIRMATION_RESULT` is kept so existing hosts keep working.
  *
- * `onResult` / `CONFIRMATION_RESULT` means the host should stop waiting
- * (e.g. dismiss a spinner). It is **not** proof that funds were
- * received — verify settlement on your backend via webhooks (or by
- * retrieving the PaymentIntent / SetupIntent with your secret key),
- * the same way Stripe recommends.
- *
- * Recoverable validation (field errors shown in the iframe, or client-side
- * validation on confirm) posts `status: "incomplete"` with a `reason` so
- * the host can unlock its UI; the customer can fix the form and retry.
+ * `onResult` means the host should stop waiting (e.g. dismiss a spinner).
+ * Recoverable validation posts `status: "incomplete"` with a `reason`.
  */
 export type ConfirmationResult =
   | {

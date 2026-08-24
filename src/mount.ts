@@ -420,8 +420,8 @@ export type AmosPaymentMethodFormMountController =
   PaymentMethodFormController & {
     /**
      * The underlying `<iframe>` element. Pass this as the `iframe`
-     * argument to {@link validateForm}, {@link confirmPaymentIntent}, or
-     * {@link confirmSetupIntent}.
+     * argument to {@link validateForm}, {@link confirmPayment}, or
+     * {@link confirmSetup}.
      */
     iframe: HTMLIFrameElement;
   };
@@ -447,8 +447,8 @@ export type AmosBankAccountPaymentMethodFormMountController = Omit<
  * iframe once appearance is applied.
  *
  * Use the returned `controller.iframe` when calling
- * {@link validateForm}, {@link confirmPaymentIntent}, or
- * {@link confirmSetupIntent}.
+ * {@link validateForm}, {@link confirmPayment}, or
+ * {@link confirmSetup}.
  */
 export function mountAmosCreditCardPaymentMethodForm(
   container: Container,
@@ -548,8 +548,8 @@ export type AmosBankAccountPaymentMethodFormOptions =
  * skeleton is shown and replaced by the iframe once appearance is applied.
  *
  * Use the returned `controller.iframe` when calling
- * {@link validateForm}, {@link confirmPaymentIntent}, or
- * {@link confirmSetupIntent}.
+ * {@link validateForm}, {@link confirmPayment}, or
+ * {@link confirmSetup}.
  */
 export function mountAmosBankAccountPaymentMethodForm(
   container: Container,

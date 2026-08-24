@@ -4,6 +4,8 @@ import { getBankPlaidSession } from "./plaid-session";
 import {
   type Appearance,
   type ApplePayButtonElementProps,
+  type ConfirmationResult,
+  type ConfirmResult,
   createMessage,
   type GooglePayButtonElementProps,
   type Message,
@@ -303,31 +305,78 @@ function postConfirmIntent({
   );
 }
 
+const CONFIRM_TIMEOUT_MS = 60_000;
+
+function toConfirmResult(result: ConfirmationResult): ConfirmResult {
+  if (result.status === "succeeded") {
+    return { status: "succeeded" };
+  }
+  return { status: "failed" };
+}
+
+function waitForConfirmResult(
+  iframe: HTMLIFrameElement,
+): Promise<ConfirmResult> {
+  const contentWindow = iframe.contentWindow;
+  if (!contentWindow) {
+    return Promise.resolve({ status: "failed" });
+  }
+
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener("message", handleMessage);
+      resolve({ status: "failed" });
+    }, CONFIRM_TIMEOUT_MS);
+
+    function handleMessage(event: MessageEvent<Message>) {
+      if (event.source !== contentWindow) {
+        return;
+      }
+      if (event.data.type !== "CONFIRMATION_RESULT") {
+        return;
+      }
+      window.removeEventListener("message", handleMessage);
+      clearTimeout(timeoutId);
+      resolve(toConfirmResult(event.data.result));
+    }
+
+    window.addEventListener("message", handleMessage);
+  });
+}
+
 /**
  * Confirm a payment intent in the embedded iframe flow.
  *
  * Pass the embed JWT (`token`) returned by your server's
  * `POST /payment_intents` call. The matching `payment_intent_id` is
  * extracted from the JWT payload and forwarded to the iframe.
+ *
+ * Resolves `{ status: "succeeded" }` after processor authorization, or
+ * `{ status: "failed" }` otherwise. Capture may still finish asynchronously.
  */
-export function confirmPaymentIntent({
+export function confirmPayment({
   iframe,
   token,
 }: {
   iframe: Iframe;
-} & Pick<components["schemas"]["EmbedToken"], "token">): void {
+} & Pick<
+  components["schemas"]["EmbedToken"],
+  "token"
+>): Promise<ConfirmResult> {
   if (!iframe?.contentWindow) {
-    return;
+    return Promise.resolve({ status: "failed" });
   }
 
   const { payment_intent_id: id }: components["schemas"]["EmbedTokenJwt"] =
     decodeJwt(token).payload;
+  const result = waitForConfirmResult(iframe);
   postConfirmIntent({
     iframe,
     type: "CONFIRM_PAYMENT_INTENT",
     token,
     id: id ?? undefined,
   });
+  return result;
 }
 
 /**
@@ -337,29 +386,56 @@ export function confirmPaymentIntent({
  * `POST /setup_intents` call. The matching `setup_intent_id` is
  * extracted from the JWT payload and forwarded to the iframe.
  */
-export function confirmSetupIntent({
+export function confirmSetup({
   iframe,
   token,
 }: {
   iframe: Iframe;
-} & Pick<components["schemas"]["EmbedToken"], "token">): void {
+} & Pick<
+  components["schemas"]["EmbedToken"],
+  "token"
+>): Promise<ConfirmResult> {
   if (!iframe?.contentWindow) {
-    return;
+    return Promise.resolve({ status: "failed" });
   }
 
   const { setup_intent_id: id }: components["schemas"]["EmbedTokenJwt"] =
     decodeJwt(token).payload;
+  const result = waitForConfirmResult(iframe);
   postConfirmIntent({
     iframe,
     type: "CONFIRM_SETUP_INTENT",
     token,
     id: id ?? undefined,
   });
+  return result;
+}
+
+/**
+ * @deprecated Use {@link confirmPayment}.
+ */
+export function confirmPaymentIntent(
+  args: {
+    iframe: Iframe;
+  } & Pick<components["schemas"]["EmbedToken"], "token">,
+): Promise<ConfirmResult> {
+  return confirmPayment(args);
+}
+
+/**
+ * @deprecated Use {@link confirmSetup}.
+ */
+export function confirmSetupIntent(
+  args: {
+    iframe: Iframe;
+  } & Pick<components["schemas"]["EmbedToken"], "token">,
+): Promise<ConfirmResult> {
+  return confirmSetup(args);
 }
 
 /**
  * Notify the iframe that confirmation finished with a failure (used by
- * express-checkout flows after `onInitiatePaymentIntentRequest` rejects).
+ * wallet `onConfirm` when creating the payment intent rejects).
  */
 export function sendConfirmationResult({
   iframe,

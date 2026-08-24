@@ -5,7 +5,7 @@ import {
 } from "./apple-pay-waiting-overlay";
 import { getEmbedOrigin } from "./jwt";
 import {
-  confirmPaymentIntent,
+  confirmPayment,
   getIframeTargetOrigin,
   sendParentReadyMessage,
   updateAmount as sendUpdateAmount,
@@ -15,7 +15,7 @@ import {
 } from "./messaging";
 import {
   type ApplePayButtonElementProps,
-  type ConfirmationResult,
+  type ConfirmResult,
   createMessage,
   type Message,
 } from "./types";
@@ -68,22 +68,18 @@ export type ApplePayButtonListenerOptions = {
    */
   onAppearanceReady?: () => void;
   /**
-   * Called when the user initiates a payment intent request via the
-   * Apple Pay button. Your implementation should create a payment
-   * intent on your server and resolve with the resulting embed token.
+   * Called when the buyer authorizes in the Apple Pay sheet. Create a
+   * payment intent on your server, then `await confirmPayment(token)`.
    */
-  onInitiatePaymentIntentRequest: ({
+  onConfirm: ({
     paymentIntentCreateAttributes,
     customerCreateAttributes,
+    confirmPayment,
   }: {
     paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
     customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
-  }) => Promise<components["schemas"]["EmbedToken"]["token"]>;
-  /**
-   * Called when the interactive confirmation flow finishes (success or
-   * terminal failure). Not settlement proof — verify via webhooks.
-   */
-  onResult: (result: ConfirmationResult) => void;
+    confirmPayment: (token: string) => Promise<ConfirmResult>;
+  }) => Promise<ConfirmResult>;
 };
 
 /**
@@ -194,28 +190,17 @@ export function attachApplePayButtonListeners(
         break;
 
       case "CREATE_PAYMENT_INTENT":
-        current
-          .onInitiatePaymentIntentRequest({
+        void current
+          .onConfirm({
             paymentIntentCreateAttributes:
               event.data.paymentIntentCreateAttributes,
             customerCreateAttributes: event.data.customerCreateAttributes,
+            confirmPayment: (token) => confirmPayment({ iframe, token }),
           })
-          .then((token) => {
-            confirmPaymentIntent({ iframe, token });
-          })
-          .catch((error: unknown) => {
+          .catch(() => ({ status: "failed" as const }))
+          .finally(() => {
             hideApplePayWaitingOverlay();
-            current.onResult({
-              status: "failed",
-              errorMessage:
-                error instanceof Error ? error.message : "Unknown error",
-            });
           });
-        break;
-
-      case "CONFIRMATION_RESULT":
-        hideApplePayWaitingOverlay();
-        current.onResult(event.data.result);
         break;
     }
   }
