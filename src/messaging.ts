@@ -4,7 +4,6 @@ import { getBankPlaidSession } from "./plaid-session";
 import {
   type Appearance,
   type ApplePayButtonElementProps,
-  type ConfirmationResult,
   type ConfirmResult,
   createMessage,
   type GooglePayButtonElementProps,
@@ -307,13 +306,6 @@ function postConfirmIntent({
 
 const CONFIRM_TIMEOUT_MS = 60_000;
 
-function toConfirmResult(result: ConfirmationResult): ConfirmResult {
-  if (result.status === "succeeded") {
-    return { status: "succeeded" };
-  }
-  return { status: "failed" };
-}
-
 function waitForConfirmResult(
   iframe: HTMLIFrameElement,
 ): Promise<ConfirmResult> {
@@ -337,7 +329,11 @@ function waitForConfirmResult(
       }
       window.removeEventListener("message", handleMessage);
       clearTimeout(timeoutId);
-      resolve(toConfirmResult(event.data.result));
+      resolve(
+        event.data.result.status === "succeeded"
+          ? { status: "succeeded" }
+          : { status: "failed" },
+      );
     }
 
     window.addEventListener("message", handleMessage);
@@ -409,28 +405,6 @@ export function confirmSetup({
     id: id ?? undefined,
   });
   return result;
-}
-
-/**
- * @deprecated Use {@link confirmPayment}.
- */
-export function confirmPaymentIntent(
-  args: {
-    iframe: Iframe;
-  } & Pick<components["schemas"]["EmbedToken"], "token">,
-): Promise<ConfirmResult> {
-  return confirmPayment(args);
-}
-
-/**
- * @deprecated Use {@link confirmSetup}.
- */
-export function confirmSetupIntent(
-  args: {
-    iframe: Iframe;
-  } & Pick<components["schemas"]["EmbedToken"], "token">,
-): Promise<ConfirmResult> {
-  return confirmSetup(args);
 }
 
 /**

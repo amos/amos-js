@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.3
+
+### Patch Changes
+
+- Remove deprecated code
+
 ## 0.11.2
 
 ### Patch Changes

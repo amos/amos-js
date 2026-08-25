@@ -32,56 +32,14 @@ export type PaymentMethodFormCardBrandChangeEvent = {
 };
 
 /**
- * Why an interactive confirmation attempt ended with `status: "incomplete"`.
- *
- * Helps hosts distinguish recoverable iframe states for analytics and
- * support without exposing PCI data.
- */
-export type ConfirmationIncompleteReason =
-  /** Pay API field errors were mapped onto iframe inputs for retry. */
-  | "field_errors"
-  /** Client-side / HTML5 validation failed when confirm was requested. */
-  | "validation_failed";
-
-/**
  * Outcome of `confirmPayment` / `confirmSetup`. Hosts already know which
  * function they called; this is not settlement proof — capture may still
  * finish asynchronously after a succeeded authorization.
+ *
+ * Recoverable field errors stay in the iframe. The Promise still
+ * resolves `{ status: "failed" }`.
  */
 export type ConfirmResult = { status: "succeeded" } | { status: "failed" };
-
-/**
- * @deprecated Use `confirmPayment` / `confirmSetup`, which
- * resolve `{ status: "succeeded" | "failed" }`. `onResult` /
- * `CONFIRMATION_RESULT` is kept so existing hosts keep working.
- *
- * `onResult` means the host should stop waiting (e.g. dismiss a spinner).
- * Recoverable validation posts `status: "incomplete"` with a `reason`.
- */
-export type ConfirmationResult =
-  | {
-      status: "succeeded";
-      intent: "payment";
-      paymentIntent: components["schemas"]["PaymentIntent"];
-    }
-  | {
-      status: "succeeded";
-      intent: "setup";
-      setupIntent: components["schemas"]["SetupIntent"];
-    }
-  | {
-      /**
-       * Recoverable validation was shown in the iframe or confirm was
-       * blocked by client-side validation. Unlock the host UI; the customer
-       * can fix fields and retry. Do not treat as settlement.
-       */
-      status: "incomplete";
-      reason: ConfirmationIncompleteReason;
-    }
-  | {
-      status: "failed";
-      errorMessage: string;
-    };
 
 /**
  * CSS custom properties that control the appearance of the embedded
@@ -496,7 +454,7 @@ export type Message =
        * backend via webhooks (or by retrieving the intent).
        */
       type: "CONFIRMATION_RESULT";
-      result: ConfirmationResult;
+      result: ConfirmResult;
     }
   | {
       /** Embed → parent: appearance overrides were applied in the iframe. */

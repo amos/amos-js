@@ -6,7 +6,6 @@ import {
 import { getBankPlaidSession } from "./plaid-session";
 import type {
   Appearance,
-  ConfirmationResult,
   Message,
   PaymentMethodFormCardBrandChangeEvent,
   PaymentMethodFormValidityChangeEvent,
@@ -153,12 +152,6 @@ export type PaymentMethodFormListenerOptions = {
    * only — never fired for bank account.
    */
   onCardBrandChanged?: (event: PaymentMethodFormCardBrandChangeEvent) => void;
-  /**
-   * @deprecated Prefer `await confirmPayment()` / `await confirmSetup()`.
-   * Called when the interactive confirmation flow finishes. Recoverable
-   * validation posts `status: "incomplete"` with a `reason`.
-   */
-  onResult?: (result: ConfirmationResult) => void;
 };
 
 /**
@@ -229,10 +222,6 @@ export function attachPaymentMethodFormListeners(
 
       case "CARD_BRAND_CHANGE":
         current.onCardBrandChanged?.({ brand: event.data.brand });
-        break;
-
-      case "CONFIRMATION_RESULT":
-        current.onResult?.(event.data.result);
         break;
     }
   }
