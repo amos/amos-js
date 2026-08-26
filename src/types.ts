@@ -368,6 +368,22 @@ export type GooglePayButtonElementProps = Omit<
 };
 
 /**
+ * Non-PCI fields the host may push into a card/bank iframe.
+ *
+ * PAN, CVC, expiration, and bank account numbers are not in this type
+ * and must never be sent over `postMessage`.
+ */
+export type PaymentMethodFormValues = {
+  postalCode?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  cardholderName?: string;
+};
+
+/**
  * Typed `postMessage` payloads exchanged between the host page and the
  * embedded Amos iframe.
  */
@@ -475,6 +491,15 @@ export type Message =
   | {
       /** Parent → embed: clear all form field values and API errors. */
       type: "RESET_FORM";
+    }
+  | {
+      /**
+       * Parent → embed: set non-PCI billing fields without remounting.
+       * Never includes PAN, CVC, expiration, or bank account numbers.
+       * Omitted keys are left unchanged; empty strings clear a field.
+       */
+      type: "SET_FORM_VALUES";
+      values: PaymentMethodFormValues;
     }
   | {
       /**

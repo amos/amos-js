@@ -8,6 +8,7 @@ import {
   createMessage,
   type GooglePayButtonElementProps,
   type Message,
+  type PaymentMethodFormValues,
 } from "./types";
 
 type Iframe = HTMLIFrameElement | null | undefined;
@@ -271,6 +272,27 @@ function resetIframeFields(iframe: Iframe): void {
 
   iframe.contentWindow.postMessage(
     createMessage({ type: "RESET_FORM" }),
+    getIframeTargetOrigin(iframe),
+  );
+}
+
+/**
+ * Push non-PCI billing fields into the embedded card or bank iframe.
+ * Does not remount. Omitted keys are left unchanged.
+ */
+export function setFormValues({
+  iframe,
+  values,
+}: {
+  iframe: Iframe;
+  values: PaymentMethodFormValues;
+}): void {
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
+    createMessage({ type: "SET_FORM_VALUES", values }),
     getIframeTargetOrigin(iframe),
   );
 }

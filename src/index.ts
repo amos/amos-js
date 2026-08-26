@@ -42,6 +42,7 @@ export {
   resetForm,
   sendConfirmationResult,
   sendParentReadyMessage,
+  setFormValues,
   updateAmount,
   updateAppearance,
   updateApplePayButton,
@@ -100,6 +101,7 @@ export type {
   Message,
   PaymentMethodFormCardBrandChangeEvent,
   PaymentMethodFormValidityChangeEvent,
+  PaymentMethodFormValues,
   ThemeVariable,
 } from "./types";
 export { createMessage } from "./types";
