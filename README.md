@@ -168,7 +168,7 @@ On Safari, Apple Pay uses the native payment sheet. On other browsers, Apple's Q
 Setup intents are used to save payment methods for future use (e.g. recurring payments, subscriptions) without charging the customer immediately. The flow is identical to a payment intent, except:
 
 - On the server, call `POST /setup_intents` instead of `POST /payment_intents`.
-- On the client, `await confirmSetup({ iframe, token })` instead of `confirmPayment({ iframe, token })`. Deprecated alias: `confirmSetupIntent`.
+- On the client, `await confirmSetup({ iframe, token })` instead of `confirmPayment({ iframe, token })`.
 - Both resolve `{ status: "succeeded" | "failed" }`.
 
 The same `mountAmosCreditCardPaymentMethodForm` / `mountAmosBankAccountPaymentMethodForm` controllers support both payment intents and setup intents — they are differentiated by which confirmation function you call. For bank setup, pass `intent: "setup"` so Connect / Plaid is always shown (no merchant ACH threshold lookup).
