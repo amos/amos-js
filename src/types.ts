@@ -495,19 +495,7 @@ export type Message =
       brand: CardBrand | null;
     }
   | {
-      /**
-       * Embed → parent: ACH verification policy for this bank iframe.
-       * `achThreshold` is cents, or `null` when the merchant has no
-       * threshold (manual ACH). `requireVerification` is true for setup
-       * intents (always Plaid, no merchant lookup), and when a payment
-       * threshold fetch failed in production (fail closed).
-       */
-      type: "ACH_THRESHOLD";
-      achThreshold?: number | null;
-      requireVerification?: boolean;
-    }
-  | {
-      /** Parent → embed: mint a Plaid Link token for Connect. */
+      /** Parent → embed: mint a Plaid Link token for Embedded Link. */
       type: "CREATE_PLAID_LINK_TOKEN";
       requestId: string;
     }

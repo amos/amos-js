@@ -79,16 +79,19 @@ export {
   getCreditCardFormSrc,
 } from "./payment-method-form";
 export type {
-  OpenPlaidLinkInput,
+  MountPlaidEmbeddedLinkInput,
   PlaidCredentials,
   PlaidLinkOnSuccessMetadata,
 } from "./plaid";
 export {
+  isBankVerificationEnabled,
   linkedBankLabelFromMetadata,
   loadPlaidScript,
-  openPlaidLink,
+  majorAmountToMinorUnits,
+  mountPlaidEmbeddedLink,
   plaidAccountIdFromMetadata,
   requiresAchVerification,
+  shouldShowPlaidLink,
 } from "./plaid";
 export type {
   Appearance,

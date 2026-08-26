@@ -1,4 +1,5 @@
 import type { components } from "@amos.com/node";
+import { decodeJwt } from "./jwt";
 
 const PLAID_SCRIPT_SRC =
   "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
@@ -20,9 +21,7 @@ export type PlaidLinkOnSuccessMetadata = {
   account_id?: string;
 };
 
-type PlaidLinkHandler = {
-  open: () => void;
-  exit: (options?: { force?: boolean }) => void;
+type PlaidEmbeddedHandler = {
   destroy: () => void;
 };
 
@@ -41,21 +40,71 @@ type PlaidCreateConfig = {
 declare global {
   interface Window {
     Plaid?: {
-      create: (config: PlaidCreateConfig) => PlaidLinkHandler;
+      createEmbedded: (
+        config: PlaidCreateConfig,
+        target: HTMLElement,
+      ) => PlaidEmbeddedHandler;
     };
   }
 }
 
 /**
- * Whether the bank form should show Plaid Link instead of routing/account
- * fields.
+ * Whether this render token collects Plaid / ACH verification.
+ *
+ * Omitted `verification` means enabled. `false` disables it so surfaces
+ * like a virtual terminal can take routing and account numbers.
+ */
+export function isBankVerificationEnabled(renderToken: string): boolean {
+  try {
+    const payload: components["schemas"]["RenderTokenJwt"] =
+      decodeJwt(renderToken).payload;
+    const bankMethod = payload.allowed_payment_methods?.find(
+      (allowed) => allowed.type === "bank_account",
+    );
+    const options =
+      bankMethod?.type === "bank_account" ? bankMethod.options : undefined;
+    return options?.verification !== false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether the bank form should show Plaid Embedded Link instead of
+ * routing/account fields.
+ *
+ * - Render token `verification: false`: never Plaid.
+ * - `intent: "setup"`: always Plaid (when verification is enabled).
+ * - Otherwise: host `requireAchVerification`.
+ */
+export function shouldShowPlaidLink({
+  renderToken,
+  intent = "payment",
+  requireAchVerification = false,
+}: {
+  renderToken: string;
+  intent?: "payment" | "setup";
+  requireAchVerification?: boolean;
+}): boolean {
+  if (!isBankVerificationEnabled(renderToken)) {
+    return false;
+  }
+  if (intent === "setup") {
+    return true;
+  }
+  return requireAchVerification;
+}
+
+/**
+ * Whether the charge meets a merchant ACH verification threshold.
  *
  * - No `achThreshold`: always manual ACH (backward compatible).
  * - Otherwise: Plaid when `amount >= achThreshold`.
- * - Omitted `amount` is treated as `0` (typically under the threshold, so
- *   Connect stays hidden until the host passes a charge).
+ * - Omitted `amount` is treated as `0` (typically under the threshold).
  *
- * `amount` and `achThreshold` are integer minor units (cents).
+ * `amount` and `achThreshold` are integer minor units (cents). Hosts can
+ * use this to compute {@link shouldShowPlaidLink}'s
+ * `requireAchVerification`.
  */
 export function requiresAchVerification({
   amount,
@@ -162,50 +211,54 @@ export function loadPlaidScript(): Promise<void> {
   return plaidScriptPromise;
 }
 
-export type OpenPlaidLinkInput = {
+export type MountPlaidEmbeddedLinkInput = {
   token: string;
+  target: HTMLElement;
   onSuccess: (
     publicToken: string,
     metadata: PlaidLinkOnSuccessMetadata,
   ) => void;
   onExit?: (error: { error_code?: string } | null) => void;
   /**
-   * When aborted (e.g. the bank form was unmounted), skip opening Link
-   * and destroy the handler if it was already created.
+   * When aborted (e.g. the bank form was unmounted), skip mounting
+   * Embedded Link and destroy the handler if it was already created.
    */
   signal?: AbortSignal;
 };
 
 /**
- * Load Plaid Link (if needed) and open it with the given `link_token`.
- * Returns a destroy function for the Link handler.
+ * Load Plaid Link (if needed) and mount Embedded Institution Search
+ * into `target`. Returns a destroy function for the Link handler.
  */
-export async function openPlaidLink({
+export async function mountPlaidEmbeddedLink({
   token,
+  target,
   onSuccess,
   onExit,
   signal,
-}: OpenPlaidLinkInput): Promise<() => void> {
+}: MountPlaidEmbeddedLinkInput): Promise<() => void> {
   await loadPlaidScript();
   if (signal?.aborted) {
     return () => {};
   }
-  if (!window.Plaid) {
-    throw new Error("Plaid Link failed to initialize");
+  if (!window.Plaid?.createEmbedded) {
+    throw new Error("Plaid Embedded Link failed to initialize");
   }
 
-  const handler = window.Plaid.create({
-    token,
-    onSuccess,
-    onExit: (error) => {
-      onExit?.(error);
+  const handler = window.Plaid.createEmbedded(
+    {
+      token,
+      onSuccess,
+      onExit: (error) => {
+        onExit?.(error);
+      },
     },
-  });
+    target,
+  );
   if (signal?.aborted) {
     handler.destroy();
     return () => {};
   }
-  handler.open();
 
   return () => {
     handler.destroy();

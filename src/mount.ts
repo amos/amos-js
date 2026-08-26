@@ -428,8 +428,8 @@ export type AmosPaymentMethodFormMountController =
 
 /**
  * Controller returned by {@link mountAmosBankAccountPaymentMethodForm}.
- * `update()` also accepts `amount` (major-currency decimal string) when
- * the charge changes.
+ * `update()` also accepts `requireAchVerification` when the host's ACH
+ * policy changes.
  */
 export type AmosBankAccountPaymentMethodFormMountController = Omit<
   AmosPaymentMethodFormMountController,
@@ -508,24 +508,22 @@ export type AmosBankAccountPaymentMethodFormOptions =
      */
     billingAddressRequirement?: BillingAddressRequirement;
     /**
-     * Charge amount as a major-currency decimal string (e.g. `"50.00"`
-     * for $50.00), the same format as Google Pay / Apple Pay. Compared
-     * to the merchant ACH threshold fetched by the iframe. Defaults to
-     * `"0"`, which is typically under the threshold so Connect / Plaid
-     * stays hidden until the host passes a real charge.
+     * When true, hide the routing/account iframe and mount Plaid
+     * Embedded Institution Search in the parent. Ignored when
+     * {@link AmosBankAccountPaymentMethodFormOptions.intent} is
+     * `"setup"` (setup always shows Plaid) or when the render token
+     * disables verification.
      *
-     * Ignored when {@link AmosBankAccountPaymentMethodFormOptions.intent}
-     * is `"setup"` — setup intents always show Connect (unless the render
-     * token disables Plaid verification).
+     * Hosts that still have an ACH threshold should compute this
+     * themselves (for example with `requiresAchVerification`).
      *
-     * @default "0"
+     * @default false
      */
-    amount?: string;
+    requireAchVerification?: boolean;
     /**
      * `"setup"` saves a bank account for later charges and always shows
-     * Connect / Plaid (no merchant threshold lookup). `"payment"`
-     * compares {@link AmosBankAccountPaymentMethodFormOptions.amount} to
-     * the merchant ACH threshold.
+     * Plaid (unless the render token disables verification). `"payment"`
+     * uses {@link AmosBankAccountPaymentMethodFormOptions.requireAchVerification}.
      *
      * @default "payment"
      */
@@ -537,15 +535,13 @@ export type AmosBankAccountPaymentMethodFormOptions =
  * element. Returns a controller exposing the underlying iframe, an
  * `update()` method, and a `destroy()` method.
  *
- * When the iframe reports an ACH threshold and `amount` meets it, a
- * Connect bank button is rendered in the parent document and Plaid Link
- * is opened on click. `amount` defaults to `"0"`, which is typically
- * under the threshold so Connect stays hidden on open-amount forms
- * until the host passes a real charge. Pass `intent: "setup"` to always
- * show Connect without a merchant lookup. The button uses the same
- * `appearance.themeVariables` as the iframe (and inherits host-page
- * tokens when those variables are unset). Otherwise a field-shaped
- * skeleton is shown and replaced by the iframe once appearance is applied.
+ * When {@link AmosBankAccountPaymentMethodFormOptions.requireAchVerification}
+ * is true (or `intent` is `"setup"`), and the render token allows
+ * verification, the SDK hides the routing/account iframe and mounts
+ * [Plaid Embedded Institution Search](https://plaid.com/docs/link/embedded-institution-search/)
+ * in the parent. Hosts do not proxy Pay API (`GET /merchants`,
+ * `POST /plaid_link_tokens`); embed does that with `PAY_API_KEY`. Do
+ * not put Plaid secrets in the browser.
  *
  * Use the returned `controller.iframe` when calling
  * {@link validateForm}, {@link confirmPayment}, or
@@ -559,7 +555,7 @@ export function mountAmosBankAccountPaymentMethodForm(
   const {
     renderToken,
     billingAddressRequirement = "country",
-    amount = "0",
+    requireAchVerification = false,
     intent = "payment",
     ...listenerOptions
   } = options;
@@ -586,7 +582,9 @@ export function mountAmosBankAccountPaymentMethodForm(
     host,
     iframe,
     options: {
-      amount,
+      renderToken,
+      requireAchVerification,
+      intent,
       appearance: listenerOptions.appearance,
       onValidityChange: listenerOptions.onValidityChange,
     },

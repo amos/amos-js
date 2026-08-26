@@ -3,7 +3,7 @@ import type { PlaidCredentials } from "./plaid";
 type BankPlaidSession = {
   requiresVerification: boolean;
   plaid?: PlaidCredentials;
-  /** Drop linked Plaid credentials and restore the Connect button. */
+  /** Drop linked Plaid credentials and restore Embedded Link. */
   clearLinked?: () => void;
 };
 

@@ -68,8 +68,7 @@ export function getCreditCardFormSrc(
 /**
  * Build the iframe `src` URL for the embedded bank-account form.
  *
- * Pass `intent: "setup"` so the iframe always requires Plaid (when the
- * render token allows it) and does not `GET /merchants` for a threshold.
+ * Pass `intent: "setup"` so the iframe is tagged as a setup flow.
  */
 export function getBankAccountFormSrc(
   renderToken: string,
