@@ -12,6 +12,9 @@ import type { Appearance, Message, ThemeVariable } from "./types";
 
 const STYLE_ID = "amos-js-plaid-bank-ui-styles";
 
+/** Stops a stale-token exit / remount cycle from looping forever. */
+const MAX_INVALID_TOKEN_REMOUNTS = 2;
+
 const PLAID_BANK_UI_STYLES = `
 .amos-js-plaid-panel {
   box-sizing: border-box;
@@ -163,6 +166,8 @@ export function attachPlaidBankUi({
   const appliedThemeKeys: Array<string> = [];
   let cachedLinkToken: string | undefined;
   let mounting = false;
+  let remountRequested = false;
+  let invalidTokenRemounts = 0;
   let iframeReady = false;
   let lastEmittedValid: boolean | undefined;
   let destroyLink: (() => void) | undefined;
@@ -235,6 +240,7 @@ export function attachPlaidBankUi({
   function unlink(): void {
     linked = undefined;
     cachedLinkToken = undefined;
+    invalidTokenRemounts = 0;
     teardownEmbedded();
     setError(undefined);
     syncSession();
@@ -260,12 +266,21 @@ export function attachPlaidBankUi({
       !iframeReady ||
       !requiresPlaid() ||
       linked ||
-      mounting ||
       destroyLink
     ) {
       return;
     }
+    if (mounting) {
+      // Token fetch and Link script load are slow enough for a remount
+      // request to land mid-attempt; replay it once this one settles.
+      remountRequested = true;
+      return;
+    }
     mounting = true;
+    remountRequested = false;
+    // Plaid can call onExit before createEmbedded's promise resolves, so
+    // the handler we are about to receive may already be dead.
+    let invalidated = false;
     setError(undefined);
     try {
       if (!cachedLinkToken) {
@@ -276,7 +291,7 @@ export function attachPlaidBankUi({
       }
       const token = cachedLinkToken;
       teardownEmbedded();
-      destroyLink = await mountPlaidEmbeddedLink({
+      const destroy = await mountPlaidEmbeddedLink({
         token,
         target: embedEl,
         signal: abort.signal,
@@ -309,14 +324,24 @@ export function attachPlaidBankUi({
           if (error?.error_code !== "INVALID_LINK_TOKEN") {
             return;
           }
+          invalidated = true;
           cachedLinkToken = undefined;
           teardownEmbedded();
-          if (requiresPlaid() && !linked) {
-            void ensureEmbedded();
+          if (!requiresPlaid() || linked) {
+            return;
           }
+          if (invalidTokenRemounts >= MAX_INVALID_TOKEN_REMOUNTS) {
+            setError("Could not connect bank.");
+            return;
+          }
+          invalidTokenRemounts += 1;
+          void ensureEmbedded();
         },
       });
-      if (abort.signal.aborted) {
+      destroyLink = destroy;
+      // The session can change while the Link script loads: drop the
+      // handler rather than leave it live behind a hidden panel.
+      if (abort.signal.aborted || invalidated || linked || !requiresPlaid()) {
         teardownEmbedded();
       }
     } catch (error) {
@@ -333,6 +358,10 @@ export function attachPlaidBankUi({
       setError(message);
     } finally {
       mounting = false;
+      if (remountRequested) {
+        remountRequested = false;
+        void ensureEmbedded();
+      }
     }
   }
 
