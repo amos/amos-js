@@ -314,6 +314,10 @@ export function attachPlaidBankUi({
             last4: label.last4,
           };
           cachedLinkToken = undefined;
+          // Bank linked: this session recovered. Do not reset on
+          // createEmbedded — INVALID_LINK_TOKEN arrives after that
+          // and would restart the remount budget forever.
+          invalidTokenRemounts = 0;
           teardownEmbedded();
           syncSession();
         },
@@ -343,10 +347,6 @@ export function attachPlaidBankUi({
       // handler rather than leave it live behind a hidden panel.
       if (abort.signal.aborted || invalidated || linked || !requiresPlaid()) {
         teardownEmbedded();
-      } else {
-        // Consecutive stale-token remounts only. A live handler means
-        // Link recovered; later INVALID_LINK_TOKEN should retry again.
-        invalidTokenRemounts = 0;
       }
     } catch (error) {
       cachedLinkToken = undefined;
