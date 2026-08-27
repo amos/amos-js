@@ -15,7 +15,7 @@ import {
 } from "./messaging";
 import {
   type ApplePayButtonElementProps,
-  type ConfirmResult,
+  type ConfirmPaymentResult,
   createMessage,
   type Message,
 } from "./types";
@@ -78,8 +78,8 @@ export type ApplePayButtonListenerOptions = {
   }: {
     paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
     customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
-    confirmPayment: (token: string) => Promise<ConfirmResult>;
-  }) => Promise<ConfirmResult>;
+    confirmPayment: (token: string) => Promise<ConfirmPaymentResult>;
+  }) => Promise<ConfirmPaymentResult>;
 };
 
 /**

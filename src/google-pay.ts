@@ -11,7 +11,7 @@ import {
   updateMerchantName as sendUpdateMerchantName,
 } from "./messaging";
 import type {
-  ConfirmResult,
+  ConfirmPaymentResult,
   GooglePayButtonElementProps,
   Message,
 } from "./types";
@@ -76,8 +76,8 @@ export type GooglePayButtonListenerOptions = {
   }: {
     paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
     customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
-    confirmPayment: (token: string) => Promise<ConfirmResult>;
-  }) => Promise<ConfirmResult>;
+    confirmPayment: (token: string) => Promise<ConfirmPaymentResult>;
+  }) => Promise<ConfirmPaymentResult>;
 };
 
 /**
