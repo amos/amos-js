@@ -405,7 +405,7 @@ Clears all field values and API errors in the embedded card/bank iframe form, th
 
 ### `focusField({ iframe, field })`
 
-Focus a named control inside the card or bank iframe. No-op if the field is not rendered. Call from a click or keydown handler; some browsers ignore focus without a user gesture.
+Focus a named control inside the card or bank iframe. No-op if the field is not rendered, or while Plaid Embedded Institution Search is showing instead of the bank form. Call from a click or keydown handler; some browsers ignore focus without a user gesture.
 
 `field` is one of: `cardNumber`, `expiration`, `cvc`, `cardholderName`, `accountHolderName`, `accountNumber`, `confirmAccountNumber`, `routingNumber`, `accountType`, `accountHolderType`, `addressLine1`, `addressLine2`, `city`, `state`, `postalCode`, `country`.
 

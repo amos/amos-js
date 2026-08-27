@@ -177,7 +177,8 @@ export type PaymentMethodFormController = {
   update: (patch: Partial<PaymentMethodFormListenerOptions>) => void;
   /**
    * Focus a named control inside the iframe. No-op if the field is not
-   * rendered. Queued until `IFRAME_READY` if called before handshake.
+   * rendered, or while Plaid Embedded Institution Search is showing.
+   * Queued until `IFRAME_READY` if called before handshake.
    */
   focus: (field: PaymentMethodFormField) => void;
   /**
@@ -218,8 +219,14 @@ export function attachPaymentMethodFormListeners(
     if (pendingFocus === undefined) {
       return;
     }
-    sendFocusField({ iframe, field: pendingFocus });
+    const field = pendingFocus;
     pendingFocus = undefined;
+    // IFRAME_READY is handled here before Plaid's listener hides the
+    // bank iframe; skip if verification UI is already in session.
+    if (getBankPlaidSession(iframe)?.requiresVerification) {
+      return;
+    }
+    sendFocusField({ iframe, field });
   }
 
   function handleMessage(event: MessageEvent<Message>) {
@@ -279,6 +286,9 @@ export function attachPaymentMethodFormListeners(
       }
     },
     focus(field) {
+      if (getBankPlaidSession(iframe)?.requiresVerification) {
+        return;
+      }
       if (ready) {
         sendFocusField({ iframe, field });
         return;

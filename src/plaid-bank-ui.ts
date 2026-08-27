@@ -343,6 +343,10 @@ export function attachPlaidBankUi({
       // handler rather than leave it live behind a hidden panel.
       if (abort.signal.aborted || invalidated || linked || !requiresPlaid()) {
         teardownEmbedded();
+      } else {
+        // Consecutive stale-token remounts only. A live handler means
+        // Link recovered; later INVALID_LINK_TOKEN should retry again.
+        invalidTokenRemounts = 0;
       }
     } catch (error) {
       cachedLinkToken = undefined;

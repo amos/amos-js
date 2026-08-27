@@ -91,10 +91,11 @@ export function updateDefaultValues({
 /**
  * Focus a named control inside the embedded card or bank iframe.
  *
- * No-op if the iframe is not ready or the field is not rendered (for
+ * No-op if the iframe is not ready, the field is not rendered (for
  * example hidden cardholder name, or street fields in `country` billing
- * mode). Call from a user-gesture handler; some browsers ignore focus
- * that is not tied to a click or keydown.
+ * mode), or Plaid Embedded Institution Search is showing instead of
+ * the bank form. Call from a user-gesture handler; some browsers
+ * ignore focus that is not tied to a click or keydown.
  */
 export function focusField({
   iframe,
@@ -104,6 +105,11 @@ export function focusField({
   field: PaymentMethodFormField;
 }): void {
   if (!iframe?.contentWindow) {
+    return;
+  }
+  // Same branch as validateForm: the routing/account iframe is hidden
+  // behind Plaid, and focusing it steals input from Institution Search.
+  if (getBankPlaidSession(iframe)?.requiresVerification) {
     return;
   }
 
