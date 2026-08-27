@@ -2,11 +2,10 @@ import { requestPlaidLinkToken } from "./messaging";
 import type { PaymentMethodFormListenerOptions } from "./payment-method-form";
 import {
   linkedBankLabelFromMetadata,
-  majorAmountToMinorUnits,
-  openPlaidLink,
+  mountPlaidEmbeddedLink,
   type PlaidCredentials,
   plaidAccountIdFromMetadata,
-  requiresAchVerification,
+  shouldShowPlaidLink,
 } from "./plaid";
 import { clearBankPlaidSession, setBankPlaidSession } from "./plaid-session";
 import type { Appearance, Message, ThemeVariable } from "./types";
@@ -23,50 +22,19 @@ const PLAID_BANK_UI_STYLES = `
   gap: var(--control-gap, 0.5rem);
   width: 100%;
 }
-.amos-js-plaid-panel[data-mode="connect"],
+.amos-js-plaid-panel[data-mode="embed"],
 .amos-js-plaid-panel[data-mode="linked"] {
   display: flex;
 }
-.amos-js-plaid-connect {
-  align-items: center;
-  background: var(--background, oklch(1 0 0));
-  border: var(--input-border-width, 1px) solid var(--border, oklch(0.922 0 0));
-  border-radius: calc(var(--radius, 0.625rem) * 0.8);
-  box-shadow: var(--input-shadow, 0 1px 2px 0 rgb(0 0 0 / 0.05));
+.amos-js-plaid-embed {
   box-sizing: border-box;
-  color: var(--foreground, oklch(0.145 0 0));
-  cursor: pointer;
-  display: inline-flex;
-  flex-shrink: 0;
-  font: inherit;
-  font-size: var(--input-font-size, 0.875rem);
-  font-weight: 500;
-  height: var(--input-height, 2.25rem);
-  justify-content: center;
-  line-height: 1.25;
-  outline: none;
-  padding: 0 var(--input-padding, 0.75rem);
-  transition: color 150ms, background-color 150ms, border-color 150ms, box-shadow 150ms;
+  height: 350px;
+  min-height: 350px;
+  min-width: 300px;
   width: 100%;
 }
-.amos-js-plaid-panel[data-mode="linked"] .amos-js-plaid-connect {
+.amos-js-plaid-panel[data-mode="linked"] .amos-js-plaid-embed {
   display: none;
-}
-.amos-js-plaid-connect:hover:not(:disabled) {
-  background: var(--accent, oklch(0.97 0 0));
-  color: var(--accent-foreground, oklch(0.205 0 0));
-}
-.amos-js-plaid-connect:focus-visible {
-  border-color: var(--ring, oklch(0.708 0 0));
-  box-shadow:
-    var(--input-shadow, 0 1px 2px 0 rgb(0 0 0 / 0.05)),
-    0 0 0 var(--ring-width, 3px)
-      color-mix(in oklab, var(--ring, oklch(0.708 0 0)) 50%, transparent);
-}
-.amos-js-plaid-connect:disabled {
-  cursor: default;
-  opacity: 0.5;
-  pointer-events: none;
 }
 .amos-js-plaid-linked {
   display: none;
@@ -114,10 +82,15 @@ const PLAID_BANK_UI_STYLES = `
 .amos-js-plaid-error:not(:empty) {
   display: block;
 }
-@media (prefers-reduced-motion: reduce) {
-  .amos-js-plaid-connect {
-    transition: none;
-  }
+/* Keep the bank iframe's browsing context alive so it can mint link
+ * tokens and confirm. display:none can skip or freeze iframe JS. */
+.amos-js-plaid-form-hidden {
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  visibility: hidden !important;
+  width: 0 !important;
 }
 `;
 
@@ -155,15 +128,16 @@ function applyTheme(
 }
 
 export type PlaidBankUiOptions = {
-  amount?: string;
+  renderToken: string;
+  requireAchVerification?: boolean;
+  intent?: "payment" | "setup";
   appearance?: PaymentMethodFormListenerOptions["appearance"];
   onValidityChange?: PaymentMethodFormListenerOptions["onValidityChange"];
 };
 
 /**
- * Parent-page Connect bank UI. Outline/ghost controls match `@amos/ui`
- * (including `:focus-visible` `--ring`). Unset theme variables inherit
- * from the host document, then fall back to {@link ThemeVariable}
+ * Parent-page Plaid Embedded Institution Search. Unset theme variables
+ * inherit from the host document, then fall back to {@link ThemeVariable}
  * defaults; `appearance.themeVariables` overrides with the same replace
  * model as the iframe.
  */
@@ -183,14 +157,13 @@ export function attachPlaidBankUi({
 
   const current: PlaidBankUiOptions = {
     ...options,
-    amount: options.amount ?? "0",
+    requireAchVerification: options.requireAchVerification ?? false,
+    intent: options.intent ?? "payment",
   };
   const appliedThemeKeys: Array<string> = [];
-  let thresholdKnown = false;
-  let achThreshold: number | undefined;
-  let requireVerification = false;
   let cachedLinkToken: string | undefined;
-  let opening = false;
+  let mounting = false;
+  let iframeReady = false;
   let lastEmittedValid: boolean | undefined;
   let destroyLink: (() => void) | undefined;
   const abort = new AbortController();
@@ -204,11 +177,9 @@ export function attachPlaidBankUi({
   panel.dataset["mode"] = "hidden";
   applyTheme(panel, current.appearance, appliedThemeKeys);
 
-  const connectButton = document.createElement("button");
-  connectButton.type = "button";
-  connectButton.className = "amos-js-plaid-connect";
-  connectButton.textContent = "Connect bank account";
-  connectButton.setAttribute("data-testid", "amos-plaid-connect");
+  const embedEl = document.createElement("div");
+  embedEl.className = "amos-js-plaid-embed";
+  embedEl.setAttribute("data-testid", "amos-plaid-embed");
 
   const linkedEl = document.createElement("div");
   linkedEl.className = "amos-js-plaid-linked";
@@ -230,7 +201,7 @@ export function attachPlaidBankUi({
   errorEl.setAttribute("role", "alert");
 
   linkedEl.append(linkedName, linkedMeta, disconnect);
-  panel.append(connectButton, linkedEl, errorEl);
+  panel.append(embedEl, linkedEl, errorEl);
   host.append(panel);
   const formWrapper = iframe.parentElement;
 
@@ -238,16 +209,11 @@ export function attachPlaidBankUi({
     errorEl.textContent = message ?? "";
   }
 
-  function requiresConnect(): boolean {
-    if (!thresholdKnown) {
-      return false;
-    }
-    if (requireVerification) {
-      return true;
-    }
-    return requiresAchVerification({
-      amount: majorAmountToMinorUnits(current.amount),
-      achThreshold,
+  function requiresPlaid(): boolean {
+    return shouldShowPlaidLink({
+      renderToken: current.renderToken,
+      intent: current.intent,
+      requireAchVerification: current.requireAchVerification,
     });
   }
 
@@ -260,8 +226,118 @@ export function attachPlaidBankUi({
     current.onValidityChange?.({ isValid });
   }
 
+  function teardownEmbedded(): void {
+    destroyLink?.();
+    destroyLink = undefined;
+    embedEl.replaceChildren();
+  }
+
+  function unlink(): void {
+    linked = undefined;
+    cachedLinkToken = undefined;
+    teardownEmbedded();
+    setError(undefined);
+    syncSession();
+  }
+
+  function hideBankForm(hidden: boolean): void {
+    if (!formWrapper) {
+      return;
+    }
+    formWrapper.classList.toggle("amos-js-plaid-form-hidden", hidden);
+    if (hidden) {
+      formWrapper.setAttribute("aria-hidden", "true");
+    } else {
+      formWrapper.removeAttribute("aria-hidden");
+    }
+  }
+
+  async function ensureEmbedded(): Promise<void> {
+    // CREATE_PLAID_LINK_TOKEN is dropped if we post before the iframe's
+    // listener is up, and mounting used to block the IFRAME_READY retry.
+    if (
+      abort.signal.aborted ||
+      !iframeReady ||
+      !requiresPlaid() ||
+      linked ||
+      mounting ||
+      destroyLink
+    ) {
+      return;
+    }
+    mounting = true;
+    setError(undefined);
+    try {
+      if (!cachedLinkToken) {
+        cachedLinkToken = await requestPlaidLinkToken({ iframe });
+      }
+      if (abort.signal.aborted || !requiresPlaid() || linked) {
+        return;
+      }
+      const token = cachedLinkToken;
+      teardownEmbedded();
+      destroyLink = await mountPlaidEmbeddedLink({
+        token,
+        target: embedEl,
+        signal: abort.signal,
+        onSuccess: (publicToken, metadata) => {
+          if (abort.signal.aborted) {
+            return;
+          }
+          const accountId = plaidAccountIdFromMetadata(metadata);
+          if (!accountId) {
+            setError("Select a bank account to continue.");
+            return;
+          }
+          const label = linkedBankLabelFromMetadata(metadata);
+          linked = {
+            credentials: {
+              public_token: publicToken,
+              account_id: accountId,
+            },
+            bankName: label.bankName,
+            last4: label.last4,
+          };
+          cachedLinkToken = undefined;
+          teardownEmbedded();
+          syncSession();
+        },
+        onExit: (error) => {
+          if (abort.signal.aborted) {
+            return;
+          }
+          if (error?.error_code !== "INVALID_LINK_TOKEN") {
+            return;
+          }
+          cachedLinkToken = undefined;
+          teardownEmbedded();
+          if (requiresPlaid() && !linked) {
+            void ensureEmbedded();
+          }
+        },
+      });
+      if (abort.signal.aborted) {
+        teardownEmbedded();
+      }
+    } catch (error) {
+      cachedLinkToken = undefined;
+      teardownEmbedded();
+      if (abort.signal.aborted) {
+        return;
+      }
+      const message =
+        error instanceof Error ? error.message : "Could not connect bank.";
+      if (message === "Bank form is not ready.") {
+        return;
+      }
+      setError(message);
+    } finally {
+      mounting = false;
+    }
+  }
+
   function syncSession(): void {
-    const requiresVerification = requiresConnect();
+    const requiresVerification = requiresPlaid();
     setBankPlaidSession(iframe, {
       requiresVerification,
       plaid: requiresVerification ? linked?.credentials : undefined,
@@ -270,50 +346,37 @@ export function attachPlaidBankUi({
 
     if (!requiresVerification) {
       panel.dataset["mode"] = "hidden";
-      if (formWrapper) {
-        formWrapper.style.display = "";
-      }
+      hideBankForm(false);
       lastEmittedValid = undefined;
+      teardownEmbedded();
       return;
     }
 
-    panel.dataset["mode"] = linked ? "linked" : "connect";
-    if (formWrapper) {
-      formWrapper.style.display = "none";
-    }
+    panel.dataset["mode"] = linked ? "linked" : "embed";
+    hideBankForm(true);
     if (linked) {
       linkedName.textContent = linked.bankName;
       linkedMeta.textContent = linked.last4
         ? `****${linked.last4}`
         : "Connected";
+    } else {
+      void ensureEmbedded();
     }
     publishPlaidValidity();
-  }
-
-  function unlink(): void {
-    linked = undefined;
-    cachedLinkToken = undefined;
-    destroyLink?.();
-    destroyLink = undefined;
-    setError(undefined);
-    syncSession();
   }
 
   function handleIframeMessage(event: MessageEvent<Message>): void {
     if (event.source !== iframe.contentWindow) {
       return;
     }
-    if (event.data.type !== "ACH_THRESHOLD") {
+    if (event.data.type === "IFRAME_READY") {
+      iframeReady = true;
+    } else if (event.data.type !== "FORM_VALIDITY_CHANGE") {
       return;
     }
-    thresholdKnown = true;
-    achThreshold = event.data.achThreshold ?? undefined;
-    requireVerification = event.data.requireVerification === true;
-    if (linked && !requiresConnect()) {
-      unlink();
-      return;
+    if (requiresPlaid() && !linked && !destroyLink) {
+      void ensureEmbedded();
     }
-    syncSession();
   }
 
   window.addEventListener("message", handleIframeMessage);
@@ -323,81 +386,16 @@ export function attachPlaidBankUi({
     unlink();
   });
 
-  connectButton.addEventListener("click", () => {
-    void (async () => {
-      if (abort.signal.aborted || opening) {
-        return;
-      }
-      opening = true;
-      connectButton.disabled = true;
-      setError(undefined);
-      try {
-        if (!cachedLinkToken) {
-          cachedLinkToken = await requestPlaidLinkToken({ iframe });
-        }
-        if (abort.signal.aborted) {
-          return;
-        }
-        const token = cachedLinkToken;
-        destroyLink?.();
-        destroyLink = await openPlaidLink({
-          token,
-          signal: abort.signal,
-          onSuccess: (publicToken, metadata) => {
-            if (abort.signal.aborted) {
-              return;
-            }
-            const accountId = plaidAccountIdFromMetadata(metadata);
-            if (!accountId) {
-              setError("Select a bank account to continue.");
-              return;
-            }
-            const label = linkedBankLabelFromMetadata(metadata);
-            linked = {
-              credentials: {
-                public_token: publicToken,
-                account_id: accountId,
-              },
-              bankName: label.bankName,
-              last4: label.last4,
-            };
-            cachedLinkToken = undefined;
-            syncSession();
-          },
-          onExit: (error) => {
-            if (abort.signal.aborted) {
-              return;
-            }
-            if (error?.error_code === "INVALID_LINK_TOKEN") {
-              cachedLinkToken = undefined;
-            }
-          },
-        });
-        if (abort.signal.aborted) {
-          destroyLink();
-          destroyLink = undefined;
-        }
-      } catch (error) {
-        cachedLinkToken = undefined;
-        if (abort.signal.aborted) {
-          return;
-        }
-        setError(
-          error instanceof Error ? error.message : "Could not connect bank.",
-        );
-      } finally {
-        opening = false;
-        if (!abort.signal.aborted) {
-          connectButton.disabled = false;
-        }
-      }
-    })();
-  });
-
   return {
     update(patch) {
-      if ("amount" in patch) {
-        current.amount = patch.amount ?? "0";
+      if ("requireAchVerification" in patch) {
+        current.requireAchVerification = patch.requireAchVerification ?? false;
+      }
+      if ("intent" in patch) {
+        current.intent = patch.intent ?? "payment";
+      }
+      if ("renderToken" in patch && patch.renderToken) {
+        current.renderToken = patch.renderToken;
       }
       if ("onValidityChange" in patch) {
         current.onValidityChange = patch.onValidityChange;
@@ -406,7 +404,7 @@ export function attachPlaidBankUi({
         current.appearance = patch.appearance;
         applyTheme(panel, current.appearance, appliedThemeKeys);
       }
-      if (linked && !requiresConnect()) {
+      if (linked && !requiresPlaid()) {
         unlink();
         return;
       }
@@ -415,8 +413,7 @@ export function attachPlaidBankUi({
     destroy() {
       abort.abort();
       window.removeEventListener("message", handleIframeMessage);
-      destroyLink?.();
-      destroyLink = undefined;
+      teardownEmbedded();
       clearBankPlaidSession(iframe);
       panel.remove();
     },

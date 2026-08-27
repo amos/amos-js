@@ -32,14 +32,40 @@ export type PaymentMethodFormCardBrandChangeEvent = {
 };
 
 /**
- * Outcome of `confirmPayment` / `confirmSetup`. Hosts already know which
- * function they called; this is not settlement proof — capture may still
- * finish asynchronously after a succeeded authorization.
+ * Outcome of `confirmPayment`. This is not settlement proof — capture
+ * may still finish asynchronously after a succeeded authorization.
  *
  * Recoverable field errors stay in the iframe. The Promise still
- * resolves `{ status: "failed" }`.
+ * resolves `{ status: "failed" }`. `paymentIntent` is present when the
+ * confirm API returned a body (success or processor decline).
  */
-export type ConfirmResult = { status: "succeeded" } | { status: "failed" };
+export type ConfirmPaymentResult =
+  | {
+      status: "succeeded";
+      paymentIntent: components["schemas"]["PaymentIntent"];
+    }
+  | {
+      status: "failed";
+      paymentIntent?: components["schemas"]["PaymentIntent"];
+    };
+
+/**
+ * Outcome of `confirmSetup`. This is not settlement proof — verify
+ * setup success on your backend via webhooks.
+ *
+ * Recoverable field errors stay in the iframe. The Promise still
+ * resolves `{ status: "failed" }`. `setupIntent` is present when the
+ * confirm API returned a body (success or failure).
+ */
+export type ConfirmSetupResult =
+  | {
+      status: "succeeded";
+      setupIntent: components["schemas"]["SetupIntent"];
+    }
+  | {
+      status: "failed";
+      setupIntent?: components["schemas"]["SetupIntent"];
+    };
 
 /**
  * CSS custom properties that control the appearance of the embedded
@@ -454,7 +480,7 @@ export type Message =
        * backend via webhooks (or by retrieving the intent).
        */
       type: "CONFIRMATION_RESULT";
-      result: ConfirmResult;
+      result: ConfirmPaymentResult | ConfirmSetupResult;
     }
   | {
       /** Embed → parent: appearance overrides were applied in the iframe. */
@@ -495,19 +521,7 @@ export type Message =
       brand: CardBrand | null;
     }
   | {
-      /**
-       * Embed → parent: ACH verification policy for this bank iframe.
-       * `achThreshold` is cents, or `null` when the merchant has no
-       * threshold (manual ACH). `requireVerification` is true for setup
-       * intents (always Plaid, no merchant lookup), and when a payment
-       * threshold fetch failed in production (fail closed).
-       */
-      type: "ACH_THRESHOLD";
-      achThreshold?: number | null;
-      requireVerification?: boolean;
-    }
-  | {
-      /** Parent → embed: mint a Plaid Link token for Connect. */
+      /** Parent → embed: mint a Plaid Link token for Embedded Link. */
       type: "CREATE_PLAID_LINK_TOKEN";
       requestId: string;
     }

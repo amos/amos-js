@@ -1,5 +1,17 @@
 # @amos.com/amos-js
 
+## 0.11.5
+
+### Patch Changes
+
+- Restore intent responses
+
+## 0.11.4
+
+### Patch Changes
+
+- Use embedded Plaid
+
 ## 0.11.3
 
 ### Patch Changes

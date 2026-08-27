@@ -4,7 +4,8 @@ import { getBankPlaidSession } from "./plaid-session";
 import {
   type Appearance,
   type ApplePayButtonElementProps,
-  type ConfirmResult,
+  type ConfirmPaymentResult,
+  type ConfirmSetupResult,
   createMessage,
   type GooglePayButtonElementProps,
   type Message,
@@ -306,9 +307,61 @@ function postConfirmIntent({
 
 const CONFIRM_TIMEOUT_MS = 60_000;
 
+function fromConfirmationMessage(
+  result: Extract<Message, { type: "CONFIRMATION_RESULT" }>["result"],
+): ConfirmPaymentResult | ConfirmSetupResult {
+  if (result.status === "succeeded") {
+    if ("paymentIntent" in result) {
+      return { status: "succeeded", paymentIntent: result.paymentIntent };
+    }
+    if ("setupIntent" in result) {
+      return { status: "succeeded", setupIntent: result.setupIntent };
+    }
+    return { status: "failed" };
+  }
+
+  if ("paymentIntent" in result && result.paymentIntent !== undefined) {
+    return { status: "failed", paymentIntent: result.paymentIntent };
+  }
+  if ("setupIntent" in result && result.setupIntent !== undefined) {
+    return { status: "failed", setupIntent: result.setupIntent };
+  }
+  return { status: "failed" };
+}
+
+function toConfirmPaymentResult(
+  result: ConfirmPaymentResult | ConfirmSetupResult,
+): ConfirmPaymentResult {
+  if (result.status === "succeeded") {
+    if ("paymentIntent" in result) {
+      return result;
+    }
+    return { status: "failed" };
+  }
+  if ("paymentIntent" in result) {
+    return { status: "failed", paymentIntent: result.paymentIntent };
+  }
+  return { status: "failed" };
+}
+
+function toConfirmSetupResult(
+  result: ConfirmPaymentResult | ConfirmSetupResult,
+): ConfirmSetupResult {
+  if (result.status === "succeeded") {
+    if ("setupIntent" in result) {
+      return result;
+    }
+    return { status: "failed" };
+  }
+  if ("setupIntent" in result) {
+    return { status: "failed", setupIntent: result.setupIntent };
+  }
+  return { status: "failed" };
+}
+
 function waitForConfirmResult(
   iframe: HTMLIFrameElement,
-): Promise<ConfirmResult> {
+): Promise<ConfirmPaymentResult | ConfirmSetupResult> {
   const contentWindow = iframe.contentWindow;
   if (!contentWindow) {
     return Promise.resolve({ status: "failed" });
@@ -329,11 +382,7 @@ function waitForConfirmResult(
       }
       window.removeEventListener("message", handleMessage);
       clearTimeout(timeoutId);
-      resolve(
-        event.data.result.status === "succeeded"
-          ? { status: "succeeded" }
-          : { status: "failed" },
-      );
+      resolve(fromConfirmationMessage(event.data.result));
     }
 
     window.addEventListener("message", handleMessage);
@@ -347,8 +396,9 @@ function waitForConfirmResult(
  * `POST /payment_intents` call. The matching `payment_intent_id` is
  * extracted from the JWT payload and forwarded to the iframe.
  *
- * Resolves `{ status: "succeeded" }` after processor authorization, or
- * `{ status: "failed" }` otherwise. Capture may still finish asynchronously.
+ * Resolves `{ status: "succeeded", paymentIntent }` after processor
+ * authorization, or `{ status: "failed", paymentIntent? }` otherwise.
+ * Capture may still finish asynchronously.
  */
 export function confirmPayment({
   iframe,
@@ -358,7 +408,7 @@ export function confirmPayment({
 } & Pick<
   components["schemas"]["EmbedToken"],
   "token"
->): Promise<ConfirmResult> {
+>): Promise<ConfirmPaymentResult> {
   if (!iframe?.contentWindow) {
     return Promise.resolve({ status: "failed" });
   }
@@ -372,7 +422,7 @@ export function confirmPayment({
     token,
     id: id ?? undefined,
   });
-  return result;
+  return result.then(toConfirmPaymentResult);
 }
 
 /**
@@ -381,6 +431,9 @@ export function confirmPayment({
  * Pass the embed JWT (`token`) returned by your server's
  * `POST /setup_intents` call. The matching `setup_intent_id` is
  * extracted from the JWT payload and forwarded to the iframe.
+ *
+ * Resolves `{ status: "succeeded", setupIntent }` after verification,
+ * or `{ status: "failed", setupIntent? }` otherwise.
  */
 export function confirmSetup({
   iframe,
@@ -390,7 +443,7 @@ export function confirmSetup({
 } & Pick<
   components["schemas"]["EmbedToken"],
   "token"
->): Promise<ConfirmResult> {
+>): Promise<ConfirmSetupResult> {
   if (!iframe?.contentWindow) {
     return Promise.resolve({ status: "failed" });
   }
@@ -404,7 +457,7 @@ export function confirmSetup({
     token,
     id: id ?? undefined,
   });
-  return result;
+  return result.then(toConfirmSetupResult);
 }
 
 /**
