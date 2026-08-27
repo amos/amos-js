@@ -9,6 +9,8 @@ import {
   createMessage,
   type GooglePayButtonElementProps,
   type Message,
+  type PaymentMethodFormDefaultValues,
+  type PaymentMethodFormField,
 } from "./types";
 
 type Iframe = HTMLIFrameElement | null | undefined;
@@ -60,6 +62,53 @@ export function updateAppearance({
 
   iframe.contentWindow.postMessage(
     createMessage({ type: "UPDATE_APPEARANCE", appearance }),
+    getIframeTargetOrigin(iframe),
+  );
+}
+
+/**
+ * Push name and billing-address defaults into the embedded card or bank
+ * iframe. Provided keys overwrite matching form fields, including ones
+ * the customer already edited. Omitted keys are left as-is.
+ */
+export function updateDefaultValues({
+  iframe,
+  defaultValues = {},
+}: {
+  iframe: Iframe;
+  defaultValues?: PaymentMethodFormDefaultValues;
+}): void {
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
+    createMessage({ type: "UPDATE_DEFAULT_VALUES", defaultValues }),
+    getIframeTargetOrigin(iframe),
+  );
+}
+
+/**
+ * Focus a named control inside the embedded card or bank iframe.
+ *
+ * No-op if the iframe is not ready or the field is not rendered (for
+ * example hidden cardholder name, or street fields in `country` billing
+ * mode). Call from a user-gesture handler; some browsers ignore focus
+ * that is not tied to a click or keydown.
+ */
+export function focusField({
+  iframe,
+  field,
+}: {
+  iframe: Iframe;
+  field: PaymentMethodFormField;
+}): void {
+  if (!iframe?.contentWindow) {
+    return;
+  }
+
+  iframe.contentWindow.postMessage(
+    createMessage({ type: "FOCUS_FIELD", field }),
     getIframeTargetOrigin(iframe),
   );
 }
@@ -281,11 +330,13 @@ function postConfirmIntent({
   type,
   token,
   id,
+  defaultValues,
 }: {
   iframe: HTMLIFrameElement;
   type: "CONFIRM_PAYMENT_INTENT" | "CONFIRM_SETUP_INTENT";
   token: string | undefined;
   id: string | undefined;
+  defaultValues?: PaymentMethodFormDefaultValues;
 }): void {
   const session = getBankPlaidSession(iframe);
   const plaid = session?.plaid;
@@ -300,6 +351,7 @@ function postConfirmIntent({
       token,
       id,
       ...(plaid ? { plaid } : {}),
+      ...(defaultValues ? { defaultValues } : {}),
     }),
     getIframeTargetOrigin(iframe),
   );
@@ -396,6 +448,11 @@ function waitForConfirmResult(
  * `POST /payment_intents` call. The matching `payment_intent_id` is
  * extracted from the JWT payload and forwarded to the iframe.
  *
+ * Optional `defaultValues` are applied immediately before building the
+ * payment method payload (including hidden name and extra billing
+ * fields). They do not replace the last mount/`update` defaults used by
+ * {@link resetForm}.
+ *
  * Resolves `{ status: "succeeded", paymentIntent }` after processor
  * authorization, or `{ status: "failed", paymentIntent? }` otherwise.
  * Capture may still finish asynchronously.
@@ -403,8 +460,10 @@ function waitForConfirmResult(
 export function confirmPayment({
   iframe,
   token,
+  defaultValues,
 }: {
   iframe: Iframe;
+  defaultValues?: PaymentMethodFormDefaultValues;
 } & Pick<
   components["schemas"]["EmbedToken"],
   "token"
@@ -421,6 +480,7 @@ export function confirmPayment({
     type: "CONFIRM_PAYMENT_INTENT",
     token,
     id: id ?? undefined,
+    defaultValues,
   });
   return result.then(toConfirmPaymentResult);
 }
@@ -432,14 +492,20 @@ export function confirmPayment({
  * `POST /setup_intents` call. The matching `setup_intent_id` is
  * extracted from the JWT payload and forwarded to the iframe.
  *
+ * Optional `defaultValues` are applied immediately before building the
+ * payment method payload. They do not replace the last mount/`update`
+ * defaults used by {@link resetForm}.
+ *
  * Resolves `{ status: "succeeded", setupIntent }` after verification,
  * or `{ status: "failed", setupIntent? }` otherwise.
  */
 export function confirmSetup({
   iframe,
   token,
+  defaultValues,
 }: {
   iframe: Iframe;
+  defaultValues?: PaymentMethodFormDefaultValues;
 } & Pick<
   components["schemas"]["EmbedToken"],
   "token"
@@ -456,6 +522,7 @@ export function confirmSetup({
     type: "CONFIRM_SETUP_INTENT",
     token,
     id: id ?? undefined,
+    defaultValues,
   });
   return result.then(toConfirmSetupResult);
 }

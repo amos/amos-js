@@ -1,13 +1,17 @@
 import { getEmbedOrigin } from "./jwt";
 import {
+  focusField as sendFocusField,
   sendParentReadyMessage,
   updateAppearance as sendUpdateAppearance,
+  updateDefaultValues as sendUpdateDefaultValues,
 } from "./messaging";
 import { getBankPlaidSession } from "./plaid-session";
 import type {
   Appearance,
   Message,
   PaymentMethodFormCardBrandChangeEvent,
+  PaymentMethodFormDefaultValues,
+  PaymentMethodFormField,
   PaymentMethodFormValidityChangeEvent,
 } from "./types";
 
@@ -128,6 +132,12 @@ export type PaymentMethodFormListenerOptions = {
    */
   appearance?: Appearance;
   /**
+   * Name and billing address to seed into the iframe. Can be updated
+   * later via `update({ defaultValues })`. Provided keys overwrite
+   * matching fields, including ones the customer already edited.
+   */
+  defaultValues?: PaymentMethodFormDefaultValues;
+  /**
    * Called whenever the iframe asks the host page to resize it. Update
    * the iframe's `height` style here.
    */
@@ -161,9 +171,15 @@ export type PaymentMethodFormController = {
   /**
    * Update one or more listener options without re-attaching the
    * message listener. Pass `{ appearance }` to push new appearance
-   * overrides into the iframe.
+   * overrides into the iframe. Pass `{ defaultValues }` to overwrite
+   * matching name and billing fields.
    */
   update: (patch: Partial<PaymentMethodFormListenerOptions>) => void;
+  /**
+   * Focus a named control inside the iframe. No-op if the field is not
+   * rendered. Queued until `IFRAME_READY` if called before handshake.
+   */
+  focus: (field: PaymentMethodFormField) => void;
   /**
    * Detach the iframe message listener.
    */
@@ -187,6 +203,24 @@ export function attachPaymentMethodFormListeners(
   // React calls `update()` on first paint, before the iframe has left
   // about:blank. Queue until IFRAME_READY so postMessage targetOrigin matches.
   let ready = false;
+  let pendingFocus: PaymentMethodFormField | undefined;
+
+  function sendQueuedDefaultValues(): void {
+    if (current.defaultValues !== undefined) {
+      sendUpdateDefaultValues({
+        iframe,
+        defaultValues: current.defaultValues,
+      });
+    }
+  }
+
+  function sendQueuedFocus(): void {
+    if (pendingFocus === undefined) {
+      return;
+    }
+    sendFocusField({ iframe, field: pendingFocus });
+    pendingFocus = undefined;
+  }
 
   function handleMessage(event: MessageEvent<Message>) {
     if (event.source !== iframe.contentWindow) {
@@ -198,6 +232,8 @@ export function attachPaymentMethodFormListeners(
         ready = true;
         sendParentReadyMessage(iframe);
         sendUpdateAppearance({ iframe, appearance: current.appearance });
+        sendQueuedDefaultValues();
+        sendQueuedFocus();
         break;
 
       case "UPDATE_HEIGHT":
@@ -230,10 +266,24 @@ export function attachPaymentMethodFormListeners(
   return {
     update(patch) {
       const hadAppearance = "appearance" in patch;
+      const hadDefaultValues = "defaultValues" in patch;
       current = { ...current, ...patch };
       if (hadAppearance && ready) {
         sendUpdateAppearance({ iframe, appearance: current.appearance });
       }
+      if (hadDefaultValues && ready) {
+        sendUpdateDefaultValues({
+          iframe,
+          defaultValues: current.defaultValues ?? {},
+        });
+      }
+    },
+    focus(field) {
+      if (ready) {
+        sendFocusField({ iframe, field });
+        return;
+      }
+      pendingFocus = field;
     },
     destroy() {
       window.removeEventListener("message", handleMessage);

@@ -236,6 +236,9 @@ function mountPaymentMethodFormWithSkeleton({
         skeleton.update({ ...skeletonOptions, appearance });
       }
     },
+    focus(field) {
+      controller.focus(field);
+    },
     destroy() {
       if (heightTransitionTimer !== undefined) {
         clearTimeout(heightTransitionTimer);
@@ -595,6 +598,9 @@ export function mountAmosBankAccountPaymentMethodForm(
     update(patch) {
       iframeMount.update(patch as Partial<PaymentMethodFormListenerOptions>);
       plaidUi.update(patch);
+    },
+    focus(field) {
+      iframeMount.focus(field);
     },
     destroy() {
       plaidUi.destroy();

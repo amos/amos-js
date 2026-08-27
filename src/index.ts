@@ -39,12 +39,14 @@ export { decodeJwt, getEmbedOrigin } from "./jwt";
 export {
   confirmPayment,
   confirmSetup,
+  focusField,
   resetForm,
   sendConfirmationResult,
   sendParentReadyMessage,
   updateAmount,
   updateAppearance,
   updateApplePayButton,
+  updateDefaultValues,
   updateGooglePayButton,
   updateMerchantName,
   validateForm,
@@ -103,6 +105,8 @@ export type {
   GooglePayButtonElementProps,
   Message,
   PaymentMethodFormCardBrandChangeEvent,
+  PaymentMethodFormDefaultValues,
+  PaymentMethodFormField,
   PaymentMethodFormValidityChangeEvent,
   ThemeVariable,
 } from "./types";
