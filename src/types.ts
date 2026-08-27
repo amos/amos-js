@@ -394,6 +394,50 @@ export type GooglePayButtonElementProps = Omit<
 };
 
 /**
+ * Non-PCI values the host can seed into the card or bank iframe.
+ *
+ * `name` maps to cardholder name or account holder name depending on
+ * which form is mounted. Billing fields that are not shown still go on
+ * the confirm payload when present.
+ *
+ * Never send PAN, CVC, account number, or routing number here.
+ */
+export type PaymentMethodFormDefaultValues = {
+  name?: string;
+  billingAddress?: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
+};
+
+/**
+ * Named controls inside the card or bank iframe. Card-only ids are a
+ * no-op on the bank form and vice versa. Hidden / unmounted controls
+ * are also a no-op.
+ */
+export type PaymentMethodFormField =
+  | "cardNumber"
+  | "expiration"
+  | "cvc"
+  | "cardholderName"
+  | "accountHolderName"
+  | "accountNumber"
+  | "confirmAccountNumber"
+  | "routingNumber"
+  | "accountType"
+  | "accountHolderType"
+  | "addressLine1"
+  | "addressLine2"
+  | "city"
+  | "state"
+  | "postalCode"
+  | "country";
+
+/**
  * Typed `postMessage` payloads exchanged between the host page and the
  * embedded Amos iframe.
  */
@@ -463,6 +507,11 @@ export type Message =
       Pick<components["schemas"]["EmbedToken"], "token"> & {
         /** Present when ACH verification completed via Plaid Link in the parent. */
         plaid?: components["schemas"]["PlaidCredentialsInput"];
+        /**
+         * Applied immediately before building `payment_method`. Does not
+         * replace the last mount/`update` defaultValues used by RESET_FORM.
+         */
+        defaultValues?: PaymentMethodFormDefaultValues;
       })
   | ({
       /** Parent → embed: confirm a setup intent with an embed token. */
@@ -471,7 +520,22 @@ export type Message =
       Pick<components["schemas"]["EmbedToken"], "token"> & {
         /** Present when ACH verification completed via Plaid Link in the parent. */
         plaid?: components["schemas"]["PlaidCredentialsInput"];
+        /**
+         * Applied immediately before building `payment_method`. Does not
+         * replace the last mount/`update` defaultValues used by RESET_FORM.
+         */
+        defaultValues?: PaymentMethodFormDefaultValues;
       })
+  | {
+      /** Parent → embed: seed or overwrite name and billing address fields. */
+      type: "UPDATE_DEFAULT_VALUES";
+      defaultValues: PaymentMethodFormDefaultValues;
+    }
+  | {
+      /** Parent → embed: focus a named form control. No-op if unmounted. */
+      type: "FOCUS_FIELD";
+      field: PaymentMethodFormField;
+    }
   | {
       /**
        * Embed → parent: the interactive confirmation flow finished.

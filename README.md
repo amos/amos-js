@@ -45,6 +45,16 @@ const form = mountAmosCreditCardPaymentMethodForm(
   {
     renderToken: "the-render-token-created-on-dashboard.amos.com",
     additionalFields: { cardholderName: true },
+    defaultValues: {
+      name: "Jane Doe",
+      billingAddress: {
+        line1: "354 Oyster Point Blvd",
+        city: "South San Francisco",
+        state: "CA",
+        postalCode: "94080",
+        country: "US",
+      },
+    },
     appearance: {
       themeVariables: {
         "--primary": "oklch(0.5 0.2 240)",
@@ -276,6 +286,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 - `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder" }`)
 - `additionalFields` (`{ cardholderName: boolean }`, defaults to `{ cardholderName: false }`)
 - `billingAddressRequirement` (`"country" | "full"`, defaults to `"country"`) — how much billing address the iframe collects. `country` collects country / region and, for CA / PR / GB / US, a postal code (labeled ZIP for the United States). `full` shows a full street address form with Smarty autocomplete.
+- `defaultValues` (`{ name?: string; billingAddress?: { line1?, line2?, city?, state?, postalCode?, country? } }`) — seed cardholder / account-holder name and billing address. Provided keys overwrite matching fields, including ones the customer already edited. Values are also sent on confirm even when those inputs are hidden (cardholder name off, or `country` billing mode). Never send PAN, CVC, account number, or routing number.
 - `onValidityChange` (`(event: { isValid: boolean }) => void`) — called when form validity changes. `isValid` is true when all required fields are present and valid. Does not include PCI data. Use this to enable or disable your checkout button.
 - `onCardBrandChanged` (`(event: { brand: CardBrand | null }) => void`) — called when the detected card brand changes. `brand` is `"visa"`, `"mastercard"`, `"amex"`, `"discover"`, `"diners"`, or `"jcb"`, or `null` when the field is empty or the number does not match a known brand. Does not include PCI data. Credit-card form only.
 - `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic). The skeleton is removed and the iframe faded in when `onAppearanceReady` fires.
@@ -283,7 +294,8 @@ Mount the secure credit-card payment method form into a container element (an `H
 **Returns** `AmosPaymentMethodFormMountController`:
 
 - `iframe` — the underlying `<iframe>` element.
-- `update(patch)` — patch any of the options listed above.
+- `update(patch)` — patch any of the options listed above (including `defaultValues`).
+- `focus(field)` — focus a named iframe control (see `focusField` below).
 - `destroy()` — remove the iframe (and any loading skeleton) and detach listeners.
 
 ### `mountAmosBankAccountPaymentMethodForm(container, options)`
@@ -383,13 +395,23 @@ Only Amos domains need Apple merchant registration. The button and `ApplePaySess
 
 Validates the embedded card/bank iframe form. Returns `Promise<boolean>` (resolves to `false` after 5 seconds if the iframe does not respond).
 
-### `confirmPayment({ iframe, token })` / `confirmSetup({ iframe, token })`
+### `confirmPayment({ iframe, token, defaultValues? })` / `confirmSetup({ iframe, token, defaultValues? })`
 
-Forward an embed JWT to the iframe and wait for confirmation. `confirmPayment` resolves `ConfirmPaymentResult`; `confirmSetup` resolves `ConfirmSetupResult`.
+Forward an embed JWT to the iframe and wait for confirmation. `confirmPayment` resolves `ConfirmPaymentResult`; `confirmSetup` resolves `ConfirmSetupResult`. Optional `defaultValues` are applied immediately before building the payment method (including hidden name and extra billing fields) and do not replace the last mount/`update` defaults used by `resetForm`.
 
 ### `resetForm({ iframe })`
 
-Clears all field values and API errors in the embedded card/bank iframe form. Call after a failed confirm when the customer wants to try again.
+Clears all field values and API errors in the embedded card/bank iframe form, then restores the last mount/`update` `defaultValues`. Call after a failed confirm when the customer wants to try again.
+
+### `focusField({ iframe, field })`
+
+Focus a named control inside the card or bank iframe. No-op if the field is not rendered, or while Plaid Embedded Institution Search is showing instead of the bank form. Call from a click or keydown handler; some browsers ignore focus without a user gesture.
+
+`field` is one of: `cardNumber`, `expiration`, `cvc`, `cardholderName`, `accountHolderName`, `accountNumber`, `confirmAccountNumber`, `routingNumber`, `accountType`, `accountHolderType`, `addressLine1`, `addressLine2`, `city`, `state`, `postalCode`, `country`.
+
+### `updateDefaultValues({ iframe, defaultValues })`
+
+Push name and billing-address defaults into a mounted form. The mount controller's `update({ defaultValues })` does the same.
 
 ### `attachPaymentMethodFormListeners(iframe, options)`
 
@@ -415,11 +437,11 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 
 ### Exported types
 
-`ConfirmPaymentResult`, `ConfirmSetupResult`, `Message`, `Appearance`, `ThemeVariable`, `FormattedGooglePayPaymentData`, `PaymentMethodFormValidityChangeEvent`, `CardBrand`, `PaymentMethodFormCardBrandChangeEvent`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
+`ConfirmPaymentResult`, `ConfirmSetupResult`, `Message`, `Appearance`, `ThemeVariable`, `FormattedGooglePayPaymentData`, `PaymentMethodFormValidityChangeEvent`, `CardBrand`, `PaymentMethodFormCardBrandChangeEvent`, `PaymentMethodFormDefaultValues`, `PaymentMethodFormField`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
 
 ## Notes and potential gotchas
 
-- **`iframe` argument**: every messaging helper (`validateForm`, `confirmPayment`, `confirmSetup`, `resetForm`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
+- **`iframe` argument**: every messaging helper (`validateForm`, `confirmPayment`, `confirmSetup`, `resetForm`, `focusField`, `updateDefaultValues`) accepts the `iframe` element directly. With the mount helpers, use `controller.iframe`.
 - **`confirmPayment` / `confirmSetup` are not settlement proof**: `{ status: "succeeded" }` means authorization succeeded (capture may still finish asynchronously). Verify payment or setup success on your backend via webhooks. Recoverable field errors stay in the iframe; the Promise still resolves `{ status: "failed" }`. Declined confirms include the intent so you can read `last_payment_error` without a follow-up GET.
 - **Same components for payment vs setup intents**: `mountAmosCreditCardPaymentMethodForm` and `mountAmosBankAccountPaymentMethodForm` support both payment intents and setup intents. The flow differs only by which server call you make and which confirmation function you use (`confirmPayment` vs `confirmSetup`).
 - **Amount format**: for `mountAmosGooglePayButton` and `mountAmosApplePayButton`, `amount` is a major-currency decimal string (e.g. `"50.00"` for $50.00). For `components["schemas"]["CreatePaymentIntentInput"]` on the server (card/bank create, and the object the wallet iframe sends to `onConfirm`), `amount` is a number in cents (e.g. `5000`).

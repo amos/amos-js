@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.6
+
+### Patch Changes
+
+- Populate and focus form fields
+
 ## 0.11.5
 
 ### Patch Changes
