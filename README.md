@@ -40,7 +40,7 @@ import {
   confirmPayment,
 } from "@amos.com/amos-js";
 
-const form = mountAmosCreditCardPaymentMethodForm(
+const card = mountAmosCreditCardPaymentMethodForm(
   document.querySelector("#card-form")!,
   {
     renderToken: "the-render-token-created-on-dashboard.amos.com",
@@ -67,27 +67,33 @@ const form = mountAmosCreditCardPaymentMethodForm(
   },
 );
 
-document.querySelector("#pay-now")!.addEventListener("click", async () => {
-  const isValid = await validateForm({ iframe: form.iframe });
-  if (!isValid) {
-    return;
-  }
+// Wrap the mount in a host `<form>`. Enter in the iframe submits it
+// (same as Stripe Elements). No-op if there is no enclosing form.
+document.querySelector("#checkout")!.addEventListener(
+  "submit",
+  async (event) => {
+    event.preventDefault();
+    const isValid = await validateForm({ iframe: card.iframe });
+    if (!isValid) {
+      return;
+    }
 
-  const response = await fetch("/api/payment-intents", { method: "POST" });
-  const { token } = await response.json();
-  const result = await confirmPayment({ iframe: form.iframe, token });
-  if (result.status === "succeeded") {
-    console.log("Authorized", result.paymentIntent.id);
-  }
-});
+    const response = await fetch("/api/payment-intents", { method: "POST" });
+    const { token } = await response.json();
+    const result = await confirmPayment({ iframe: card.iframe, token });
+    if (result.status === "succeeded") {
+      console.log("Authorized", result.paymentIntent.id);
+    }
+  },
+);
 
 // Later, if your theme changes:
-form.update({
+card.update({
   appearance: { themeVariables: { "--primary": "oklch(0.6 0.2 30)" } },
 });
 
 // On teardown:
-form.destroy();
+card.destroy();
 ```
 
 ## Understanding the flow for creating and confirming payment intents
@@ -97,8 +103,8 @@ form.destroy();
 The following flow is for credit card and bank account payment method types only.
 
 1. **Set up prerequisites**: create a `renderToken` (safe for client), and keep `apiKey` and `accountId` server-side only.
-2. **Render your checkout UI** by calling `mountAmosCreditCardPaymentMethodForm(container, options)` (or `mountAmosBankAccountPaymentMethodForm(...)`). The SDK shows a field-shaped skeleton immediately (sized from `appearance`, `additionalFields`, and `billingAddressRequirement`) and auto-manages iframe height.
-3. **User clicks "Pay now" button**: call `validateForm({ iframe: form.iframe })`, which returns `Promise<true>` if the embedded form is valid, and `Promise<false>` otherwise.
+2. **Render your checkout UI** by calling `mountAmosCreditCardPaymentMethodForm(container, options)` (or `mountAmosBankAccountPaymentMethodForm(...)`) **inside a host `<form>`**. The SDK shows a field-shaped skeleton immediately (sized from `appearance`, `additionalFields`, and `billingAddressRequirement`) and auto-manages iframe height. Enter in the iframe submits that enclosing form (PCI-safe; no field values). No-op without a host form, or while Plaid Embedded Institution Search is showing.
+3. **User clicks "Pay now" or presses Enter in the iframe**: call `validateForm({ iframe: form.iframe })`, which returns `Promise<true>` if the embedded form is valid, and `Promise<false>` otherwise.
 4. **Create payment intent on your server**: use your server-side Amos client to call `POST /payment_intents`. You may also associate this payment intent with a new or existing customer via `POST /customers`. This must be server-side because it uses your private API key.
 5. **Return the payment intent token to the browser**: your backend responds with the embed token (`components["schemas"]["EmbedToken"]`) needed for confirmation.
 6. **Confirm the payment intent from the client**: `await confirmPayment({ iframe: form.iframe, token })`. It resolves `{ status: "succeeded", paymentIntent }` or `{ status: "failed", paymentIntent? }`.
@@ -291,6 +297,8 @@ Mount the secure credit-card payment method form into a container element (an `H
 - `onCardBrandChanged` (`(event: { brand: CardBrand | null }) => void`) — called when the detected card brand changes. `brand` is `"visa"`, `"mastercard"`, `"amex"`, `"discover"`, `"diners"`, or `"jcb"`, or `null` when the field is empty or the number does not match a known brand. Does not include PCI data. Credit-card form only.
 - `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic). The skeleton is removed and the iframe faded in when `onAppearanceReady` fires.
 
+Enter in a card or bank iframe field submits the enclosing host `<form>` via `requestSubmit()` (same as Stripe Elements). Listen to that form's `submit` event — do not attach a keydown listener on the parent, which cannot see keys typed in the cross-origin iframe. No-op if the mount is not inside a `<form>`, or while Plaid Embedded Institution Search is showing.
+
 **Returns** `AmosPaymentMethodFormMountController`:
 
 - `iframe` — the underlying `<iframe>` element.
@@ -415,7 +423,7 @@ Push name and billing-address defaults into a mounted form. The mount controller
 
 ### `attachPaymentMethodFormListeners(iframe, options)`
 
-Lower-level helper that wires up the host-page side of the credit-card or bank-account iframe message protocol on an existing `<iframe>` element. The iframe is expected to have been added to the DOM with the correct `src` already (see `getCreditCardFormSrc` / `getBankAccountFormSrc`). Returns `{ update, destroy }`.
+Lower-level helper that wires up the host-page side of the credit-card or bank-account iframe message protocol on an existing `<iframe>` element. The iframe is expected to have been added to the DOM with the correct `src` already (see `getCreditCardFormSrc` / `getBankAccountFormSrc`). Returns `{ update, destroy }`. On `FORM_SUBMIT_REQUEST`, submits the enclosing host `<form>` with `requestSubmit()`.
 
 This is what `@amos.com/react-amos-js` uses to integrate with React's rendering model.
 

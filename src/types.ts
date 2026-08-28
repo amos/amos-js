@@ -577,6 +577,15 @@ export type Message =
     }
   | {
       /**
+       * Embed → parent: the customer pressed Enter in the iframe form.
+       * PCI-safe — no field values. The SDK submits the enclosing host
+       * `<form>` (same as Stripe Elements). No-op without a host form,
+       * or while Plaid Embedded Institution Search is showing.
+       */
+      type: "FORM_SUBMIT_REQUEST";
+    }
+  | {
+      /**
        * Embed → parent: detected card brand changed. `brand` is the
        * matched network, or `null` when the field is empty or the
        * digits do not match a known brand. Does not include PCI data.

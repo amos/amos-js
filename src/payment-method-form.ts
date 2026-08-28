@@ -188,6 +188,22 @@ export type PaymentMethodFormController = {
 };
 
 /**
+ * Submit the host `<form>` that wraps this iframe, if any.
+ *
+ * Mirrors Stripe Elements: Enter inside the cross-origin iframe cannot
+ * be observed by the parent, so the iframe posts `FORM_SUBMIT_REQUEST`
+ * and the SDK calls `requestSubmit()` on the enclosing form. No-op when
+ * there is no host form, or while Plaid Embedded Institution Search is
+ * showing instead of the bank fields.
+ */
+function submitEnclosingHostForm(iframe: HTMLIFrameElement): void {
+  if (getBankPlaidSession(iframe)?.requiresVerification) {
+    return;
+  }
+  iframe.closest("form")?.requestSubmit();
+}
+
+/**
  * Wire up the host-page side of the credit-card or bank-account iframe
  * message protocol on an existing `<iframe>` element. Returns a
  * controller for updating options and tearing down the listener.
@@ -260,6 +276,10 @@ export function attachPaymentMethodFormListeners(
           break;
         }
         current.onValidityChange?.({ isValid: event.data.isValid });
+        break;
+
+      case "FORM_SUBMIT_REQUEST":
+        submitEnclosingHostForm(iframe);
         break;
 
       case "CARD_BRAND_CHANGE":
