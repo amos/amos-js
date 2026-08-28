@@ -64,6 +64,9 @@ const card = mountAmosCreditCardPaymentMethodForm(
     onValidityChange: ({ isValid }) => {
       document.querySelector("#pay-now")!.disabled = !isValid;
     },
+    onEscapeKeyPressed: () => {
+      document.querySelector("dialog")?.close();
+    },
   },
 );
 
@@ -295,6 +298,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 - `defaultValues` (`{ name?: string; billingAddress?: { line1?, line2?, city?, state?, postalCode?, country? } }`) — seed cardholder / account-holder name and billing address. Provided keys overwrite matching fields, including ones the customer already edited. Values are also sent on confirm even when those inputs are hidden (cardholder name off, or `country` billing mode). Never send PAN, CVC, account number, or routing number.
 - `onValidityChange` (`(event: { isValid: boolean }) => void`) — called when form validity changes. `isValid` is true when all required fields are present and valid. Does not include PCI data. Use this to enable or disable your checkout button.
 - `onCardBrandChanged` (`(event: { brand: CardBrand | null }) => void`) — called when the detected card brand changes. `brand` is `"visa"`, `"mastercard"`, `"amex"`, `"discover"`, `"diners"`, or `"jcb"`, or `null` when the field is empty or the number does not match a known brand. Does not include PCI data. Credit-card form only.
+- `onEscapeKeyPressed` (`() => void`) — called when the customer presses Escape in the iframe. PCI-safe — no field values. Use this to close a host modal that contains the iframe. Not fired while an iframe dropdown or address suggestion list is open (that Escape dismisses the overlay first), or while Plaid Embedded Institution Search is showing. The parent cannot attach a keydown listener for this itself because the iframe is cross-origin.
 - `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic). The skeleton is removed and the iframe faded in when `onAppearanceReady` fires.
 
 Enter in a card or bank iframe field submits the enclosing host `<form>` via `requestSubmit()` (same as Stripe Elements). Listen to that form's `submit` event — do not attach a keydown listener on the parent, which cannot see keys typed in the cross-origin iframe. No-op if the mount is not inside a `<form>`, or while Plaid Embedded Institution Search is showing.
@@ -423,7 +427,7 @@ Push name and billing-address defaults into a mounted form. The mount controller
 
 ### `attachPaymentMethodFormListeners(iframe, options)`
 
-Lower-level helper that wires up the host-page side of the credit-card or bank-account iframe message protocol on an existing `<iframe>` element. The iframe is expected to have been added to the DOM with the correct `src` already (see `getCreditCardFormSrc` / `getBankAccountFormSrc`). Returns `{ update, destroy }`. On `FORM_SUBMIT_REQUEST`, submits the enclosing host `<form>` with `requestSubmit()`.
+Lower-level helper that wires up the host-page side of the credit-card or bank-account iframe message protocol on an existing `<iframe>` element. The iframe is expected to have been added to the DOM with the correct `src` already (see `getCreditCardFormSrc` / `getBankAccountFormSrc`). Returns `{ update, destroy }`. On `FORM_SUBMIT_REQUEST`, submits the enclosing host `<form>` with `requestSubmit()`. On `ESCAPE_KEY_PRESSED`, calls `onEscapeKeyPressed`.
 
 This is what `@amos.com/react-amos-js` uses to integrate with React's rendering model.
 

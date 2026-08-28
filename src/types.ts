@@ -586,6 +586,17 @@ export type Message =
     }
   | {
       /**
+       * Embed → parent: the customer pressed Escape in the iframe.
+       * PCI-safe — no field values. Use `onEscapeKeyPressed` to close a
+       * host modal. Not posted while an iframe dropdown or address
+       * suggestion list is open (that Escape dismisses the overlay
+       * first). No-op while Plaid Embedded Institution Search is
+       * showing.
+       */
+      type: "ESCAPE_KEY_PRESSED";
+    }
+  | {
+      /**
        * Embed → parent: detected card brand changed. `brand` is the
        * matched network, or `null` when the field is empty or the
        * digits do not match a known brand. Does not include PCI data.

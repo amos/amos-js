@@ -161,6 +161,14 @@ export type PaymentMethodFormListenerOptions = {
    * only — never fired for bank account.
    */
   onCardBrandChanged?: (event: PaymentMethodFormCardBrandChangeEvent) => void;
+  /**
+   * Called when the customer presses Escape in the iframe. PCI-safe —
+   * no field values. Use this to close a host modal that contains the
+   * iframe. Not fired while an iframe dropdown or address suggestion
+   * list is open (that Escape dismisses the overlay first), or while
+   * Plaid Embedded Institution Search is showing.
+   */
+  onEscapeKeyPressed?: () => void;
 };
 
 /**
@@ -201,6 +209,24 @@ function submitEnclosingHostForm(iframe: HTMLIFrameElement): void {
     return;
   }
   iframe.closest("form")?.requestSubmit();
+}
+
+/**
+ * Notify the host that Escape was pressed inside the iframe.
+ *
+ * Mirrors Stripe Elements `escape`: the parent cannot observe keys
+ * while focus is in the cross-origin iframe, so the iframe posts
+ * `ESCAPE_KEY_PRESSED`. No-op while Plaid Embedded Institution Search
+ * is showing instead of the bank fields.
+ */
+function notifyEscapeKeyPressed(
+  iframe: HTMLIFrameElement,
+  onEscapeKeyPressed?: () => void,
+): void {
+  if (getBankPlaidSession(iframe)?.requiresVerification) {
+    return;
+  }
+  onEscapeKeyPressed?.();
 }
 
 /**
@@ -280,6 +306,10 @@ export function attachPaymentMethodFormListeners(
 
       case "FORM_SUBMIT_REQUEST":
         submitEnclosingHostForm(iframe);
+        break;
+
+      case "ESCAPE_KEY_PRESSED":
+        notifyEscapeKeyPressed(iframe, current.onEscapeKeyPressed);
         break;
 
       case "CARD_BRAND_CHANGE":

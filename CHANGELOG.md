@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.10
+
+### Patch Changes
+
+- Propagate escape key press
+
 ## 0.11.9
 
 ### Patch Changes
