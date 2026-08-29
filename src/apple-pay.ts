@@ -1,6 +1,7 @@
 import type { components } from "@amos.com/node";
 import {
   hideApplePayWaitingOverlay,
+  setApplePayWaitingOverlayCompleting,
   showApplePayWaitingOverlay,
 } from "./apple-pay-waiting-overlay";
 import { getEmbedOrigin } from "./jwt";
@@ -118,7 +119,10 @@ function sendApplePayCancel(iframe: HTMLIFrameElement): void {
  * The Apple Pay button and `ApplePaySession` run inside the Amos embed
  * iframe so only Amos domains need Apple merchant registration. While
  * Apple Pay Code is open in a separate window, this host paints a
- * waiting overlay and can cancel via {@link Message} `APPLE_PAY_CANCEL`.
+ * waiting overlay. Cancel (via {@link Message} `APPLE_PAY_CANCEL`) is
+ * available until the buyer authorizes; after `CREATE_PAYMENT_INTENT`
+ * the overlay switches to a completing state with no Cancel, then hides
+ * when `onConfirm` settles.
  */
 export function attachApplePayButtonListeners(
   iframe: HTMLIFrameElement,
@@ -190,6 +194,7 @@ export function attachApplePayButtonListeners(
         break;
 
       case "CREATE_PAYMENT_INTENT":
+        setApplePayWaitingOverlayCompleting();
         void current
           .onConfirm({
             paymentIntentCreateAttributes:

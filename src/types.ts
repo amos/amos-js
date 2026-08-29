@@ -555,11 +555,19 @@ export type Message =
       type: "APPLE_PAY_WINDOW_OPEN";
     }
   | {
-      /** Embed → parent: waiting UI should dismiss. */
+      /**
+       * Embed → parent: waiting UI should dismiss (cancel before authorize,
+       * abort, or session error — not authorize). After authorize the
+       * overlay stays until `onConfirm` settles.
+       */
       type: "APPLE_PAY_WINDOW_CLOSE";
     }
   | {
-      /** Parent → embed: user cancelled from the host-page waiting overlay. */
+      /**
+       * Parent → embed: user cancelled from the host-page waiting overlay.
+       * Only offered before authorize; the overlay hides Cancel once
+       * `CREATE_PAYMENT_INTENT` arrives.
+       */
       type: "APPLE_PAY_CANCEL";
     }
   | {

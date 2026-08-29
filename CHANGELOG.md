@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.11
+
+### Patch Changes
+
+- Keep Apple Pay waiting until confirm
+
 ## 0.11.10
 
 ### Patch Changes
