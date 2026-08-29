@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.12
+
+### Patch Changes
+
+- Load payment iframes from `https://js.amos.com` (production) and `https://js-sandbox.amos.com` (sandbox). Add those origins to CSP `frame-src` and `Permissions-Policy payment=` before upgrading. Older SDK versions continue to use `embed.amos.com` / `embed-sandbox.amos.com`.
+
 ## 0.11.11
 
 ### Patch Changes

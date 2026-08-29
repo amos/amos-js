@@ -28,6 +28,8 @@ export function decodeJwt(token: string | undefined): {
 /**
  * Resolve the Amos embed origin (production vs. sandbox) from a render
  * token's decoded payload.
+ *
+ * Production: `https://js.amos.com`. Sandbox: `https://js-sandbox.amos.com`.
  */
 export function getEmbedOrigin(renderToken: string): string {
   const { env = "sandbox" }: components["schemas"]["RenderTokenJwt"] =
@@ -35,10 +37,10 @@ export function getEmbedOrigin(renderToken: string): string {
 
   switch (env) {
     case "production":
-      return "https://embed.amos.com";
+      return "https://js.amos.com";
     case "sandbox":
-      return "https://embed-sandbox.amos.com";
+      return "https://js-sandbox.amos.com";
     default:
-      return "https://embed-sandbox.amos.com";
+      return "https://js-sandbox.amos.com";
   }
 }
