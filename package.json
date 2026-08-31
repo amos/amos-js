@@ -1,6 +1,6 @@
 {
   "name": "@amos.com/amos-js",
-  "version": "0.11.12",
+  "version": "0.11.13",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -34,6 +34,15 @@
   },
   "author": "Amos",
   "license": "MIT",
+  "browserslist": [
+    "chrome >= 64",
+    "firefox >= 67",
+    "safari >= 12",
+    "ios >= 12",
+    "samsung >= 9",
+    "edge >= 79",
+    "opera >= 51"
+  ],
   "description": "Amos JavaScript SDK for embedding payment methods via iframes.",
   "devDependencies": {
     "@amos.com/node": "0.1.57",

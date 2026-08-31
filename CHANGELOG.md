@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.13
+
+### Patch Changes
+
+- Support older browsers
+
 ## 0.11.12
 
 ### Patch Changes

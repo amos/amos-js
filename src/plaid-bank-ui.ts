@@ -1,3 +1,4 @@
+import { createAbortController } from "./abort-controller";
 import { requestPlaidLinkToken } from "./messaging";
 import type { PaymentMethodFormListenerOptions } from "./payment-method-form";
 import {
@@ -171,7 +172,7 @@ export function attachPlaidBankUi({
   let iframeReady = false;
   let lastEmittedValid: boolean | undefined;
   let destroyLink: (() => void) | undefined;
-  const abort = new AbortController();
+  const abort = createAbortController();
   let linked:
     | { credentials: PlaidCredentials; bankName: string; last4: string }
     | undefined;

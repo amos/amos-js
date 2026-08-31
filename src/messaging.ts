@@ -1,6 +1,7 @@
 import type { components } from "@amos.com/node";
 import { decodeJwt } from "./jwt";
 import { getBankPlaidSession } from "./plaid-session";
+import { randomRequestId } from "./random-id";
 import {
   type Appearance,
   type ApplePayButtonElementProps,
@@ -226,7 +227,7 @@ export function validateForm({ iframe }: { iframe: Iframe }): Promise<boolean> {
     return Promise.resolve(Boolean(session.plaid));
   }
 
-  const requestId = crypto.randomUUID();
+  const requestId = randomRequestId();
 
   return new Promise((resolve) => {
     if (iframe?.contentWindow) {
@@ -267,7 +268,7 @@ export function requestPlaidLinkToken({
 }: {
   iframe: Iframe;
 }): Promise<string> {
-  const requestId = crypto.randomUUID();
+  const requestId = randomRequestId();
 
   return new Promise((resolve, reject) => {
     if (!iframe?.contentWindow) {

@@ -24,6 +24,10 @@ export default defineConfig({
     }),
   ],
   build: {
+    // Match amos-ui embed: native-ESM browsers (2018+). Syntax is
+    // downleveled here; crypto.randomUUID / AbortController are handled in
+    // src, not via core-js.
+    target: ["chrome64", "firefox67", "safari12", "ios12", "edge79"],
     lib: {
       entry: {
         index: "src/index.ts",
