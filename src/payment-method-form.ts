@@ -1,3 +1,4 @@
+import { appearanceWithDefaults } from "./appearance-defaults";
 import { getEmbedOrigin } from "./jwt";
 import {
   focusField as sendFocusField,
@@ -128,7 +129,8 @@ export type PaymentMethodFormListenerOptions = {
   /**
    * Custom appearance to apply when the iframe first becomes ready and
    * whenever the appearance changes. Can be updated later via the
-   * returned controller's `update({ appearance })` method.
+   * returned controller's `update({ appearance })` method. Omitted
+   * `fonts` / `--font-family` on first paint default to Inter.
    */
   appearance?: Appearance;
   /**
@@ -280,7 +282,12 @@ export function attachPaymentMethodFormListeners(
       case "IFRAME_READY":
         ready = true;
         sendParentReadyMessage(iframe);
-        sendUpdateAppearance({ iframe, appearance: current.appearance });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults(current.appearance, {
+            initial: true,
+          }),
+        });
         sendQueuedDefaultValues();
         sendQueuedFocus();
         break;
@@ -290,7 +297,12 @@ export function attachPaymentMethodFormListeners(
         break;
 
       case "UPDATE_APPEARANCE":
-        sendUpdateAppearance({ iframe, appearance: event.data.appearance });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults(event.data.appearance, {
+            initial: false,
+          }),
+        });
         break;
 
       case "UPDATED_APPEARANCE":
@@ -326,7 +338,12 @@ export function attachPaymentMethodFormListeners(
       const hadDefaultValues = "defaultValues" in patch;
       current = { ...current, ...patch };
       if (hadAppearance && ready) {
-        sendUpdateAppearance({ iframe, appearance: current.appearance });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults(current.appearance, {
+            initial: false,
+          }),
+        });
       }
       if (hadDefaultValues && ready) {
         sendUpdateDefaultValues({

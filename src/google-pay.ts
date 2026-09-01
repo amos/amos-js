@@ -1,6 +1,7 @@
 /// <reference types="googlepay" />
 
 import type { components } from "@amos.com/node";
+import { appearanceWithDefaults } from "./appearance-defaults";
 import { getEmbedOrigin } from "./jwt";
 import {
   confirmPayment,
@@ -143,7 +144,10 @@ export function attachGooglePayButtonListeners(
       case "IFRAME_READY":
         ready = true;
         sendParentReadyMessage(iframe);
-        sendUpdateAppearance({ iframe, appearance: {} });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults({}, { initial: true }),
+        });
         pushAmount();
         pushMerchantName();
         pushButtonProps();
@@ -154,7 +158,12 @@ export function attachGooglePayButtonListeners(
         break;
 
       case "UPDATE_APPEARANCE":
-        sendUpdateAppearance({ iframe, appearance: event.data.appearance });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults(event.data.appearance, {
+            initial: false,
+          }),
+        });
         break;
 
       case "UPDATED_APPEARANCE":

@@ -145,11 +145,9 @@ function mountPaymentMethodFormWithSkeleton({
   host.appendChild(wrapper);
 
   let revealed = false;
-  let appearanceReady = false;
   let lastHeight: string | undefined;
   let appearance = skeletonOptions.appearance;
   let heightTransitionTimer: ReturnType<typeof setTimeout> | undefined;
-  let fallbackRevealTimer: ReturnType<typeof setTimeout> | undefined;
 
   function skeletonHeightPx(): number {
     return wrapper.getBoundingClientRect().height;
@@ -164,16 +162,10 @@ function mountPaymentMethodFormWithSkeleton({
       return;
     }
     revealed = true;
-    if (fallbackRevealTimer !== undefined) {
-      clearTimeout(fallbackRevealTimer);
-      fallbackRevealTimer = undefined;
-    }
 
     const skeletonPx = skeletonHeightPx();
     const reportedPx = reportedHeightPx();
-    const revealPx = Number.isFinite(reportedPx)
-      ? Math.max(reportedPx, skeletonPx)
-      : skeletonPx;
+    const revealPx = Number.isFinite(reportedPx) ? reportedPx : skeletonPx;
 
     iframe.style.transition = "none";
     iframe.style.position = "";
@@ -193,36 +185,17 @@ function mountPaymentMethodFormWithSkeleton({
     }, 400);
   }
 
-  function tryReveal(): void {
-    if (revealed || !appearanceReady) {
-      return;
-    }
-    const reportedPx = reportedHeightPx();
-    const skeletonPx = skeletonHeightPx();
-    if (Number.isFinite(reportedPx) && reportedPx >= skeletonPx - 2) {
-      reveal();
-    }
-  }
-
   const controller = attachPaymentMethodFormListeners(iframe, {
     ...listenerOptions,
     onHeightChange: (height) => {
       lastHeight = height;
       if (revealed) {
         iframe.style.height = height;
-      } else {
-        tryReveal();
       }
       listenerOptions.onHeightChange?.(height);
     },
     onAppearanceReady: () => {
-      appearanceReady = true;
-      tryReveal();
-      if (!revealed && fallbackRevealTimer === undefined) {
-        fallbackRevealTimer = setTimeout(() => {
-          reveal();
-        }, 1500);
-      }
+      reveal();
       listenerOptions.onAppearanceReady?.();
     },
   });
@@ -242,9 +215,6 @@ function mountPaymentMethodFormWithSkeleton({
     destroy() {
       if (heightTransitionTimer !== undefined) {
         clearTimeout(heightTransitionTimer);
-      }
-      if (fallbackRevealTimer !== undefined) {
-        clearTimeout(fallbackRevealTimer);
       }
       controller.destroy();
       wrapper.remove();

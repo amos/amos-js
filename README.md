@@ -208,21 +208,93 @@ In short, your app orchestrates the payment flow, while sensitive payment data s
 
 ## Appearance
 
-Card and bank mount functions (and `attachPaymentMethodFormListeners`) accept an optional `appearance` option that controls the look of the iframe UI. It contains a `themeVariables` object whose keys are CSS custom-property names and whose values are strings, and an optional `labels` setting for field label placement. You can update appearance after page load via the controller's `update({ appearance })` method. Wallet buttons do not take `appearance`.
+Card and bank mount functions (and `attachPaymentMethodFormListeners`) accept an optional `appearance` option that controls the look of the iframe UI. It contains a `themeVariables` object whose keys are CSS custom-property names and whose values are strings, an optional `labels` setting for field label placement, and optional `fonts` to load webfonts inside the iframe. You can update appearance after page load via the controller's `update({ appearance })` method. Wallet buttons do not take `appearance`.
 
 ```ts
 form.update({
   appearance: {
     labels: "floating",
+    fonts: [
+      { cssSrc: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" },
+    ],
     themeVariables: {
       "--primary": "oklch(0.5 0.2 240)",
       "--radius": "0.25rem",
+      "--font-family": "Inter, ui-sans-serif, system-ui, sans-serif",
     },
   },
 });
 ```
 
 `themeVariables` uses a **replace** model: each update that includes `themeVariables` sets the full override set. Only the variables you list are overridden; unlisted variables revert to iframe defaults. Omit `themeVariables` to leave existing overrides unchanged.
+
+`fonts` uses the same replace model: omit `fonts` to keep the previous set; pass a new array to replace it (`[]` clears, including the SDK Inter default). The iframe does not wait for webfonts before revealing — custom faces use `font-display: swap`.
+
+### Fonts
+
+When you omit `fonts` and `--font-family`, the SDK sends Google Fonts Inter on the first `UPDATE_APPEARANCE` (same stylesheet the embed used to load globally) and sets `--font-family` to `Inter, ui-sans-serif, system-ui, sans-serif`. That is what lets js.amos.com drop its own Inter `<link>` once every client is on this SDK.
+
+Pass Stripe-style font sources on `appearance.fonts` to replace that default. Pair them with `--font-family` so the iframe uses the loaded face. Pass `fonts: []` and a system `--font-family` to opt out of Inter.
+
+```ts
+appearance: {
+  fonts: [
+    { cssSrc: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" },
+    // or { family: "MyFont", src: 'url(https://cdn.example.com/my.woff2)', display: "swap" }
+  ],
+  themeVariables: {
+    "--font-family": "Inter, ui-sans-serif, system-ui, sans-serif",
+  },
+}
+```
+
+- **`cssSrc`** — an `https:` stylesheet URL that declares `@font-face` (Google Fonts CSS, a self-hosted CSS file). The iframe injects `<link rel="stylesheet">`; it does not fetch and inline the CSS.
+- **Custom source** — `family` plus a CSS `src` list of `url("https://…")` / `url(https://…)` and optional `format(…)`. Optional `display` (default `"swap"`), `style`, `weight`, and `unicodeRange`.
+
+### Rules
+
+Per-part CSS, keyed by Stripe-style class names. The iframe maps these onto its own slots; you cannot target the iframe DOM from the host page. Pair `fontFamily` with `appearance.fonts` so the face is loaded.
+
+```ts
+appearance: {
+  fonts: [
+    { cssSrc: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" },
+    { cssSrc: "https://fonts.googleapis.com/css2?family=Source+Serif+4&display=swap" },
+  ],
+  themeVariables: {
+    "--font-family": "Inter, ui-sans-serif, system-ui, sans-serif",
+  },
+  rules: {
+    ".Label": { fontFamily: "Source Serif 4, ui-serif, serif" },
+    ".Input": { fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" },
+    ".Input--invalid": { boxShadow: "0 0 0 2px oklch(0.55 0.245 27.325)" },
+  },
+}
+```
+
+`rules` uses the same **replace** model as `themeVariables` and `fonts`: omit `rules` to keep the previous set; pass a new object to replace it (`{}` clears). Unknown class names and properties are ignored.
+
+Rules override `themeVariables` for the properties they set (Stripe). `--input-height` / `--floating-input-height` are a **minimum**; `.Input` `padding`, `fontSize`, and `lineHeight` can grow the field. Rule values may reference allowlisted tokens as `var(--primary)` (no fallback argument).
+
+The host skeleton (shown until `UPDATED_APPEARANCE`) copies `themeVariables` and resting **`.Input` / `.Label`** rules that change box size (`fontSize`, `lineHeight`, `padding`, `margin`, `border*`). Hover, invalid, placeholder, dropdown, and radio rules have no skeleton equivalent. Floating labels sit inside the control, so `.Label` / `.Label--floating` do not change skeleton height.
+
+| Selector | Targets |
+| --- | --- |
+| `.Input` | Text fields, country select, state trigger |
+| `.Input:hover`, `.Input:focus`, `.Input:disabled` | Those controls in the given state |
+| `.Input--invalid` | Invalid text fields / selects |
+| `.Input::placeholder` | Input placeholders |
+| `.Label` | All labels (above, floating, radio option text, group titles) |
+| `.Label--floating` | Extra styles on floating labels (overrides `.Label`) |
+| `.Error` | Field-level error text |
+| `.Dropdown` | State list panel |
+| `.DropdownItem` | State list rows |
+| `.DropdownItem--highlight` | Highlighted state row |
+| `.RadioIcon` | Bank radio circle |
+| `.RadioIcon--checked` | Checked radio circle |
+| `.RadioIconInner` | Radio filled dot |
+
+Allowed declaration keys (camelCase): `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `lineHeight`, `letterSpacing`, `textTransform`, `color`, `backgroundColor`, `border`, `borderColor`, `borderWidth`, `borderStyle`, `borderRadius`, `boxShadow`, `outline`, `padding`, `margin`, `opacity`. Values cannot include `url()`, `@font-face`, or `var()` except `var(--token)` for an allowlisted theme variable (`--primary`, `--input-height`, …).
 
 ### Label placement
 
@@ -279,6 +351,23 @@ Radio groups (e.g. account type) always use an above-style group label regardles
 | `--ring`                           | Focus ring and outline color (inputs)                    | `oklch(0.708 0 0)`              |
 | `--ring-width`                     | Focus ring width                                         | `3px`                           |
 | `--radius`                         | Base border-radius (derived into sm/md/lg/xl)            | `0.625rem`                      |
+| `--font-family`                    | Font stack for the iframe UI                             | `Inter, ui-sans-serif, system-ui, sans-serif` |
+
+To use a Google Font, load its CSS with `appearance.fonts` and set `--font-family` to that family (plus a system fallback):
+
+```ts
+appearance: {
+  fonts: [
+    {
+      cssSrc:
+        "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap",
+    },
+  ],
+  themeVariables: {
+    "--font-family": "Inter, ui-sans-serif, system-ui, sans-serif",
+  },
+}
+```
 
 ## API reference
 
@@ -292,7 +381,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 
 **Optional `options`:**
 
-- `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder" }`)
+- `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder"; fonts?: FontSource[]; rules?: Partial<Record<AppearanceRuleSelector, AppearanceRuleDeclarations>> }`)
 - `additionalFields` (`{ cardholderName: boolean }`, defaults to `{ cardholderName: false }`)
 - `billingAddressRequirement` (`"country" | "full"`, defaults to `"country"`) — how much billing address the iframe collects. `country` collects country / region and, for CA / PR / GB / US, a postal code (labeled ZIP for the United States). `full` shows a full street address form with Smarty autocomplete.
 - `defaultValues` (`{ name?: string; billingAddress?: { line1?, line2?, city?, state?, postalCode?, country? } }`) — seed cardholder / account-holder name and billing address. Provided keys overwrite matching fields, including ones the customer already edited. Values are also sent on confirm even when those inputs are hidden (cardholder name off, or `country` billing mode). Never send PAN, CVC, account number, or routing number.
@@ -435,9 +524,9 @@ This is what `@amos.com/react-amos-js` uses to integrate with React's rendering 
 
 The Google Pay / Apple Pay equivalents of `attachPaymentMethodFormListeners`.
 
-### `getCreditCardFormSrc(renderToken, additionalFields?, billingAddressRequirement?)` / `getBankAccountFormSrc(renderToken, billingAddressRequirement?)` / `getGooglePayButtonSrc(renderToken)` / `getApplePayButtonSrc(renderToken)`
+### `getCreditCardFormSrc(renderToken, additionalFields?, billingAddressRequirement?)` / `getBankAccountFormSrc(renderToken, billingAddressRequirement?, intent?)` / `getGooglePayButtonSrc(renderToken)` / `getApplePayButtonSrc(renderToken)`
 
-Build the iframe `src` URL for each form type.
+Build the iframe `src` URL for each form type. Appearance is applied after handshake via `UPDATE_APPEARANCE` (the iframe stays hidden until then).
 
 ### `formatGooglePayPaymentData({ paymentData })`
 
@@ -449,7 +538,7 @@ Advanced helpers exposed for integrators that need to construct or inspect the m
 
 ### Exported types
 
-`ConfirmPaymentResult`, `ConfirmSetupResult`, `Message`, `Appearance`, `ThemeVariable`, `FormattedGooglePayPaymentData`, `PaymentMethodFormValidityChangeEvent`, `CardBrand`, `PaymentMethodFormCardBrandChangeEvent`, `PaymentMethodFormDefaultValues`, `PaymentMethodFormField`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
+`ConfirmPaymentResult`, `ConfirmSetupResult`, `Message`, `Appearance`, `ThemeVariable`, `FontSource`, `CssFontSource`, `CustomFontSource`, `AppearanceRuleSelector`, `AppearanceRuleDeclarations`, `FormattedGooglePayPaymentData`, `PaymentMethodFormValidityChangeEvent`, `CardBrand`, `PaymentMethodFormCardBrandChangeEvent`, `PaymentMethodFormDefaultValues`, `PaymentMethodFormField`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
 
 ## Notes and potential gotchas
 

@@ -45,10 +45,14 @@ export function sendParentReadyMessage(iframe: Iframe): void {
 /**
  * Push appearance overrides into the embedded iframe.
  *
- * Uses a replace model for `themeVariables`: each message that includes
- * `themeVariables` sets the full override set. Only the listed variables
- * are overridden; unlisted variables revert to iframe defaults. Omit
- * `themeVariables` entirely to leave existing overrides unchanged.
+ * Uses a replace model for `themeVariables`, `fonts`, and `rules`: each
+ * message that includes those keys sets the full override set. Omit a
+ * key to leave the previous value unchanged. Pass `fonts: []` or
+ * `rules: {}` to clear.
+ *
+ * Card, bank, and wallet listeners send Inter (`fonts` +
+ * `--font-family`) on the first handshake when the merchant omitted
+ * them. This function posts the payload as given.
  */
 export function updateAppearance({
   iframe,

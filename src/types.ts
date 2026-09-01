@@ -311,7 +311,95 @@ export type ThemeVariable =
    *
    * Default: 0.625rem
    */
-  | "--radius";
+  | "--radius"
+  /*
+   * Font stack for the iframe UI. Pair with `appearance.fonts` so the
+   * named family is actually loaded. When omitted, the SDK sends Inter
+   * (`Inter, ui-sans-serif, system-ui, sans-serif`) on first paint and
+   * on any `themeVariables` replace that does not set this key.
+   *
+   * Default: Inter, ui-sans-serif, system-ui, sans-serif
+   */
+  | "--font-family";
+
+/**
+ * A stylesheet that declares `@font-face` rules (Google Fonts CSS, a
+ * self-hosted CSS file, etc.). `cssSrc` must be an `https:` URL.
+ */
+export type CssFontSource = {
+  cssSrc: string;
+};
+
+/**
+ * A single custom `@font-face` rule. `src` is a CSS `src` list of
+ * `url("https://…")` / `url(https://…)` plus optional `format(…)`.
+ */
+export type CustomFontSource = {
+  family: string;
+  src: string;
+  /**
+   * @default "swap"
+   */
+  display?: string;
+  style?: string;
+  unicodeRange?: string;
+  weight?: string;
+};
+
+/**
+ * A webfont to load inside the payment iframe. Either a CSS stylesheet
+ * URL or a custom `@font-face` descriptor.
+ */
+export type FontSource = CssFontSource | CustomFontSource;
+
+/**
+ * Stripe-style class names for {@link Appearance.rules}. Mapped onto
+ * iframe `data-slot` targets internally; the DOM is not the public API.
+ */
+export type AppearanceRuleSelector =
+  | ".Input"
+  | ".Input:hover"
+  | ".Input:focus"
+  | ".Input:disabled"
+  | ".Input--invalid"
+  | ".Input::placeholder"
+  | ".Label"
+  | ".Label--floating"
+  | ".Error"
+  | ".Dropdown"
+  | ".DropdownItem"
+  | ".DropdownItem--highlight"
+  | ".RadioIcon"
+  | ".RadioIcon--checked"
+  | ".RadioIconInner";
+
+/**
+ * CamelCase CSS properties allowed on {@link Appearance.rules}.
+ */
+export type AppearanceRuleProperty =
+  | "fontFamily"
+  | "fontSize"
+  | "fontWeight"
+  | "fontStyle"
+  | "lineHeight"
+  | "letterSpacing"
+  | "textTransform"
+  | "color"
+  | "backgroundColor"
+  | "border"
+  | "borderColor"
+  | "borderWidth"
+  | "borderStyle"
+  | "borderRadius"
+  | "boxShadow"
+  | "outline"
+  | "padding"
+  | "margin"
+  | "opacity";
+
+export type AppearanceRuleDeclarations = Partial<
+  Record<AppearanceRuleProperty, string>
+>;
 
 /**
  * Placement of field labels in payment method forms.
@@ -333,6 +421,21 @@ export type Appearance = {
    * @default "above"
    */
   labels?: AppearanceLabels;
+  /**
+   * Webfonts to load in the iframe. Omitted on first paint, the SDK
+   * sends Google Fonts Inter. Omitted on `update({ appearance })` keeps
+   * the previous set; a provided array replaces it (`[]` clears,
+   * including the Inter default).
+   */
+  fonts?: Array<FontSource>;
+  /**
+   * Per-part CSS, keyed by Stripe-style class names (`.Input`, `.Label`,
+   * `.Error`, …). Overrides `themeVariables` for the properties it sets.
+   * Values may use `var(--token)` for allowlisted theme variables.
+   * Omitted on `update({ appearance })` keeps the previous set; a
+   * provided object replaces it (`{}` clears).
+   */
+  rules?: Partial<Record<AppearanceRuleSelector, AppearanceRuleDeclarations>>;
 };
 
 /**

@@ -1,10 +1,19 @@
+import { DEFAULT_FONT_FAMILY } from "./appearance-defaults";
 import type {
   BillingAddressRequirement,
   CreditCardAdditionalFields,
 } from "./payment-method-form";
-import type { Appearance, AppearanceLabels, ThemeVariable } from "./types";
+import type {
+  Appearance,
+  AppearanceLabels,
+  AppearanceRuleDeclarations,
+  AppearanceRuleSelector,
+  ThemeVariable,
+} from "./types";
 
 const STYLE_ID = "amos-js-form-skeleton-styles";
+
+let skeletonSeq = 0;
 
 const SKELETON_THEME_DEFAULTS: Record<string, string> = {
   "--accent": "oklch(0.97 0 0)",
@@ -14,7 +23,172 @@ const SKELETON_THEME_DEFAULTS: Record<string, string> = {
   "--field-gap": "1rem",
   "--control-gap": "0.5rem",
   "--label-font-size": "0.875rem",
+  "--font-family": DEFAULT_FONT_FAMILY,
 };
+
+const PROPERTY_TO_KEBAB: Record<string, string> = {
+  fontFamily: "font-family",
+  fontSize: "font-size",
+  fontWeight: "font-weight",
+  fontStyle: "font-style",
+  lineHeight: "line-height",
+  letterSpacing: "letter-spacing",
+  textTransform: "text-transform",
+  color: "color",
+  backgroundColor: "background-color",
+  border: "border",
+  borderColor: "border-color",
+  borderWidth: "border-width",
+  borderStyle: "border-style",
+  borderRadius: "border-radius",
+  boxShadow: "box-shadow",
+  outline: "outline",
+  padding: "padding",
+  margin: "margin",
+  opacity: "opacity",
+};
+
+const MAX_RULE_VALUE_LENGTH = 256;
+
+const ALLOWED_SKELETON_VAR_NAMES = new Set([
+  "--background",
+  "--foreground",
+  "--primary",
+  "--primary-foreground",
+  "--secondary",
+  "--secondary-foreground",
+  "--muted",
+  "--muted-foreground",
+  "--accent",
+  "--accent-foreground",
+  "--destructive",
+  "--destructive-foreground",
+  "--border",
+  "--popover",
+  "--popover-foreground",
+  "--input",
+  "--input-background",
+  "--input-height",
+  "--input-font-size",
+  "--input-font-weight",
+  "--input-padding",
+  "--input-border-width",
+  "--input-shadow",
+  "--floating-input-height",
+  "--floating-label-font-size",
+  "--floating-label-empty-font-size",
+  "--floating-label-font-weight",
+  "--floating-label-color",
+  "--floating-label-floated-color",
+  "--floating-label-offset",
+  "--floating-value-padding-top",
+  "--floating-value-padding-bottom",
+  "--label-font-size",
+  "--label-font-weight",
+  "--field-gap",
+  "--control-gap",
+  "--error-font-size",
+  "--radio-size",
+  "--ring",
+  "--ring-width",
+  "--radius",
+  "--font-family",
+]);
+
+/**
+ * Resting rules that change skeleton box size. Hover / invalid /
+ * placeholder / dropdown / radio have no host-page equivalent.
+ */
+const SKELETON_RULE_CLASSES: Partial<Record<AppearanceRuleSelector, string>> = {
+  ".Input": "amos-js-form-skeleton-input",
+  ".Label": "amos-js-form-skeleton-label",
+};
+
+function isSafeSkeletonCssValue(raw: string): boolean {
+  if (raw.length > MAX_RULE_VALUE_LENGTH) {
+    return false;
+  }
+  if (/[{};]|\/\*|\*\//.test(raw)) {
+    return false;
+  }
+
+  const names: Array<string> = [];
+  const withoutVars = raw.replace(
+    /var\(\s*(--[a-zA-Z][a-zA-Z0-9-]*)\s*\)/gi,
+    (_, name: string) => {
+      names.push(name);
+      return "x";
+    },
+  );
+  for (const name of names) {
+    if (!ALLOWED_SKELETON_VAR_NAMES.has(name)) {
+      return false;
+    }
+  }
+
+  const collapsed = withoutVars.replace(/\s+/g, "").toLowerCase();
+  if (collapsed.includes("var(")) {
+    return false;
+  }
+  if (/(url|expression|env|attr|element|paint|image-set)\(/.test(collapsed)) {
+    return false;
+  }
+  if (collapsed.includes("@")) {
+    return false;
+  }
+  if (/javascript:|data:|blob:/.test(collapsed)) {
+    return false;
+  }
+  return true;
+}
+
+function sanitizeDeclarations(
+  declarations: AppearanceRuleDeclarations,
+): Array<string> {
+  const css: Array<string> = [];
+  for (const [property, value] of Object.entries(declarations)) {
+    const kebab = PROPERTY_TO_KEBAB[property];
+    if (!kebab || typeof value !== "string") {
+      continue;
+    }
+    const trimmed = value.trim();
+    if (trimmed.length === 0 || !isSafeSkeletonCssValue(trimmed)) {
+      continue;
+    }
+    css.push(`${kebab}: ${trimmed};`);
+  }
+  return css;
+}
+
+/**
+ * Scoped CSS so `.Input` / `.Label` box metrics (line-height, padding,
+ * margin, font-size) land on the host skeleton, not the iframe.
+ */
+export function skeletonRulesToCss(
+  scope: string,
+  rules: Appearance["rules"] | undefined,
+): string | undefined {
+  if (rules == null) {
+    return undefined;
+  }
+
+  const blocks: Array<string> = [];
+  for (const [selector, className] of Object.entries(
+    SKELETON_RULE_CLASSES,
+  ) as Array<[AppearanceRuleSelector, string]>) {
+    const declarations = rules[selector];
+    if (declarations == null || typeof declarations !== "object") {
+      continue;
+    }
+    const body = sanitizeDeclarations(declarations);
+    if (body.length === 0) {
+      continue;
+    }
+    blocks.push(`${scope} .${className} {\n  ${body.join("\n  ")}\n}`);
+  }
+
+  return blocks.length > 0 ? blocks.join("\n") : undefined;
+}
 
 export const SKELETON_STYLES = `
 .amos-js-form-skeleton {
@@ -38,19 +212,20 @@ export const SKELETON_STYLES = `
 .amos-js-form-skeleton-label {
   flex-shrink: 0;
   font-size: var(--label-font-size);
-  height: 1.75rem;
+  font-weight: var(--label-font-weight, 500);
   line-height: 1.75rem;
 }
 .amos-js-form-skeleton-input {
   animation: amos-js-skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  background: var(--accent);
+  background: var(--input-background, var(--accent));
   border-radius: calc(var(--radius) * 0.8);
   box-sizing: border-box;
-  height: var(--input-height);
+  height: auto;
+  min-height: var(--input-height);
   width: 100%;
 }
 .amos-js-form-skeleton-input-floating {
-  height: var(--floating-input-height);
+  min-height: var(--floating-input-height);
 }
 .amos-js-form-skeleton-row {
   align-items: flex-start;
@@ -232,11 +407,22 @@ export function createPaymentMethodFormSkeleton(
 ): PaymentMethodFormSkeleton {
   ensureSkeletonStyles();
   const element = div("amos-js-form-skeleton");
+  const skeletonId = String(++skeletonSeq);
   element.setAttribute("aria-hidden", "true");
+  element.setAttribute("data-amos-skeleton", skeletonId);
+  const scope = `.amos-js-form-skeleton[data-amos-skeleton="${skeletonId}"]`;
 
   function render(next: PaymentMethodFormSkeletonOptions): void {
     applyTheme(element, next.appearance);
-    element.replaceChildren(...buildChildren(next));
+    const children = buildChildren(next);
+    const css = skeletonRulesToCss(scope, next.appearance?.rules);
+    if (!css) {
+      element.replaceChildren(...children);
+      return;
+    }
+    const style = document.createElement("style");
+    style.textContent = css;
+    element.replaceChildren(style, ...children);
   }
 
   render(options);

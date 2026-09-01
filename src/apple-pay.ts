@@ -1,4 +1,5 @@
 import type { components } from "@amos.com/node";
+import { appearanceWithDefaults } from "./appearance-defaults";
 import {
   hideApplePayWaitingOverlay,
   setApplePayWaitingOverlayCompleting,
@@ -162,7 +163,10 @@ export function attachApplePayButtonListeners(
       case "IFRAME_READY":
         ready = true;
         sendParentReadyMessage(iframe);
-        sendUpdateAppearance({ iframe, appearance: {} });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults({}, { initial: true }),
+        });
         pushAmount();
         pushMerchantName();
         pushButtonProps();
@@ -173,7 +177,12 @@ export function attachApplePayButtonListeners(
         break;
 
       case "UPDATE_APPEARANCE":
-        sendUpdateAppearance({ iframe, appearance: event.data.appearance });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults(event.data.appearance, {
+            initial: false,
+          }),
+        });
         break;
 
       case "UPDATED_APPEARANCE":
