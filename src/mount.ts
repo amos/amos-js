@@ -162,7 +162,12 @@ function mountPaymentMethodFormWithSkeleton({
 
     const skeletonPx = skeletonHeightPx();
     const reportedPx = reportedHeightPx();
-    const revealPx = Number.isFinite(reportedPx) ? reportedPx : skeletonPx;
+    // lastHeight can still be the pre-appearance measure and shorter than
+    // the host skeleton. Never shrink on first paint; a later UPDATE_HEIGHT
+    // applies the post-appearance size.
+    const revealPx = Number.isFinite(reportedPx)
+      ? Math.max(reportedPx, skeletonPx)
+      : skeletonPx;
 
     iframe.style.transition = "none";
     iframe.style.position = "";
