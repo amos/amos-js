@@ -196,6 +196,7 @@ export const SKELETON_STYLES = `
   container-type: inline-size;
   display: flex;
   flex-direction: column;
+  font-family: var(--font-family);
   gap: var(--field-gap);
   margin: 0 -4px;
   padding-block: 0.25rem;
@@ -210,19 +211,37 @@ export const SKELETON_STYLES = `
   width: 100%;
 }
 .amos-js-form-skeleton-label {
+  /* Hidden copy of the form label so font-size / line-height / wrapping
+   * occupy the same space as the iframe. Empty boxes collapse to 0 height
+   * even with line-height set. */
   flex-shrink: 0;
   font-size: var(--label-font-size);
   font-weight: var(--label-font-weight, 500);
   line-height: 1.75rem;
+  visibility: hidden;
 }
 .amos-js-form-skeleton-input {
   animation: amos-js-skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  background: var(--input-background, var(--accent));
+  /* input-background is often white like the page; input (border color)
+   * stays visible. Input backgroundColor from rules still wins via
+   * scoped skeleton CSS when the merchant sets it. */
+  background: var(--input, var(--accent));
+  border: var(--input-border-width, 1px) solid transparent;
   border-radius: calc(var(--radius) * 0.8);
   box-sizing: border-box;
+  font-size: var(--input-font-size, 0.875rem);
+  font-weight: var(--input-font-weight, 400);
   height: auto;
+  line-height: 1;
   min-height: var(--input-height);
+  overflow: hidden;
+  padding: 0 var(--input-padding, 0.75rem);
   width: 100%;
+}
+.amos-js-form-skeleton-input::before {
+  /* Line box so .Input fontSize / lineHeight / padding grow this the
+   * same way they grow a real control (height is a minimum). */
+  content: "\\00a0";
 }
 .amos-js-form-skeleton-input-floating {
   min-height: var(--floating-input-height);
@@ -261,13 +280,13 @@ export const SKELETON_STYLES = `
 `;
 
 export function ensureSkeletonStyles(): void {
-  if (document.getElementById(STYLE_ID)) {
-    return;
+  let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement("style");
+    style.id = STYLE_ID;
+    document.head.appendChild(style);
   }
-  const style = document.createElement("style");
-  style.id = STYLE_ID;
   style.textContent = SKELETON_STYLES;
-  document.head.appendChild(style);
 }
 
 function applyTheme(
@@ -301,13 +320,18 @@ function div(className: string, children?: Array<HTMLElement>): HTMLDivElement {
   return node;
 }
 
-function field(labels: AppearanceLabels, grow?: number): HTMLDivElement {
+function field(
+  labels: AppearanceLabels,
+  options?: { grow?: number; label?: string },
+): HTMLDivElement {
   const wrap = div("amos-js-form-skeleton-field");
-  if (grow !== undefined) {
-    wrap.style.flexGrow = String(grow);
+  if (options?.grow !== undefined) {
+    wrap.style.flexGrow = String(options.grow);
   }
   if (labels === "above") {
-    wrap.appendChild(div("amos-js-form-skeleton-label"));
+    const labelEl = div("amos-js-form-skeleton-label");
+    labelEl.textContent = options?.label ?? "\u00a0";
+    wrap.appendChild(labelEl);
   }
   const input = div("amos-js-form-skeleton-input");
   if (labels === "floating") {
@@ -335,13 +359,25 @@ function billingFields({
 }): Array<HTMLElement> {
   if (requirement === "full") {
     return [
-      field(labels),
-      field(labels),
-      row([field(labels, 1.4), field(labels, 0.7), field(labels, 0.8)], false),
-      field(labels),
+      field(labels, { label: "Address line 1" }),
+      field(labels, { label: "Address line 2" }),
+      row(
+        [
+          field(labels, { grow: 1.4, label: "City" }),
+          field(labels, { grow: 0.7, label: "State" }),
+          field(labels, { grow: 0.8, label: "ZIP" }),
+        ],
+        false,
+      ),
+      field(labels, { label: "Country" }),
     ];
   }
-  return [row([field(labels), field(labels)], wrapCountryZip)];
+  return [
+    row(
+      [field(labels, { label: "Country" }), field(labels, { label: "ZIP" })],
+      wrapCountryZip,
+    ),
+  ];
 }
 
 export type PaymentMethodFormSkeletonKind = "card" | "bank";
@@ -362,11 +398,17 @@ function buildChildren(
 
   if (options.kind === "card") {
     const children: Array<HTMLElement> = [
-      field(labels),
-      row([field(labels), field(labels)], false),
+      field(labels, { label: "Card number" }),
+      row(
+        [
+          field(labels, { label: "Expiration date" }),
+          field(labels, { label: "Security code" }),
+        ],
+        false,
+      ),
     ];
     if (options.additionalFields?.cardholderName) {
-      children.push(field(labels));
+      children.push(field(labels, { label: "Cardholder name" }));
     }
     children.push(
       ...billingFields({
@@ -379,10 +421,22 @@ function buildChildren(
   }
 
   return [
-    field(labels),
-    row([field(labels), field(labels)], true),
-    field(labels),
-    row([field("above"), field("above")], true),
+    field(labels, { label: "Account holder name" }),
+    row(
+      [
+        field(labels, { label: "Account number" }),
+        field(labels, { label: "Confirm account number" }),
+      ],
+      true,
+    ),
+    field(labels, { label: "Routing number" }),
+    row(
+      [
+        field("above", { label: "Account type" }),
+        field("above", { label: "Account holder type" }),
+      ],
+      true,
+    ),
     ...billingFields({
       labels,
       requirement: billingAddressRequirement,
