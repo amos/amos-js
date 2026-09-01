@@ -5,6 +5,8 @@ import {
   setApplePayWaitingOverlayCompleting,
   showApplePayWaitingOverlay,
 } from "./apple-pay-waiting-overlay";
+import { embedIframeSearchParams } from "./embed-src";
+import { armIframeHandshakeReload } from "./handshake-reload";
 import { getEmbedOrigin } from "./jwt";
 import {
   confirmPayment,
@@ -26,7 +28,8 @@ import {
  * Build the iframe `src` URL for the embedded Apple Pay button.
  */
 export function getApplePayButtonSrc(renderToken: string): string {
-  return `${getEmbedOrigin(renderToken)}/iframe/apple-pay?token=${renderToken}`;
+  const params = embedIframeSearchParams({ token: renderToken });
+  return `${getEmbedOrigin(renderToken)}/iframe/apple-pay?${params}`;
 }
 
 /**
@@ -69,6 +72,10 @@ export type ApplePayButtonListenerOptions = {
    * ready to be revealed.
    */
   onAppearanceReady?: () => void;
+  /**
+   * Called when the iframe posts `IFRAME_READY` (embed JS is running).
+   */
+  onIframeReady?: () => void;
   /**
    * Called when the buyer authorizes in the Apple Pay sheet. Create a
    * payment intent on your server, then `await confirmPayment(token)`.
@@ -136,6 +143,11 @@ export function attachApplePayButtonListeners(
   // React calls `update()` on first paint, before the iframe has left
   // about:blank. Queue until IFRAME_READY so postMessage targetOrigin matches.
   let ready = false;
+  const handshakeReload = armIframeHandshakeReload(iframe, {
+    onBeforeReload: () => {
+      ready = false;
+    },
+  });
 
   function pushAmount() {
     sendUpdateAmount({ iframe, amount: current.amount });
@@ -161,6 +173,7 @@ export function attachApplePayButtonListeners(
 
     switch (event.data.type) {
       case "IFRAME_READY":
+        handshakeReload.noteReady();
         ready = true;
         sendParentReadyMessage(iframe);
         sendUpdateAppearance({
@@ -170,6 +183,7 @@ export function attachApplePayButtonListeners(
         pushAmount();
         pushMerchantName();
         pushButtonProps();
+        current.onIframeReady?.();
         break;
 
       case "UPDATE_HEIGHT":
@@ -241,6 +255,7 @@ export function attachApplePayButtonListeners(
       }
     },
     destroy() {
+      handshakeReload.cancel();
       window.removeEventListener("message", handleMessage);
       hideApplePayWaitingOverlay();
     },

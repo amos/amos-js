@@ -1,4 +1,6 @@
 import { appearanceWithDefaults } from "./appearance-defaults";
+import { embedIframeSearchParams } from "./embed-src";
+import { armIframeHandshakeReload } from "./handshake-reload";
 import { getEmbedOrigin } from "./jwt";
 import {
   focusField as sendFocusField,
@@ -61,7 +63,7 @@ export function getCreditCardFormSrc(
     .map(([key]) => key)
     .join(",");
 
-  const params = new URLSearchParams({
+  const params = embedIframeSearchParams({
     token: renderToken,
     additionalFields: enabled,
     billingAddressRequirement,
@@ -80,13 +82,11 @@ export function getBankAccountFormSrc(
   billingAddressRequirement: BillingAddressRequirement = "country",
   intent: "payment" | "setup" = "payment",
 ): string {
-  const params = new URLSearchParams({
+  const params = embedIframeSearchParams({
     token: renderToken,
     billingAddressRequirement,
+    intent,
   });
-  if (intent === "setup") {
-    params.set("intent", "setup");
-  }
 
   return `${getEmbedOrigin(renderToken)}/iframe/bank?${params}`;
 }
@@ -150,6 +150,10 @@ export type PaymentMethodFormListenerOptions = {
    * iframe's opacity from `0` to `1` to fade it in.
    */
   onAppearanceReady?: () => void;
+  /**
+   * Called when the iframe posts `IFRAME_READY` (embed JS is running).
+   */
+  onIframeReady?: () => void;
   /**
    * Called when card/bank form validity changes. `isValid` is true
    * when all required fields are present and valid. Does not include
@@ -249,6 +253,11 @@ export function attachPaymentMethodFormListeners(
   // about:blank. Queue until IFRAME_READY so postMessage targetOrigin matches.
   let ready = false;
   let pendingFocus: PaymentMethodFormField | undefined;
+  const handshakeReload = armIframeHandshakeReload(iframe, {
+    onBeforeReload: () => {
+      ready = false;
+    },
+  });
 
   function sendQueuedDefaultValues(): void {
     if (current.defaultValues !== undefined) {
@@ -280,6 +289,7 @@ export function attachPaymentMethodFormListeners(
 
     switch (event.data.type) {
       case "IFRAME_READY":
+        handshakeReload.noteReady();
         ready = true;
         sendParentReadyMessage(iframe);
         sendUpdateAppearance({
@@ -290,6 +300,7 @@ export function attachPaymentMethodFormListeners(
         });
         sendQueuedDefaultValues();
         sendQueuedFocus();
+        current.onIframeReady?.();
         break;
 
       case "UPDATE_HEIGHT":
@@ -363,6 +374,7 @@ export function attachPaymentMethodFormListeners(
       pendingFocus = field;
     },
     destroy() {
+      handshakeReload.cancel();
       window.removeEventListener("message", handleMessage);
     },
   };

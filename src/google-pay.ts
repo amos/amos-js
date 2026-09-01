@@ -2,6 +2,8 @@
 
 import type { components } from "@amos.com/node";
 import { appearanceWithDefaults } from "./appearance-defaults";
+import { embedIframeSearchParams } from "./embed-src";
+import { armIframeHandshakeReload } from "./handshake-reload";
 import { getEmbedOrigin } from "./jwt";
 import {
   confirmPayment,
@@ -21,7 +23,8 @@ import type {
  * Build the iframe `src` URL for the embedded Google Pay button.
  */
 export function getGooglePayButtonSrc(renderToken: string): string {
-  return `${getEmbedOrigin(renderToken)}/iframe/google-pay?token=${renderToken}`;
+  const params = embedIframeSearchParams({ token: renderToken });
+  return `${getEmbedOrigin(renderToken)}/iframe/google-pay?${params}`;
 }
 
 /**
@@ -66,6 +69,10 @@ export type GooglePayButtonListenerOptions = {
    * ready to be revealed.
    */
   onAppearanceReady?: () => void;
+  /**
+   * Called when the iframe posts `IFRAME_READY` (embed JS is running).
+   */
+  onIframeReady?: () => void;
   /**
    * Called when the buyer authorizes in the Google Pay sheet. Create a
    * payment intent on your server, then `await confirmPayment(token)`.
@@ -118,6 +125,11 @@ export function attachGooglePayButtonListeners(
   // React calls `update()` on first paint, before the iframe has left
   // about:blank. Queue until IFRAME_READY so postMessage targetOrigin matches.
   let ready = false;
+  const handshakeReload = armIframeHandshakeReload(iframe, {
+    onBeforeReload: () => {
+      ready = false;
+    },
+  });
 
   function pushAmount() {
     sendUpdateAmount({ iframe, amount: current.amount });
@@ -142,6 +154,7 @@ export function attachGooglePayButtonListeners(
 
     switch (event.data.type) {
       case "IFRAME_READY":
+        handshakeReload.noteReady();
         ready = true;
         sendParentReadyMessage(iframe);
         sendUpdateAppearance({
@@ -151,6 +164,7 @@ export function attachGooglePayButtonListeners(
         pushAmount();
         pushMerchantName();
         pushButtonProps();
+        current.onIframeReady?.();
         break;
 
       case "UPDATE_HEIGHT":
@@ -205,6 +219,7 @@ export function attachGooglePayButtonListeners(
       }
     },
     destroy() {
+      handshakeReload.cancel();
       window.removeEventListener("message", handleMessage);
     },
   };

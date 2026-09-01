@@ -141,9 +141,6 @@ function mountPaymentMethodFormWithSkeleton({
   const skeleton = createPaymentMethodFormSkeleton(skeletonOptions);
   Object.assign(iframe.style, SKELETON_IFRAME_STYLE);
 
-  wrapper.append(skeleton.element, iframe);
-  host.appendChild(wrapper);
-
   let revealed = false;
   let lastHeight: string | undefined;
   let appearance = skeletonOptions.appearance;
@@ -200,6 +197,9 @@ function mountPaymentMethodFormWithSkeleton({
     },
   });
 
+  wrapper.append(skeleton.element, iframe);
+  host.appendChild(wrapper);
+
   return {
     iframe,
     update(patch) {
@@ -226,6 +226,7 @@ type WalletListenerOptions = {
   height?: string;
   onHeightChange?: (height: string) => void;
   onAppearanceReady?: () => void;
+  onIframeReady?: () => void;
   buttonProps?: {
     buttonRadius?: number;
     style?: Record<string, string | number | undefined>;
@@ -278,9 +279,6 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
   Object.assign(iframe.style, WALLET_SKELETON_IFRAME_STYLE);
   iframe.style.height = "100%";
 
-  wrapper.append(skeleton.element, iframe);
-  host.appendChild(wrapper);
-
   let revealed = false;
   let appearanceReady = false;
   let fallbackRevealTimer: ReturnType<typeof setTimeout> | undefined;
@@ -309,6 +307,15 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
     reveal();
   }
 
+  function startFallbackReveal(): void {
+    if (revealed || fallbackRevealTimer !== undefined) {
+      return;
+    }
+    fallbackRevealTimer = setTimeout(() => {
+      reveal();
+    }, 1500);
+  }
+
   const controller = attachListeners(iframe, {
     ...listenerOptions,
     onHeightChange: (height) => {
@@ -319,11 +326,14 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
       tryReveal();
       currentOptions.onAppearanceReady?.();
     },
+    onIframeReady: () => {
+      startFallbackReveal();
+      currentOptions.onIframeReady?.();
+    },
   } as TOptions);
 
-  fallbackRevealTimer = setTimeout(() => {
-    reveal();
-  }, 1500);
+  wrapper.append(skeleton.element, iframe);
+  host.appendChild(wrapper);
 
   return {
     iframe,
@@ -334,6 +344,7 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
       const rest = { ...patch };
       delete rest.onAppearanceReady;
       delete rest.onHeightChange;
+      delete rest.onIframeReady;
       controller.update(rest);
       skeletonOptions = {
         height: currentOptions.height ?? skeletonOptions.height,
