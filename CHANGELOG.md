@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.14
+
+### Patch Changes
+
+- Prevent 307s and force iframe reloading if needed
+
 ## 0.11.13
 
 ### Patch Changes
