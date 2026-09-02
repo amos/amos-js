@@ -5,6 +5,7 @@ export {
   DEFAULT_FONT_CSS_SRC,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONTS,
+  SYSTEM_FONT_FAMILY,
 } from "./appearance-defaults";
 export type {
   ApplePayButtonController,

@@ -8,6 +8,12 @@ export const DEFAULT_FONT_FAMILY =
   "Inter, ui-sans-serif, system-ui, sans-serif";
 
 /**
+ * System stack used when the merchant passes `fonts: []` and omits
+ * `--font-family`, so Inter is not named without a webfont.
+ */
+export const SYSTEM_FONT_FAMILY = "ui-sans-serif, system-ui, sans-serif";
+
+/**
  * Same Google Fonts Inter stylesheet the embed used to load globally.
  * `display=swap`; the iframe does not wait for `document.fonts.ready`.
  */
@@ -22,19 +28,29 @@ export const DEFAULT_FONTS: Array<FontSource> = [
   { cssSrc: DEFAULT_FONT_CSS_SRC },
 ];
 
+function fontsCleared(fonts: Appearance["fonts"]): boolean {
+  return fonts !== undefined && fonts.length === 0;
+}
+
 /**
  * Fill omitted Inter defaults so js.amos.com can drop its own Google
  * Fonts `<link>` once every client is on this SDK.
  *
+ * Pass `{ initial: true }` only on the IFRAME_READY handshake. A later
+ * call with `initial: true` re-applies omitted Inter defaults; pass the
+ * merchant's last `appearance` (including `fonts: []`) so a clear sticks.
+ *
  * On the first handshake (`initial: true`), omitted `fonts` becomes
  * {@link DEFAULT_FONTS} and omitted `--font-family` becomes
  * {@link DEFAULT_FONT_FAMILY}. Merchant values win. `fonts: []` is kept
- * (explicit clear).
+ * (explicit clear) and omitted `--font-family` becomes
+ * {@link SYSTEM_FONT_FAMILY} instead of Inter.
  *
  * On later updates (`initial: false`), omitted `fonts` is left omitted
  * so the iframe replace-merge keeps the previous set. If this payload
  * includes `themeVariables` without `--font-family`, Inter is filled in
- * so a variables replace does not drop the default stack.
+ * so a variables replace does not drop the default stack — unless this
+ * payload also has `fonts: []`, in which case the system stack is used.
  */
 export function appearanceWithDefaults(
   appearance: Appearance | undefined,
@@ -46,14 +62,17 @@ export function appearanceWithDefaults(
     next.fonts = [...DEFAULT_FONTS];
   }
 
+  const fontFamilyOmitted =
+    next.themeVariables?.["--font-family"] === undefined;
   const shouldDefaultFontFamily =
-    (initial && next.themeVariables?.["--font-family"] === undefined) ||
-    (next.themeVariables !== undefined &&
-      next.themeVariables["--font-family"] === undefined);
+    (initial && fontFamilyOmitted) ||
+    (next.themeVariables !== undefined && fontFamilyOmitted);
 
   if (shouldDefaultFontFamily) {
     next.themeVariables = {
-      "--font-family": DEFAULT_FONT_FAMILY,
+      "--font-family": fontsCleared(next.fonts)
+        ? SYSTEM_FONT_FAMILY
+        : DEFAULT_FONT_FAMILY,
       ...next.themeVariables,
     };
   }

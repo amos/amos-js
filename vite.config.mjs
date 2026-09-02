@@ -6,6 +6,7 @@ export default defineConfig({
     dts({
       outDirs: "dist",
       entryRoot: "src",
+      exclude: ["**/*.test.ts"],
       compilerOptions: { rootDir: "src" },
       beforeWriteFile: (filePath, content) => {
         const normalized = filePath.replaceAll("\\", "/");
@@ -37,5 +38,8 @@ export default defineConfig({
   },
   esbuild: {
     keepNames: true,
+  },
+  test: {
+    include: ["src/**/*.test.ts"],
   },
 });

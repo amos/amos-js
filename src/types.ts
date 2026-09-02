@@ -316,7 +316,8 @@ export type ThemeVariable =
    * Font stack for the iframe UI. Pair with `appearance.fonts` so the
    * named family is actually loaded. When omitted, the SDK sends Inter
    * (`Inter, ui-sans-serif, system-ui, sans-serif`) on first paint and
-   * on any `themeVariables` replace that does not set this key.
+   * on any `themeVariables` replace that does not set this key, unless
+   * this payload has `fonts: []` (system stack instead).
    *
    * Default: Inter, ui-sans-serif, system-ui, sans-serif
    */
@@ -424,8 +425,9 @@ export type Appearance = {
   /**
    * Webfonts to load in the iframe. Omitted on first paint, the SDK
    * sends Google Fonts Inter. Omitted on `update({ appearance })` keeps
-   * the previous set; a provided array replaces it (`[]` clears,
-   * including the Inter default).
+   * the previous set; a provided array replaces it. `[]` clears the
+   * webfont; omitted `--font-family` on that payload uses a system
+   * stack instead of Inter.
    */
   fonts?: Array<FontSource>;
   /**

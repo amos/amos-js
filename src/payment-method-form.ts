@@ -131,6 +131,8 @@ export type PaymentMethodFormListenerOptions = {
    * whenever the appearance changes. Can be updated later via the
    * returned controller's `update({ appearance })` method. Omitted
    * `fonts` / `--font-family` on first paint default to Inter.
+   * `fonts: []` skips the webfont and uses a system stack when
+   * `--font-family` is also omitted.
    */
   appearance?: Appearance;
   /**

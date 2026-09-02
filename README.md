@@ -228,25 +228,15 @@ form.update({
 
 `themeVariables` uses a **replace** model: each update that includes `themeVariables` sets the full override set. Only the variables you list are overridden; unlisted variables revert to iframe defaults. Omit `themeVariables` to leave existing overrides unchanged.
 
-`fonts` uses the same replace model: omit `fonts` to keep the previous set; pass a new array to replace it (`[]` clears, including the SDK Inter default). The iframe does not wait for webfonts before revealing — custom faces use `font-display: swap`.
+`fonts` uses the same replace model: omit `fonts` to keep the previous set; pass a new array to replace it (`[]` clears the webfont). The iframe does not wait for webfonts before revealing — custom faces use `font-display: swap`.
 
 ### Fonts
 
 When you omit `fonts` and `--font-family`, the SDK sends Google Fonts Inter on the first `UPDATE_APPEARANCE` (same stylesheet the embed used to load globally) and sets `--font-family` to `Inter, ui-sans-serif, system-ui, sans-serif`. That is what lets js.amos.com drop its own Inter `<link>` once every client is on this SDK.
 
-Pass Stripe-style font sources on `appearance.fonts` to replace that default. Pair them with `--font-family` so the iframe uses the loaded face. Pass `fonts: []` and a system `--font-family` to opt out of Inter.
+Pass Stripe-style font sources on `appearance.fonts` to replace that default. Pair them with `--font-family` so the iframe uses the loaded face (see the example above). A custom `@font-face` source looks like `{ family: "MyFont", src: 'url(https://cdn.example.com/my.woff2)', display: "swap" }`.
 
-```ts
-appearance: {
-  fonts: [
-    { cssSrc: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" },
-    // or { family: "MyFont", src: 'url(https://cdn.example.com/my.woff2)', display: "swap" }
-  ],
-  themeVariables: {
-    "--font-family": "Inter, ui-sans-serif, system-ui, sans-serif",
-  },
-}
-```
+Pass `fonts: []` to skip the webfont. If you also omit `--font-family` on that payload, the SDK uses `ui-sans-serif, system-ui, sans-serif` instead of Inter.
 
 - **`cssSrc`** — an `https:` stylesheet URL that declares `@font-face` (Google Fonts CSS, a self-hosted CSS file). The iframe injects `<link rel="stylesheet">`; it does not fetch and inline the CSS.
 - **Custom source** — `family` plus a CSS `src` list of `url("https://…")` / `url(https://…)` and optional `format(…)`. Optional `display` (default `"swap"`), `style`, `weight`, and `unicodeRange`.
@@ -276,7 +266,7 @@ appearance: {
 
 Rules override `themeVariables` for the properties they set (Stripe). `--input-height` / `--floating-input-height` are a **minimum**; `.Input` `padding`, `fontSize`, and `lineHeight` can grow the field. Rule values may reference allowlisted tokens as `var(--primary)` (no fallback argument).
 
-The host skeleton (shown until `UPDATED_APPEARANCE`) copies `themeVariables` and resting **`.Input` / `.Label`** rules that change box size (`fontSize`, `lineHeight`, `padding`, `margin`, `border*`). Hover, invalid, placeholder, dropdown, and radio rules have no skeleton equivalent. Floating labels sit inside the control, so `.Label` / `.Label--floating` do not change skeleton height.
+The host skeleton (shown until `UPDATED_APPEARANCE`, or 1.5s after `IFRAME_READY` if appearance never acks) copies `themeVariables` and resting **`.Input` / `.Label`** declarations (the same allowlisted properties as iframe rules). It does not inject webfonts: it uses `--font-family` / `fontFamily` when that face is already on the host page, and falls back to `ui-sans-serif, system-ui, sans-serif`. Hover, invalid, placeholder, dropdown, and radio rules have no skeleton equivalent. Floating labels sit inside the control, so `.Label` / `.Label--floating` do not change skeleton height.
 
 | Selector | Targets |
 | --- | --- |
@@ -294,7 +284,7 @@ The host skeleton (shown until `UPDATED_APPEARANCE`) copies `themeVariables` and
 | `.RadioIcon--checked` | Checked radio circle |
 | `.RadioIconInner` | Radio filled dot |
 
-Allowed declaration keys (camelCase): `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `lineHeight`, `letterSpacing`, `textTransform`, `color`, `backgroundColor`, `border`, `borderColor`, `borderWidth`, `borderStyle`, `borderRadius`, `boxShadow`, `outline`, `padding`, `margin`, `opacity`. Values cannot include `url()`, `@font-face`, or `var()` except `var(--token)` for an allowlisted theme variable (`--primary`, `--input-height`, …).
+Allowed declaration keys (camelCase): `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `lineHeight`, `letterSpacing`, `textTransform`, `color`, `backgroundColor`, `border`, `borderColor`, `borderWidth`, `borderStyle`, `borderRadius`, `boxShadow`, `outline`, `padding`, `margin`, `opacity`. Values cannot include `url()`, `@font-face`, `<`, `>`, `\`, or `var()` except `var(--token)` for an allowlisted theme variable (`--primary`, `--input-height`, …).
 
 ### Label placement
 
@@ -352,22 +342,6 @@ Radio groups (e.g. account type) always use an above-style group label regardles
 | `--ring-width`                     | Focus ring width                                         | `3px`                           |
 | `--radius`                         | Base border-radius (derived into sm/md/lg/xl)            | `0.625rem`                      |
 | `--font-family`                    | Font stack for the iframe UI                             | `Inter, ui-sans-serif, system-ui, sans-serif` |
-
-To use a Google Font, load its CSS with `appearance.fonts` and set `--font-family` to that family (plus a system fallback):
-
-```ts
-appearance: {
-  fonts: [
-    {
-      cssSrc:
-        "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap",
-    },
-  ],
-  themeVariables: {
-    "--font-family": "Inter, ui-sans-serif, system-ui, sans-serif",
-  },
-}
-```
 
 ## API reference
 
@@ -526,7 +500,7 @@ The Google Pay / Apple Pay equivalents of `attachPaymentMethodFormListeners`.
 
 ### `getCreditCardFormSrc(renderToken, additionalFields?, billingAddressRequirement?)` / `getBankAccountFormSrc(renderToken, billingAddressRequirement?, intent?)` / `getGooglePayButtonSrc(renderToken)` / `getApplePayButtonSrc(renderToken)`
 
-Build the iframe `src` URL for each form type. Appearance is applied after handshake via `UPDATE_APPEARANCE` (the iframe stays hidden until then).
+Build the iframe `src` URL for each form type. Appearance is applied after handshake via `UPDATE_APPEARANCE` (the iframe stays hidden until then, or for 1.5s after `IFRAME_READY` if appearance never acks).
 
 ### `formatGooglePayPaymentData({ paymentData })`
 
@@ -535,6 +509,10 @@ Transforms raw Google Pay payment data into an Amos-compatible `paymentMethod` p
 ### `createMessage(message)` / `decodeJwt(token)` / `getEmbedOrigin(renderToken)`
 
 Advanced helpers exposed for integrators that need to construct or inspect the message protocol themselves.
+
+### `appearanceWithDefaults(appearance, { initial })`
+
+Fills omitted Inter `fonts` / `--font-family` (or a system stack when `fonts` is `[]`). Listeners call this on handshake with `initial: true` and on later updates with `initial: false`. React wrappers that call it themselves must pass `initial: true` only for the first `UPDATE_APPEARANCE` after `IFRAME_READY`, and must pass the merchant's last `appearance` (so a previous `fonts: []` is not overwritten).
 
 ### Exported types
 

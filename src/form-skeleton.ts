@@ -1,4 +1,4 @@
-import { DEFAULT_FONT_FAMILY } from "./appearance-defaults";
+import { DEFAULT_FONT_FAMILY, SYSTEM_FONT_FAMILY } from "./appearance-defaults";
 import type {
   BillingAddressRequirement,
   CreditCardAdditionalFields,
@@ -108,7 +108,8 @@ function isSafeSkeletonCssValue(raw: string): boolean {
   if (raw.length > MAX_RULE_VALUE_LENGTH) {
     return false;
   }
-  if (/[{};]|\/\*|\*\//.test(raw)) {
+  // `<` / `>` close a <style> tag; `\` is a CSS escape for `;` / `}`.
+  if (/[{};<>\\]|\/\*|\*\//.test(raw)) {
     return false;
   }
 
@@ -155,14 +156,17 @@ function sanitizeDeclarations(
     if (trimmed.length === 0 || !isSafeSkeletonCssValue(trimmed)) {
       continue;
     }
-    css.push(`${kebab}: ${trimmed};`);
+    const cssValue =
+      kebab === "font-family" ? `${trimmed}, ${SYSTEM_FONT_FAMILY}` : trimmed;
+    css.push(`${kebab}: ${cssValue};`);
   }
   return css;
 }
 
 /**
- * Scoped CSS so `.Input` / `.Label` box metrics (line-height, padding,
- * margin, font-size) land on the host skeleton, not the iframe.
+ * Scoped CSS so resting `.Input` / `.Label` declarations land on the
+ * host skeleton, not the iframe. `font-family` keeps a system fallback
+ * in case the host has not loaded the merchant face.
  */
 export function skeletonRulesToCss(
   scope: string,
@@ -196,7 +200,7 @@ export const SKELETON_STYLES = `
   container-type: inline-size;
   display: flex;
   flex-direction: column;
-  font-family: var(--font-family);
+  font-family: var(--font-family), ${SYSTEM_FONT_FAMILY};
   gap: var(--field-gap);
   margin: 0 -4px;
   padding-block: 0.25rem;
