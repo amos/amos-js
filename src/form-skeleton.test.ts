@@ -1,6 +1,45 @@
 import { describe, expect, test } from "vitest";
-import { SYSTEM_FONT_FAMILY } from "./appearance-defaults";
-import { skeletonRulesToCss } from "./form-skeleton";
+import {
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_FONTS,
+  SYSTEM_FONT_FAMILY,
+} from "./appearance-defaults";
+import { resolveSkeletonFontFamily, skeletonRulesToCss } from "./form-skeleton";
+
+describe("resolveSkeletonFontFamily", () => {
+  test("omitted appearance uses Inter", () => {
+    expect(resolveSkeletonFontFamily(undefined)).toBe(DEFAULT_FONT_FAMILY);
+  });
+
+  test("omitted fonts uses Inter", () => {
+    expect(resolveSkeletonFontFamily({})).toBe(DEFAULT_FONT_FAMILY);
+    expect(resolveSkeletonFontFamily({ fonts: DEFAULT_FONTS })).toBe(
+      DEFAULT_FONT_FAMILY,
+    );
+  });
+
+  test("fonts: [] uses the system stack", () => {
+    expect(resolveSkeletonFontFamily({ fonts: [] })).toBe(SYSTEM_FONT_FAMILY);
+  });
+
+  test("fonts: [] keeps an explicit --font-family", () => {
+    expect(
+      resolveSkeletonFontFamily({
+        fonts: [],
+        themeVariables: { "--font-family": "Georgia, ui-serif, serif" },
+      }),
+    ).toBe("Georgia, ui-serif, serif");
+  });
+
+  test("empty --font-family falls through to the fonts default", () => {
+    expect(
+      resolveSkeletonFontFamily({
+        fonts: [],
+        themeVariables: { "--font-family": "  " },
+      }),
+    ).toBe(SYSTEM_FONT_FAMILY);
+  });
+});
 
 describe("skeletonRulesToCss", () => {
   test("emits resting Input and Label declarations", () => {

@@ -1,4 +1,8 @@
-import { DEFAULT_FONT_FAMILY, SYSTEM_FONT_FAMILY } from "./appearance-defaults";
+import {
+  DEFAULT_FONT_FAMILY,
+  defaultFontFamilyFor,
+  SYSTEM_FONT_FAMILY,
+} from "./appearance-defaults";
 import type {
   BillingAddressRequirement,
   CreditCardAdditionalFields,
@@ -23,6 +27,7 @@ const SKELETON_THEME_DEFAULTS: Record<string, string> = {
   "--field-gap": "1rem",
   "--control-gap": "0.5rem",
   "--label-font-size": "0.875rem",
+  // Overridden in applyTheme so `fonts: []` uses the system stack.
   "--font-family": DEFAULT_FONT_FAMILY,
 };
 
@@ -293,6 +298,21 @@ export function ensureSkeletonStyles(): void {
   style.textContent = SKELETON_STYLES;
 }
 
+/**
+ * Host-skeleton `--font-family`. Matches first-paint iframe defaults:
+ * merchant `--font-family` wins; `fonts: []` without that key uses the
+ * system stack so Inter is not measured when the iframe will not load it.
+ */
+export function resolveSkeletonFontFamily(
+  appearance: Appearance | undefined,
+): string {
+  const fromTheme = appearance?.themeVariables?.["--font-family"];
+  if (typeof fromTheme === "string" && fromTheme.trim() !== "") {
+    return fromTheme.trim();
+  }
+  return defaultFontFamilyFor(appearance?.fonts);
+}
+
 function applyTheme(
   element: HTMLElement,
   appearance: Appearance | undefined,
@@ -300,6 +320,10 @@ function applyTheme(
   for (const [property, value] of Object.entries(SKELETON_THEME_DEFAULTS)) {
     element.style.setProperty(property, value);
   }
+  element.style.setProperty(
+    "--font-family",
+    resolveSkeletonFontFamily(appearance),
+  );
   const themeVariables = appearance?.themeVariables;
   if (!themeVariables) {
     return;

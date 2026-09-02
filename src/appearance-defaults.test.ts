@@ -3,8 +3,20 @@ import {
   appearanceWithDefaults,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONTS,
+  defaultFontFamilyFor,
   SYSTEM_FONT_FAMILY,
 } from "./appearance-defaults";
+
+describe("defaultFontFamilyFor", () => {
+  test("omitted and non-empty fonts use Inter", () => {
+    expect(defaultFontFamilyFor(undefined)).toBe(DEFAULT_FONT_FAMILY);
+    expect(defaultFontFamilyFor(DEFAULT_FONTS)).toBe(DEFAULT_FONT_FAMILY);
+  });
+
+  test("fonts: [] uses the system stack", () => {
+    expect(defaultFontFamilyFor([])).toBe(SYSTEM_FONT_FAMILY);
+  });
+});
 
 describe("appearanceWithDefaults", () => {
   test("initial omitted fonts and font-family become Inter", () => {

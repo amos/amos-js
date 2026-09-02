@@ -33,6 +33,14 @@ function fontsCleared(fonts: Appearance["fonts"]): boolean {
 }
 
 /**
+ * `--font-family` used when the merchant omitted that key. `fonts: []`
+ * names the system stack so Inter is not used without a webfont.
+ */
+export function defaultFontFamilyFor(fonts: Appearance["fonts"]): string {
+  return fontsCleared(fonts) ? SYSTEM_FONT_FAMILY : DEFAULT_FONT_FAMILY;
+}
+
+/**
  * Fill omitted Inter defaults so js.amos.com can drop its own Google
  * Fonts `<link>` once every client is on this SDK.
  *
@@ -70,9 +78,7 @@ export function appearanceWithDefaults(
 
   if (shouldDefaultFontFamily) {
     next.themeVariables = {
-      "--font-family": fontsCleared(next.fonts)
-        ? SYSTEM_FONT_FAMILY
-        : DEFAULT_FONT_FAMILY,
+      "--font-family": defaultFontFamilyFor(next.fonts),
       ...next.themeVariables,
     };
   }
