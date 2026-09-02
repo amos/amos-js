@@ -1,3 +1,4 @@
+import { appearanceWithDefaults } from "./appearance-defaults";
 import { embedIframeSearchParams } from "./embed-src";
 import { armIframeHandshakeReload } from "./handshake-reload";
 import { getEmbedOrigin } from "./jwt";
@@ -128,7 +129,10 @@ export type PaymentMethodFormListenerOptions = {
   /**
    * Custom appearance to apply when the iframe first becomes ready and
    * whenever the appearance changes. Can be updated later via the
-   * returned controller's `update({ appearance })` method.
+   * returned controller's `update({ appearance })` method. Omitted
+   * `fonts` / `--font-family` on first paint default to Inter.
+   * `fonts: []` skips the webfont and uses a system stack when
+   * `--font-family` is also omitted.
    */
   appearance?: Appearance;
   /**
@@ -290,7 +294,12 @@ export function attachPaymentMethodFormListeners(
         handshakeReload.noteReady();
         ready = true;
         sendParentReadyMessage(iframe);
-        sendUpdateAppearance({ iframe, appearance: current.appearance });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults(current.appearance, {
+            initial: true,
+          }),
+        });
         sendQueuedDefaultValues();
         sendQueuedFocus();
         current.onIframeReady?.();
@@ -301,7 +310,12 @@ export function attachPaymentMethodFormListeners(
         break;
 
       case "UPDATE_APPEARANCE":
-        sendUpdateAppearance({ iframe, appearance: event.data.appearance });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults(event.data.appearance, {
+            initial: false,
+          }),
+        });
         break;
 
       case "UPDATED_APPEARANCE":
@@ -337,7 +351,12 @@ export function attachPaymentMethodFormListeners(
       const hadDefaultValues = "defaultValues" in patch;
       current = { ...current, ...patch };
       if (hadAppearance && ready) {
-        sendUpdateAppearance({ iframe, appearance: current.appearance });
+        sendUpdateAppearance({
+          iframe,
+          appearance: appearanceWithDefaults(current.appearance, {
+            initial: false,
+          }),
+        });
       }
       if (hadDefaultValues && ready) {
         sendUpdateDefaultValues({

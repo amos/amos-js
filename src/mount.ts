@@ -142,11 +142,11 @@ function mountPaymentMethodFormWithSkeleton({
   Object.assign(iframe.style, SKELETON_IFRAME_STYLE);
 
   let revealed = false;
-  let appearanceReady = false;
   let lastHeight: string | undefined;
   let appearance = skeletonOptions.appearance;
   let heightTransitionTimer: ReturnType<typeof setTimeout> | undefined;
   let fallbackRevealTimer: ReturnType<typeof setTimeout> | undefined;
+  let currentOptions = listenerOptions;
 
   function skeletonHeightPx(): number {
     return wrapper.getBoundingClientRect().height;
@@ -168,6 +168,9 @@ function mountPaymentMethodFormWithSkeleton({
 
     const skeletonPx = skeletonHeightPx();
     const reportedPx = reportedHeightPx();
+    // lastHeight can still be the pre-appearance measure and shorter than
+    // the host skeleton. Never shrink on first paint; a later UPDATE_HEIGHT
+    // applies the post-appearance size.
     const revealPx = Number.isFinite(reportedPx)
       ? Math.max(reportedPx, skeletonPx)
       : skeletonPx;
@@ -190,15 +193,13 @@ function mountPaymentMethodFormWithSkeleton({
     }, 400);
   }
 
-  function tryReveal(): void {
-    if (revealed || !appearanceReady) {
+  function startFallbackReveal(): void {
+    if (revealed || fallbackRevealTimer !== undefined) {
       return;
     }
-    const reportedPx = reportedHeightPx();
-    const skeletonPx = skeletonHeightPx();
-    if (Number.isFinite(reportedPx) && reportedPx >= skeletonPx - 2) {
+    fallbackRevealTimer = setTimeout(() => {
       reveal();
-    }
+    }, 1500);
   }
 
   const controller = attachPaymentMethodFormListeners(iframe, {
@@ -207,20 +208,16 @@ function mountPaymentMethodFormWithSkeleton({
       lastHeight = height;
       if (revealed) {
         iframe.style.height = height;
-      } else {
-        tryReveal();
       }
-      listenerOptions.onHeightChange?.(height);
+      currentOptions.onHeightChange?.(height);
     },
     onAppearanceReady: () => {
-      appearanceReady = true;
-      tryReveal();
-      if (!revealed && fallbackRevealTimer === undefined) {
-        fallbackRevealTimer = setTimeout(() => {
-          reveal();
-        }, 1500);
-      }
-      listenerOptions.onAppearanceReady?.();
+      reveal();
+      currentOptions.onAppearanceReady?.();
+    },
+    onIframeReady: () => {
+      startFallbackReveal();
+      currentOptions.onIframeReady?.();
     },
   });
 
@@ -230,7 +227,14 @@ function mountPaymentMethodFormWithSkeleton({
   return {
     iframe,
     update(patch) {
-      controller.update(patch);
+      currentOptions = { ...currentOptions, ...patch };
+      // Keep the wrapped reveal listeners. Forwarding these would replace
+      // them and leave the iframe at opacity 0.
+      const rest = { ...patch };
+      delete rest.onAppearanceReady;
+      delete rest.onHeightChange;
+      delete rest.onIframeReady;
+      controller.update(rest);
       if (!revealed && "appearance" in patch) {
         appearance = patch.appearance;
         skeleton.update({ ...skeletonOptions, appearance });
@@ -458,7 +462,8 @@ export type AmosBankAccountPaymentMethodFormMountController = Omit<
  * `update()` method, and a `destroy()` method.
  *
  * A field-shaped skeleton is shown immediately and replaced by the
- * iframe once appearance is applied.
+ * iframe once appearance is applied, or after 1.5s if appearance never
+ * acks.
  *
  * Use the returned `controller.iframe` when calling
  * {@link validateForm}, {@link confirmPayment}, or

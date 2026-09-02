@@ -1,5 +1,12 @@
 /// <reference types="googlepay" />
 
+export {
+  appearanceWithDefaults,
+  DEFAULT_FONT_CSS_SRC,
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_FONTS,
+  SYSTEM_FONT_FAMILY,
+} from "./appearance-defaults";
 export type {
   ApplePayButtonController,
   ApplePayButtonListenerOptions,
@@ -22,6 +29,7 @@ export {
   ensureSkeletonStyles,
   resolveWalletButtonSkeletonBorderRadius,
   SKELETON_STYLES,
+  skeletonRulesToCss,
 } from "./form-skeleton";
 export type {
   FormattedGooglePayPaymentData,
@@ -35,7 +43,6 @@ export {
   getGooglePayButtonSrc,
 } from "./google-pay";
 export { decodeJwt, getEmbedOrigin } from "./jwt";
-
 export {
   confirmPayment,
   confirmSetup,
@@ -98,10 +105,16 @@ export {
 export type {
   Appearance,
   AppearanceLabels,
+  AppearanceRuleDeclarations,
+  AppearanceRuleProperty,
+  AppearanceRuleSelector,
   ApplePayButtonElementProps,
   CardBrand,
   ConfirmPaymentResult,
   ConfirmSetupResult,
+  CssFontSource,
+  CustomFontSource,
+  FontSource,
   GooglePayButtonElementProps,
   Message,
   PaymentMethodFormCardBrandChangeEvent,
