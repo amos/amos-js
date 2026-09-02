@@ -5,10 +5,13 @@ import { randomRequestId } from "./random-id";
 import {
   type Appearance,
   type ApplePayButtonElementProps,
+  CONFIRM_TIMEOUT_MS,
   type ConfirmPaymentResult,
   type ConfirmSetupResult,
+  type ConfirmTimeoutResult,
   createMessage,
   type GooglePayButtonElementProps,
+  isConfirmTimeout,
   type Message,
   type PaymentMethodFormDefaultValues,
   type PaymentMethodFormField,
@@ -368,7 +371,10 @@ function postConfirmIntent({
   );
 }
 
-const CONFIRM_TIMEOUT_MS = 60_000;
+const CONFIRM_TIMEOUT_RESULT: ConfirmTimeoutResult = {
+  status: "failed",
+  error: "timeout",
+};
 
 function fromConfirmationMessage(
   result: Extract<Message, { type: "CONFIRMATION_RESULT" }>["result"],
@@ -381,6 +387,10 @@ function fromConfirmationMessage(
       return { status: "succeeded", setupIntent: result.setupIntent };
     }
     return { status: "failed" };
+  }
+
+  if (isConfirmTimeout(result)) {
+    return CONFIRM_TIMEOUT_RESULT;
   }
 
   if ("paymentIntent" in result && result.paymentIntent !== undefined) {
@@ -401,6 +411,9 @@ function toConfirmPaymentResult(
     }
     return { status: "failed" };
   }
+  if (isConfirmTimeout(result)) {
+    return CONFIRM_TIMEOUT_RESULT;
+  }
   if ("paymentIntent" in result) {
     return { status: "failed", paymentIntent: result.paymentIntent };
   }
@@ -415,6 +428,9 @@ function toConfirmSetupResult(
       return result;
     }
     return { status: "failed" };
+  }
+  if (isConfirmTimeout(result)) {
+    return CONFIRM_TIMEOUT_RESULT;
   }
   if ("setupIntent" in result) {
     return { status: "failed", setupIntent: result.setupIntent };
@@ -433,7 +449,7 @@ function waitForConfirmResult(
   return new Promise((resolve) => {
     const timeoutId = setTimeout(() => {
       window.removeEventListener("message", handleMessage);
-      resolve({ status: "failed" });
+      resolve(CONFIRM_TIMEOUT_RESULT);
     }, CONFIRM_TIMEOUT_MS);
 
     function handleMessage(event: MessageEvent<Message>) {
@@ -465,7 +481,11 @@ function waitForConfirmResult(
  * {@link resetForm}.
  *
  * Resolves `{ status: "succeeded", paymentIntent }` after processor
- * authorization, or `{ status: "failed", paymentIntent? }` otherwise.
+ * authorization, `{ status: "failed", paymentIntent? }` on decline, or
+ * `{ status: "failed", error: "timeout" }` if the iframe does not post
+ * `CONFIRMATION_RESULT` within {@link CONFIRM_TIMEOUT_MS} (15s; embed
+ * `/confirm` aborts at 10s). A timeout is not a decline — the charge
+ * may still settle; do not retry as a new payment.
  * Capture may still finish asynchronously.
  */
 export function confirmPayment({
@@ -508,7 +528,10 @@ export function confirmPayment({
  * defaults used by {@link resetForm}.
  *
  * Resolves `{ status: "succeeded", setupIntent }` after verification,
- * or `{ status: "failed", setupIntent? }` otherwise.
+ * `{ status: "failed", setupIntent? }` on decline, or
+ * `{ status: "failed", error: "timeout" }` if the iframe does not post
+ * `CONFIRMATION_RESULT` within {@link CONFIRM_TIMEOUT_MS}. Same
+ * uncertain-vs-decline rule as {@link confirmPayment}.
  */
 export function confirmSetup({
   iframe,

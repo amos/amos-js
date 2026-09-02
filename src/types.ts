@@ -32,18 +32,46 @@ export type PaymentMethodFormCardBrandChangeEvent = {
 };
 
 /**
+ * Confirm never heard back from the iframe (or the iframe aborted
+ * hung `/confirm`). Not a processor decline — the charge may still
+ * settle. Do not retry as a new payment.
+ */
+export const CONFIRM_TIMEOUT_ERROR = "timeout" as const;
+
+export type ConfirmTimeoutError = typeof CONFIRM_TIMEOUT_ERROR;
+
+export type ConfirmTimeoutResult = {
+  status: "failed";
+  error: ConfirmTimeoutError;
+};
+
+/**
+ * Dead-iframe backstop for `confirmPayment` / `confirmSetup`.
+ *
+ * Embed aborts hung `/confirm` at 10s and posts
+ * `{ status: "failed", error: "timeout" }`. This wait must stay strictly
+ * above that abort plus `postMessage` — do not set it to 10s.
+ */
+export const CONFIRM_TIMEOUT_MS = 15_000;
+
+/**
  * Outcome of `confirmPayment`. This is not settlement proof — capture
  * may still finish asynchronously after a succeeded authorization.
  *
  * Recoverable field errors stay in the iframe. The Promise still
  * resolves `{ status: "failed" }`. `paymentIntent` is present when the
  * confirm API returned a body (success or processor decline).
+ *
+ * `{ status: "failed", error: "timeout" }` means the iframe did not
+ * post `CONFIRMATION_RESULT` within {@link CONFIRM_TIMEOUT_MS}, or
+ * posted a `/confirm` abort. That is uncertain, not a decline.
  */
 export type ConfirmPaymentResult =
   | {
       status: "succeeded";
       paymentIntent: components["schemas"]["PaymentIntent"];
     }
+  | ConfirmTimeoutResult
   | {
       status: "failed";
       paymentIntent?: components["schemas"]["PaymentIntent"];
@@ -56,16 +84,31 @@ export type ConfirmPaymentResult =
  * Recoverable field errors stay in the iframe. The Promise still
  * resolves `{ status: "failed" }`. `setupIntent` is present when the
  * confirm API returned a body (success or failure).
+ *
+ * `{ status: "failed", error: "timeout" }` is the same uncertain
+ * confirm as on {@link ConfirmPaymentResult}.
  */
 export type ConfirmSetupResult =
   | {
       status: "succeeded";
       setupIntent: components["schemas"]["SetupIntent"];
     }
+  | ConfirmTimeoutResult
   | {
       status: "failed";
       setupIntent?: components["schemas"]["SetupIntent"];
     };
+
+/** True when confirm settled as a timeout, not a processor decline. */
+export function isConfirmTimeout(
+  result: ConfirmPaymentResult | ConfirmSetupResult | null | undefined,
+): result is ConfirmTimeoutResult {
+  return (
+    result?.status === "failed" &&
+    "error" in result &&
+    result.error === CONFIRM_TIMEOUT_ERROR
+  );
+}
 
 /**
  * CSS custom properties that control the appearance of the embedded

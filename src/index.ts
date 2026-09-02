@@ -112,6 +112,8 @@ export type {
   CardBrand,
   ConfirmPaymentResult,
   ConfirmSetupResult,
+  ConfirmTimeoutError,
+  ConfirmTimeoutResult,
   CssFontSource,
   CustomFontSource,
   FontSource,
@@ -123,4 +125,9 @@ export type {
   PaymentMethodFormValidityChangeEvent,
   ThemeVariable,
 } from "./types";
-export { createMessage } from "./types";
+export {
+  CONFIRM_TIMEOUT_ERROR,
+  CONFIRM_TIMEOUT_MS,
+  createMessage,
+  isConfirmTimeout,
+} from "./types";
