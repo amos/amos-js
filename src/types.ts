@@ -458,6 +458,14 @@ export type AppearanceLabels = "above" | "floating" | "placeholder";
  * Appearance overrides for the embedded Amos iframe UI.
  */
 export type Appearance = {
+  /**
+   * CSS custom properties to override. Each update that includes
+   * `themeVariables` **replaces** the full override set: only the
+   * variables you list are overridden; unlisted variables revert to
+   * iframe defaults. Omit `themeVariables` to keep the previous set.
+   * A payload that omits `--font-family` still gets Inter filled in
+   * (system stack if that payload also has `fonts: []`).
+   */
   themeVariables?: Partial<Record<ThemeVariable, string>>;
   /**
    * Field label placement for card and bank account forms.
