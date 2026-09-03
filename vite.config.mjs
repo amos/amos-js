@@ -45,31 +45,12 @@ export default defineConfig({
     keepNames: true,
   },
   test: {
-    projects: [
-      {
-        plugins,
-        build,
-        test: {
-          name: "node",
-          include: ["src/**/*.test.ts"],
-          exclude: ["src/messaging.test.ts"],
-          environment: "node",
-        },
-      },
-      {
-        plugins,
-        build,
-        test: {
-          name: "browser",
-          include: ["src/messaging.test.ts"],
-          browser: {
-            enabled: true,
-            headless: true,
-            provider: playwright(),
-            instances: [{ browser: "chromium" }],
-          },
-        },
-      },
-    ],
+    include: ["src/**/*.test.ts"],
+    browser: {
+      enabled: true,
+      headless: true,
+      provider: playwright(),
+      instances: [{ browser: "chromium" }],
+    },
   },
 });

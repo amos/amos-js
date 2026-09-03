@@ -1,4 +1,5 @@
 import { createAbortController } from "./abort-controller";
+import { ensureSkeletonStyles } from "./form-skeleton";
 import { requestPlaidLinkToken } from "./messaging";
 import type { PaymentMethodFormListenerOptions } from "./payment-method-form";
 import {
@@ -15,6 +16,9 @@ const STYLE_ID = "amos-js-plaid-bank-ui-styles";
 
 /** Stops a stale-token exit / remount cycle from looping forever. */
 const MAX_INVALID_TOKEN_REMOUNTS = 2;
+
+/** Same fallback as card/bank forms: reveal if Plaid never calls onLoad. */
+const PLAID_SKELETON_FALLBACK_MS = 1500;
 
 const PLAID_BANK_UI_STYLES = `
 .amos-js-plaid-panel {
@@ -35,7 +39,41 @@ const PLAID_BANK_UI_STYLES = `
   height: 350px;
   min-height: 350px;
   min-width: 300px;
+  position: relative;
   width: 100%;
+}
+.amos-js-plaid-embed-target {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 350px;
+  min-width: 300px;
+  width: 100%;
+}
+.amos-js-plaid-embed:not([data-ready]) .amos-js-plaid-embed-target {
+  opacity: 0;
+  pointer-events: none;
+}
+.amos-js-plaid-skeleton {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+.amos-js-plaid-embed[data-ready] .amos-js-plaid-skeleton {
+  display: none;
+}
+.amos-js-plaid-skeleton-fill {
+  animation: amos-js-skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: var(--input, var(--accent));
+  border-radius: calc(var(--radius, 0.625rem) * 0.8);
+  box-sizing: border-box;
+  height: 100%;
+  width: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .amos-js-plaid-skeleton-fill {
+    animation: none;
+  }
 }
 .amos-js-plaid-panel[data-mode="linked"] .amos-js-plaid-embed {
   display: none;
@@ -99,6 +137,7 @@ const PLAID_BANK_UI_STYLES = `
 `;
 
 function ensurePlaidBankUiStyles(): void {
+  ensureSkeletonStyles();
   if (document.getElementById(STYLE_ID)) {
     return;
   }
@@ -172,6 +211,7 @@ export function attachPlaidBankUi({
   let iframeReady = false;
   let lastEmittedValid: boolean | undefined;
   let destroyLink: (() => void) | undefined;
+  let fallbackRevealTimer: ReturnType<typeof setTimeout> | undefined;
   const abort = createAbortController();
   let linked:
     | { credentials: PlaidCredentials; bankName: string; last4: string }
@@ -186,6 +226,20 @@ export function attachPlaidBankUi({
   const embedEl = document.createElement("div");
   embedEl.className = "amos-js-plaid-embed";
   embedEl.setAttribute("data-testid", "amos-plaid-embed");
+  embedEl.setAttribute("aria-busy", "true");
+
+  const targetEl = document.createElement("div");
+  targetEl.className = "amos-js-plaid-embed-target";
+
+  const skeletonEl = document.createElement("div");
+  skeletonEl.className = "amos-js-plaid-skeleton";
+  skeletonEl.setAttribute("aria-hidden", "true");
+  skeletonEl.setAttribute("data-testid", "amos-plaid-skeleton");
+  const skeletonFill = document.createElement("div");
+  skeletonFill.className = "amos-js-plaid-skeleton-fill";
+  skeletonEl.append(skeletonFill);
+
+  embedEl.append(targetEl, skeletonEl);
 
   const linkedEl = document.createElement("div");
   linkedEl.className = "amos-js-plaid-linked";
@@ -232,10 +286,43 @@ export function attachPlaidBankUi({
     current.onValidityChange?.({ isValid });
   }
 
+  function setEmbedReady(ready: boolean): void {
+    if (ready) {
+      embedEl.setAttribute("data-ready", "");
+      embedEl.removeAttribute("aria-busy");
+      return;
+    }
+    embedEl.removeAttribute("data-ready");
+    embedEl.setAttribute("aria-busy", "true");
+  }
+
+  function clearFallbackReveal(): void {
+    if (fallbackRevealTimer === undefined) {
+      return;
+    }
+    clearTimeout(fallbackRevealTimer);
+    fallbackRevealTimer = undefined;
+  }
+
+  function startFallbackReveal(): void {
+    if (
+      embedEl.hasAttribute("data-ready") ||
+      fallbackRevealTimer !== undefined
+    ) {
+      return;
+    }
+    fallbackRevealTimer = setTimeout(() => {
+      fallbackRevealTimer = undefined;
+      setEmbedReady(true);
+    }, PLAID_SKELETON_FALLBACK_MS);
+  }
+
   function teardownEmbedded(): void {
+    clearFallbackReveal();
     destroyLink?.();
     destroyLink = undefined;
-    embedEl.replaceChildren();
+    targetEl.replaceChildren();
+    setEmbedReady(false);
   }
 
   function unlink(): void {
@@ -294,8 +381,15 @@ export function attachPlaidBankUi({
       teardownEmbedded();
       const destroy = await mountPlaidEmbeddedLink({
         token,
-        target: embedEl,
+        target: targetEl,
         signal: abort.signal,
+        onLoad: () => {
+          if (abort.signal.aborted) {
+            return;
+          }
+          clearFallbackReveal();
+          setEmbedReady(true);
+        },
         onSuccess: (publicToken, metadata) => {
           if (abort.signal.aborted) {
             return;
@@ -337,6 +431,7 @@ export function attachPlaidBankUi({
           }
           if (invalidTokenRemounts >= MAX_INVALID_TOKEN_REMOUNTS) {
             setError("Could not connect bank.");
+            setEmbedReady(true);
             return;
           }
           invalidTokenRemounts += 1;
@@ -344,6 +439,7 @@ export function attachPlaidBankUi({
         },
       });
       destroyLink = destroy;
+      startFallbackReveal();
       // The session can change while the Link script loads: drop the
       // handler rather than leave it live behind a hidden panel.
       if (abort.signal.aborted || invalidated || linked || !requiresPlaid()) {
@@ -361,6 +457,7 @@ export function attachPlaidBankUi({
         return;
       }
       setError(message);
+      setEmbedReady(true);
     } finally {
       mounting = false;
       if (remountRequested) {
@@ -446,6 +543,7 @@ export function attachPlaidBankUi({
     },
     destroy() {
       abort.abort();
+      clearFallbackReveal();
       window.removeEventListener("message", handleIframeMessage);
       teardownEmbedded();
       clearBankPlaidSession(iframe);

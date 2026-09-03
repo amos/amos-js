@@ -31,6 +31,7 @@ type PlaidCreateConfig = {
     publicToken: string,
     metadata: PlaidLinkOnSuccessMetadata,
   ) => void;
+  onLoad?: () => void;
   onExit?: (
     error: { error_code?: string; error_message?: string } | null,
     metadata: unknown,
@@ -218,6 +219,7 @@ export type MountPlaidEmbeddedLinkInput = {
     publicToken: string,
     metadata: PlaidLinkOnSuccessMetadata,
   ) => void;
+  onLoad?: () => void;
   onExit?: (error: { error_code?: string } | null) => void;
   /**
    * When aborted (e.g. the bank form was unmounted), skip mounting
@@ -234,6 +236,7 @@ export async function mountPlaidEmbeddedLink({
   token,
   target,
   onSuccess,
+  onLoad,
   onExit,
   signal,
 }: MountPlaidEmbeddedLinkInput): Promise<() => void> {
@@ -249,6 +252,7 @@ export async function mountPlaidEmbeddedLink({
     {
       token,
       onSuccess,
+      onLoad,
       onExit: (error) => {
         onExit?.(error);
       },

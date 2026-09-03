@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.17
+
+### Patch Changes
+
+- Add Plaid skeleton
+
 ## 0.11.16
 
 ### Patch Changes
