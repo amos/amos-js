@@ -535,6 +535,8 @@ export type AmosBankAccountPaymentMethodFormOptions =
      *
      * Hosts that still have an ACH threshold should compute this
      * themselves (for example with `requiresAchVerification`).
+     * `update({ requireAchVerification })` hides or shows Link; it does
+     * not destroy the Embedded handler. `destroy()` tears it down.
      *
      * @default false
      */
@@ -558,9 +560,10 @@ export type AmosBankAccountPaymentMethodFormOptions =
  * is true (or `intent` is `"setup"`), and the render token allows
  * verification, the SDK hides the routing/account iframe and mounts
  * [Plaid Embedded Institution Search](https://plaid.com/docs/link/embedded-institution-search/)
- * in the parent. Hosts do not proxy Pay API (`GET /merchants`,
- * `POST /plaid_link_tokens`); embed does that with `PAY_API_KEY`. Do
- * not put Plaid secrets in the browser.
+ * in the parent. `update({ requireAchVerification })` hides or shows
+ * that handler; it does not destroy it. Hosts do not proxy Pay API
+ * (`GET /merchants`, `POST /plaid_link_tokens`); embed does that with
+ * `PAY_API_KEY`. Do not put Plaid secrets in the browser.
  *
  * Use the returned `controller.iframe` when calling
  * {@link validateForm}, {@link confirmPayment}, or

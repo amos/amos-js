@@ -24,15 +24,22 @@ const PLAID_BANK_UI_STYLES = `
 .amos-js-plaid-panel {
   box-sizing: border-box;
   color: var(--foreground, oklch(0.145 0 0));
-  display: none;
+  display: flex;
   flex-direction: column;
   font-family: inherit;
   gap: var(--control-gap, 0.5rem);
   width: 100%;
 }
-.amos-js-plaid-panel[data-mode="embed"],
-.amos-js-plaid-panel[data-mode="linked"] {
-  display: flex;
+/* Keep Embedded Link's iframe alive across requireAchVerification
+ * toggles. display:none can skip or freeze iframe JS — same reason the
+ * bank form uses this hide, not display:none. */
+.amos-js-plaid-panel[data-mode="hidden"] {
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  visibility: hidden !important;
+  width: 0 !important;
 }
 .amos-js-plaid-embed {
   box-sizing: border-box;
@@ -221,6 +228,7 @@ export function attachPlaidBankUi({
   panel.className = "amos-js-plaid-panel";
   panel.setAttribute("data-amos-plaid-panel", "true");
   panel.dataset["mode"] = "hidden";
+  panel.setAttribute("aria-hidden", "true");
   applyTheme(panel, current.appearance, appliedThemeKeys);
 
   const embedEl = document.createElement("div");
@@ -440,9 +448,10 @@ export function attachPlaidBankUi({
       });
       destroyLink = destroy;
       startFallbackReveal();
-      // The session can change while the Link script loads: drop the
-      // handler rather than leave it live behind a hidden panel.
-      if (abort.signal.aborted || invalidated || linked || !requiresPlaid()) {
+      // Abort / invalid token / a completed link still drop the handler.
+      // requireAchVerification going false does not — hide via syncSession
+      // so toggling the host flag does not reload Institution Search.
+      if (abort.signal.aborted || invalidated || linked) {
         teardownEmbedded();
       }
     } catch (error) {
@@ -477,11 +486,18 @@ export function attachPlaidBankUi({
 
     if (!requiresVerification) {
       panel.dataset["mode"] = "hidden";
+      panel.setAttribute("aria-hidden", "true");
       hideBankForm(false);
-      lastEmittedValid = undefined;
-      teardownEmbedded();
+      if (lastEmittedValid === true) {
+        lastEmittedValid = undefined;
+        current.onValidityChange?.({ isValid: false });
+      } else {
+        lastEmittedValid = undefined;
+      }
       return;
     }
+
+    panel.removeAttribute("aria-hidden");
 
     panel.dataset["mode"] = linked ? "linked" : "embed";
     hideBankForm(true);
@@ -534,10 +550,6 @@ export function attachPlaidBankUi({
       if ("appearance" in patch) {
         current.appearance = patch.appearance;
         applyTheme(panel, current.appearance, appliedThemeKeys);
-      }
-      if (linked && !requiresPlaid()) {
-        unlink();
-        return;
       }
       syncSession();
     },
