@@ -128,16 +128,21 @@ export function focusField({
 }
 
 /**
- * Push Apple Pay button visual options into the embedded iframe.
+ * Push Apple Pay button visual options and contact flags into the
+ * embedded iframe.
  */
 export function updateApplePayButton({
   iframe,
   props,
   height,
+  phoneRequired,
+  shippingAddressRequired,
 }: {
   iframe: Iframe;
   props: ApplePayButtonElementProps;
   height?: string;
+  phoneRequired?: boolean;
+  shippingAddressRequired?: boolean;
 }): void {
   if (!iframe?.contentWindow) {
     return;
@@ -148,22 +153,29 @@ export function updateApplePayButton({
       type: "UPDATE_APPLE_PAY_BUTTON",
       height,
       props,
+      phoneRequired,
+      shippingAddressRequired,
     }),
     getIframeTargetOrigin(iframe),
   );
 }
 
 /**
- * Push Google Pay button visual options into the embedded iframe.
+ * Push Google Pay button visual options and contact flags into the
+ * embedded iframe.
  */
 export function updateGooglePayButton({
   iframe,
   props,
   height,
+  phoneRequired,
+  shippingAddressRequired,
 }: {
   iframe: Iframe;
   props: GooglePayButtonElementProps;
   height?: string;
+  phoneRequired?: boolean;
+  shippingAddressRequired?: boolean;
 }): void {
   if (!iframe?.contentWindow) {
     return;
@@ -174,6 +186,8 @@ export function updateGooglePayButton({
       type: "UPDATE_GOOGLE_PAY_BUTTON",
       height,
       props,
+      phoneRequired,
+      shippingAddressRequired,
     }),
     getIframeTargetOrigin(iframe),
   );

@@ -22,6 +22,8 @@ import {
   type ConfirmPaymentResult,
   createMessage,
   type Message,
+  type WalletContactRequirements,
+  type WalletCustomerCreateAttributes,
 } from "./types";
 
 /**
@@ -42,7 +44,7 @@ export function getApplePayButtonInitialHeight(): string {
 /**
  * Options accepted by {@link attachApplePayButtonListeners}.
  */
-export type ApplePayButtonListenerOptions = {
+export type ApplePayButtonListenerOptions = WalletContactRequirements & {
   /**
    * Major-currency decimal string shown in the Apple Pay sheet
    * (e.g. `"50.00"` for $50.00). Converted to cents in
@@ -86,7 +88,7 @@ export type ApplePayButtonListenerOptions = {
     confirmPayment,
   }: {
     paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
-    customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
+    customerCreateAttributes: WalletCustomerCreateAttributes;
     confirmPayment: (token: string) => Promise<ConfirmPaymentResult>;
   }) => Promise<ConfirmPaymentResult>;
 };
@@ -99,8 +101,9 @@ export type ApplePayButtonController = {
   /**
    * Update one or more listener options without re-attaching the
    * message listener. Pass `amount` or `merchantName` to push the new
-   * value into the iframe; pass `height` or `buttonProps` to restyle
-   * the Apple Pay button.
+   * value into the iframe; pass `height`, `buttonProps`,
+   * `phoneRequired`, or `shippingAddressRequired` to restyle the Apple
+   * Pay button or change sheet contact fields.
    */
   update: (patch: Partial<ApplePayButtonListenerOptions>) => void;
   /**
@@ -162,6 +165,8 @@ export function attachApplePayButtonListeners(
       iframe,
       height: current.height ?? "48px",
       props: current.buttonProps ?? {},
+      phoneRequired: current.phoneRequired,
+      shippingAddressRequired: current.shippingAddressRequired,
     });
   }
 
@@ -239,7 +244,11 @@ export function attachApplePayButtonListeners(
     update(patch) {
       const hadAmount = "amount" in patch;
       const hadMerchantName = "merchantName" in patch;
-      const hadButtonProps = "height" in patch || "buttonProps" in patch;
+      const hadButtonProps =
+        "height" in patch ||
+        "buttonProps" in patch ||
+        "phoneRequired" in patch ||
+        "shippingAddressRequired" in patch;
       current = { ...current, ...patch };
       if (!ready) {
         return;

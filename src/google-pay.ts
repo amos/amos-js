@@ -17,6 +17,8 @@ import type {
   ConfirmPaymentResult,
   GooglePayButtonElementProps,
   Message,
+  WalletContactRequirements,
+  WalletCustomerCreateAttributes,
 } from "./types";
 
 /**
@@ -37,7 +39,7 @@ export function getGooglePayButtonInitialHeight(): string {
 /**
  * Options accepted by {@link attachGooglePayButtonListeners}.
  */
-export type GooglePayButtonListenerOptions = {
+export type GooglePayButtonListenerOptions = WalletContactRequirements & {
   /**
    * Major-currency decimal string shown in the Google Pay sheet
    * (e.g. `"50.00"` for $50.00). Converted to cents in
@@ -83,7 +85,7 @@ export type GooglePayButtonListenerOptions = {
     confirmPayment,
   }: {
     paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
-    customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
+    customerCreateAttributes: WalletCustomerCreateAttributes;
     confirmPayment: (token: string) => Promise<ConfirmPaymentResult>;
   }) => Promise<ConfirmPaymentResult>;
 };
@@ -96,8 +98,9 @@ export type GooglePayButtonController = {
   /**
    * Update one or more listener options without re-attaching the
    * message listener. Pass `amount` or `merchantName` to push the new
-   * value into the iframe; pass `height` or `buttonProps` to restyle
-   * the Google Pay button.
+   * value into the iframe; pass `height`, `buttonProps`,
+   * `phoneRequired`, or `shippingAddressRequired` to restyle the Google
+   * Pay button or change sheet contact fields.
    */
   update: (patch: Partial<GooglePayButtonListenerOptions>) => void;
   /**
@@ -144,6 +147,8 @@ export function attachGooglePayButtonListeners(
       iframe,
       height: current.height ?? "48px",
       props: current.buttonProps ?? {},
+      phoneRequired: current.phoneRequired,
+      shippingAddressRequired: current.shippingAddressRequired,
     });
   }
 
@@ -203,7 +208,11 @@ export function attachGooglePayButtonListeners(
     update(patch) {
       const hadAmount = "amount" in patch;
       const hadMerchantName = "merchantName" in patch;
-      const hadButtonProps = "height" in patch || "buttonProps" in patch;
+      const hadButtonProps =
+        "height" in patch ||
+        "buttonProps" in patch ||
+        "phoneRequired" in patch ||
+        "shippingAddressRequired" in patch;
       current = { ...current, ...patch };
       if (!ready) {
         return;
@@ -243,19 +252,21 @@ export function formatGooglePayPaymentData({
 }: {
   paymentData: google.payments.api.PaymentData;
 }): FormattedGooglePayPaymentData {
+  const billing = paymentData.paymentMethodData.info?.billingAddress;
+  const shipping = paymentData.shippingAddress;
   return {
     paymentMethod: {
       type: "googlepay",
       billing_address_attributes: {
-        name: paymentData.shippingAddress?.name,
-        address_line1: paymentData.shippingAddress?.address1,
-        address_line2: paymentData.shippingAddress?.address2,
-        city: paymentData.shippingAddress?.locality,
-        state: paymentData.shippingAddress?.administrativeArea,
-        postal_code: paymentData.shippingAddress?.postalCode,
-        country: paymentData.shippingAddress?.countryCode,
+        name: billing?.name,
+        address_line1: billing?.address1,
+        address_line2: billing?.address2,
+        city: billing?.locality,
+        state: billing?.administrativeArea,
+        postal_code: billing?.postalCode,
+        country: billing?.countryCode,
         email: paymentData.email,
-        phone: paymentData.shippingAddress?.phoneNumber,
+        phone: shipping?.phoneNumber ?? billing?.phoneNumber,
       },
       card_profile_attributes: {
         wallet_payload: paymentData.paymentMethodData.tokenizationData.token,

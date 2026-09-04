@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.19
+
+### Patch Changes
+
+- Update wallet contact requirements
+
 ## 0.11.18
 
 ### Patch Changes

@@ -124,6 +124,9 @@ export type {
   PaymentMethodFormField,
   PaymentMethodFormValidityChangeEvent,
   ThemeVariable,
+  WalletContactRequirements,
+  WalletCustomerCreateAttributes,
+  WalletPostalAddress,
 } from "./types";
 export {
   CONFIRM_TIMEOUT_ERROR,

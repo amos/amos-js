@@ -111,6 +111,76 @@ export function isConfirmTimeout(
 }
 
 /**
+ * Street fields on {@link WalletCustomerCreateAttributes} billing and
+ * shipping addresses. Names match Amos `BillingAddressInput`
+ * (`address_line1`, `state`, `postal_code`).
+ */
+export type WalletPostalAddress = Pick<
+  components["schemas"]["BillingAddressInput"],
+  | "address_line1"
+  | "address_line2"
+  | "city"
+  | "state"
+  | "postal_code"
+  | "country"
+>;
+
+/**
+ * Customer snapshot posted on wallet `CREATE_PAYMENT_INTENT` and passed
+ * to Apple Pay / Google Pay `onConfirm`. Name, email, and billing
+ * address are always requested; `phone` and `shippingAddress` are only
+ * present when the host opted in (`phoneRequired` /
+ * `shippingAddressRequired`).
+ *
+ * Top-level `line1` / `line2` / `city` / `region` / `postalCode` /
+ * `country` duplicate `billingAddress` (as `address_line1` / `state` /
+ * `postal_code`) so existing Apple Pay hosts keep working. Prefer
+ * `billingAddress`; the flat keys will be removed.
+ *
+ * This is not Amos API `CreateCustomerInput`.
+ */
+export type WalletCustomerCreateAttributes = {
+  email?: string;
+  name?: string;
+  phone?: string;
+  billingAddress?: WalletPostalAddress;
+  shippingAddress?: WalletPostalAddress;
+  /**
+   * @deprecated Duplicate of `billingAddress.address_line1` for hosts
+   * that still read the Apple Pay flat keys. Remove after callers
+   * migrate to `billingAddress`.
+   */
+  line1?: string;
+  /** @deprecated Use `billingAddress.address_line2`. */
+  line2?: string;
+  /** @deprecated Use `billingAddress.city`. */
+  city?: string;
+  /** @deprecated Use `billingAddress.state`. */
+  region?: string;
+  /** @deprecated Use `billingAddress.postal_code`. */
+  postalCode?: string;
+  /** @deprecated Use `billingAddress.country`. */
+  country?: string;
+};
+
+/**
+ * Optional wallet sheet contact fields. Name, email, and billing
+ * address are always required. Omitted flags default to `false`.
+ */
+export type WalletContactRequirements = {
+  /**
+   * Collect a phone number in the wallet sheet.
+   * @default false
+   */
+  phoneRequired?: boolean;
+  /**
+   * Collect a shipping postal address in the wallet sheet.
+   * @default false
+   */
+  shippingAddressRequired?: boolean;
+};
+
+/**
  * CSS custom properties that control the appearance of the embedded
  * Amos iframe UI. Only the variables you provide are sent; omitted
  * variables keep their defaults.
@@ -634,12 +704,16 @@ export type Message =
       type: "UPDATE_APPLE_PAY_BUTTON";
       height?: string;
       props: ApplePayButtonElementProps;
+      phoneRequired?: boolean;
+      shippingAddressRequired?: boolean;
     }
   | {
       /** Parent → embed: visual options for the Google Pay button. */
       type: "UPDATE_GOOGLE_PAY_BUTTON";
       height?: string;
       props: GooglePayButtonElementProps;
+      phoneRequired?: boolean;
+      shippingAddressRequired?: boolean;
     }
   | {
       /**
@@ -654,7 +728,7 @@ export type Message =
       /** Embed → parent: express checkout requests a payment intent from the host. */
       type: "CREATE_PAYMENT_INTENT";
       paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
-      customerCreateAttributes: components["schemas"]["CreateCustomerInput"];
+      customerCreateAttributes: WalletCustomerCreateAttributes;
     }
   | ({
       /** Parent → embed: confirm a payment intent with an embed token. */
