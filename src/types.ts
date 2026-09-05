@@ -166,6 +166,7 @@ export type WalletCustomerCreateAttributes = {
 /**
  * Optional wallet sheet contact fields. Name, email, and billing
  * address are always required. Omitted flags default to `false`.
+ * These are top-level mount / listener options, not `buttonProps`.
  */
 export type WalletContactRequirements = {
   /**
@@ -700,7 +701,7 @@ export type Message =
       appearance: Appearance;
     }
   | {
-      /** Parent → embed: visual options for the Apple Pay button. */
+      /** Parent → embed: Apple Pay button visuals and contact flags. */
       type: "UPDATE_APPLE_PAY_BUTTON";
       height?: string;
       props: ApplePayButtonElementProps;
@@ -708,7 +709,7 @@ export type Message =
       shippingAddressRequired?: boolean;
     }
   | {
-      /** Parent → embed: visual options for the Google Pay button. */
+      /** Parent → embed: Google Pay button visuals and contact flags. */
       type: "UPDATE_GOOGLE_PAY_BUTTON";
       height?: string;
       props: GooglePayButtonElementProps;

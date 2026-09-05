@@ -81,6 +81,8 @@ export type ApplePayButtonListenerOptions = WalletContactRequirements & {
   /**
    * Called when the buyer authorizes in the Apple Pay sheet. Create a
    * payment intent on your server, then `await confirmPayment(token)`.
+   * `customerCreateAttributes` is {@link WalletCustomerCreateAttributes},
+   * not Amos `CreateCustomerInput`.
    */
   onConfirm: ({
     paymentIntentCreateAttributes,

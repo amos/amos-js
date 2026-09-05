@@ -78,6 +78,8 @@ export type GooglePayButtonListenerOptions = WalletContactRequirements & {
   /**
    * Called when the buyer authorizes in the Google Pay sheet. Create a
    * payment intent on your server, then `await confirmPayment(token)`.
+   * `customerCreateAttributes` is {@link WalletCustomerCreateAttributes},
+   * not Amos `CreateCustomerInput`.
    */
   onConfirm: ({
     paymentIntentCreateAttributes,
@@ -246,6 +248,9 @@ export type FormattedGooglePayPaymentData = {
  * `paymentMethod` payload. Use this when integrating with the raw
  * Google Pay API directly instead of through
  * {@link mountAmosGooglePayButton} (or the React equivalent).
+ *
+ * Street and name come from CARD `billingAddress`; email from the
+ * top-level field; phone from shipping when present, otherwise billing.
  */
 export function formatGooglePayPaymentData({
   paymentData,

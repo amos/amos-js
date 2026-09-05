@@ -143,6 +143,8 @@ async function createPaymentIntentToken({
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      // Map WalletCustomerCreateAttributes on your server — it is not
+      // CreateCustomerInput.
       customer: customerCreateAttributes,
       paymentIntent: paymentIntentCreateAttributes,
     }),
@@ -179,7 +181,9 @@ googlePay.update({ amount: "75.00" });
 applePay.update({ amount: "75.00" });
 ```
 
-Do not call `validateForm` from the host in an express flow — create a payment intent inside `onConfirm`, then `await confirmPayment(token)`. Size the mount slot; omitted `buttonProps` keep paint defaults and fill the iframe.
+Do not call `validateForm` from the host in an express flow — create a payment intent inside `onConfirm`, then `await confirmPayment(token)`. Size the mount slot; omitted `buttonProps` keep paint defaults and fill the iframe. Name, email, and billing address are always collected. Pass `phoneRequired: true` if you still need a phone (Apple Pay previously always collected one). Pass `shippingAddressRequired: true` to collect a shipping postal address.
+
+`customerCreateAttributes` is `WalletCustomerCreateAttributes`, not `CreateCustomerInput`. Nested `billingAddress` / `shippingAddress` use Amos billing field names (`address_line1`, `state`, `postal_code`). Top-level `line1` / `line2` / `city` / `region` / `postalCode` / `country` still duplicate billing so existing Apple Pay hosts keep working — prefer `billingAddress`. `phone` and `shippingAddress` are omitted unless you opted in.
 
 On Safari, Apple Pay uses the native payment sheet. On other browsers, Apple's QR handoff opens in a popup (`pay.apple.com`); while that popup is open, the SDK shows a waiting overlay with **Cancel payment**. After the buyer authorizes, Cancel is removed and the overlay shows **Completing your payment…** until `onConfirm` settles.
 
@@ -418,7 +422,7 @@ Mount the secure Google Pay button (express checkout) into a container element. 
 - `renderToken` (`string`)
 - `amount` (`string`) — major-currency decimal string shown in the wallet sheet (e.g. `"50.00"` for $50.00). The iframe converts this to cents in `paymentIntentCreateAttributes.amount`.
 - `merchantName` (`string`)
-- `onConfirm` (`({ paymentIntentCreateAttributes, customerCreateAttributes, confirmPayment }) => Promise<ConfirmPaymentResult>`) — called when the buyer authorizes in the wallet sheet. Create a payment intent on your server, then `return confirmPayment(token)`. `customerCreateAttributes` is `WalletCustomerCreateAttributes` (`email`, `name`, `phone?`, `billingAddress`, `shippingAddress?`). Nested addresses use Amos billing address field names (`address_line1`, `state`, `postal_code`). This is not `CreateCustomerInput`.
+- `onConfirm` (`({ paymentIntentCreateAttributes, customerCreateAttributes, confirmPayment }) => Promise<ConfirmPaymentResult>`) — called when the buyer authorizes in the wallet sheet. Create a payment intent on your server, then `return confirmPayment(token)`. `customerCreateAttributes` is `WalletCustomerCreateAttributes`, not `CreateCustomerInput` — map it on your server. Nested `billingAddress` / `shippingAddress` use Amos billing field names (`address_line1`, `state`, `postal_code`). Top-level `line1` / `line2` / `city` / `region` / `postalCode` / `country` still duplicate billing for existing Apple Pay hosts; prefer `billingAddress`. `phone` and `shippingAddress` are omitted unless you passed `phoneRequired` / `shippingAddressRequired`.
 
 **Optional `options`:** `onHeightChange`, `onAppearanceReady`, plus:
 
@@ -444,17 +448,17 @@ The wallet iframe is flush with its mount container (`width: 100%`, zero margin)
 
 **Returns** `AmosGooglePayButtonMountController`:
 
-- `iframe`, `update(patch)`, `destroy()`. `destroy()` removes the iframe and any loading skeleton. Use `update({ amount, merchantName })` to push new values into the iframe. Use `update({ height, buttonProps })` to restyle the button.
+- `iframe`, `update(patch)`, `destroy()`. `destroy()` removes the iframe and any loading skeleton. Use `update({ amount, merchantName })` to push new values into the iframe. Use `update({ height, buttonProps, phoneRequired, shippingAddressRequired })` to restyle the button or change sheet contact fields.
 
 ### `mountAmosApplePayButton(container, options)`
 
 Mount the secure Apple Pay button (express checkout). Same required options and return shape as `mountAmosGooglePayButton`. A button-shaped skeleton is shown immediately and replaced by the iframe once appearance is applied.
 
-**Optional visual options:**
+**Optional options:**
 
 - `height` (`string`, defaults to `"48px"`) — painted button height. CSS length (e.g. `"48px"`). Apple ignores CSS `height`; Amos maps this for you.
 - `buttonProps` — native `<apple-pay-button>` attributes. Omitted fields keep Apple's `black` / `plain` / `en-US`. The button fills the iframe; size the mount slot, not the button. `style.width` also updates `--apple-pay-button-width` unless you set that custom property yourself.
-- `phoneRequired` (`boolean`, defaults to `false`) — collect a phone number in the Apple Pay sheet.
+- `phoneRequired` (`boolean`, defaults to `false`) — collect a phone number in the Apple Pay sheet. Pass `true` to keep the previous Apple Pay behavior of always collecting a phone.
 - `shippingAddressRequired` (`boolean`, defaults to `false`) — collect a shipping postal address. Name, email, and billing address are always required.
 
 - `iframeClassName` / `iframeStyle` — host-page `<iframe>` chrome.
@@ -511,7 +515,7 @@ Build the iframe `src` URL for each form type. Appearance is applied after hands
 
 ### `formatGooglePayPaymentData({ paymentData })`
 
-Transforms raw Google Pay payment data into an Amos-compatible `paymentMethod` payload. Use this when integrating with the raw Google Pay API (e.g. `@google-pay/button-react`) instead of `mountAmosGooglePayButton`.
+Transforms raw Google Pay payment data into an Amos-compatible `paymentMethod` payload. Use this when integrating with the raw Google Pay API (e.g. `@google-pay/button-react`) instead of `mountAmosGooglePayButton`. Street and name come from CARD `billingAddress`; email from the top-level field; phone from shipping when present, otherwise billing.
 
 ### `createMessage(message)` / `decodeJwt(token)` / `getEmbedOrigin(renderToken)`
 

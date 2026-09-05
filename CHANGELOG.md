@@ -1,10 +1,16 @@
 # @amos.com/amos-js
 
+## 0.11.20
+
+### Patch Changes
+
+- Update README and types
+
 ## 0.11.19
 
 ### Patch Changes
 
-- Update wallet contact requirements
+- Wallet `onConfirm` receives `WalletCustomerCreateAttributes`. Name, email, and billing are always collected; `phoneRequired` / `shippingAddressRequired` default to false.
 
 ## 0.11.18
 
