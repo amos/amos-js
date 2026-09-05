@@ -183,7 +183,7 @@ applePay.update({ amount: "75.00" });
 
 Do not call `validateForm` from the host in an express flow — create a payment intent inside `onConfirm`, then `await confirmPayment(token)`. Size the mount slot; omitted `buttonProps` keep paint defaults and fill the iframe. Name, email, and billing address are always collected. Pass `phoneRequired: true` if you still need a phone (Apple Pay previously always collected one). Pass `shippingAddressRequired: true` to collect a shipping postal address.
 
-`customerCreateAttributes` is `WalletCustomerCreateAttributes`, not `CreateCustomerInput`. Nested `billingAddress` / `shippingAddress` use Amos billing field names (`address_line1`, `state`, `postal_code`). Top-level `line1` / `line2` / `city` / `region` / `postalCode` / `country` still duplicate billing so existing Apple Pay hosts keep working — prefer `billingAddress`. `phone` and `shippingAddress` are omitted unless you opted in.
+`customerCreateAttributes` is `WalletCustomerCreateAttributes`, not `CreateCustomerInput`. Nested `billingAddress` / `shippingAddress` use Amos billing field names (`address_line1`, `state`, `postal_code`). `phone` and `shippingAddress` are omitted unless you opted in.
 
 On Safari, Apple Pay uses the native payment sheet. On other browsers, Apple's QR handoff opens in a popup (`pay.apple.com`); while that popup is open, the SDK shows a waiting overlay with **Cancel payment**. After the buyer authorizes, Cancel is removed and the overlay shows **Completing your payment…** until `onConfirm` settles.
 
@@ -422,7 +422,7 @@ Mount the secure Google Pay button (express checkout) into a container element. 
 - `renderToken` (`string`)
 - `amount` (`string`) — major-currency decimal string shown in the wallet sheet (e.g. `"50.00"` for $50.00). The iframe converts this to cents in `paymentIntentCreateAttributes.amount`.
 - `merchantName` (`string`)
-- `onConfirm` (`({ paymentIntentCreateAttributes, customerCreateAttributes, confirmPayment }) => Promise<ConfirmPaymentResult>`) — called when the buyer authorizes in the wallet sheet. Create a payment intent on your server, then `return confirmPayment(token)`. `customerCreateAttributes` is `WalletCustomerCreateAttributes`, not `CreateCustomerInput` — map it on your server. Nested `billingAddress` / `shippingAddress` use Amos billing field names (`address_line1`, `state`, `postal_code`). Top-level `line1` / `line2` / `city` / `region` / `postalCode` / `country` still duplicate billing for existing Apple Pay hosts; prefer `billingAddress`. `phone` and `shippingAddress` are omitted unless you passed `phoneRequired` / `shippingAddressRequired`.
+- `onConfirm` (`({ paymentIntentCreateAttributes, customerCreateAttributes, confirmPayment }) => Promise<ConfirmPaymentResult>`) — called when the buyer authorizes in the wallet sheet. Create a payment intent on your server, then `return confirmPayment(token)`. `customerCreateAttributes` is `WalletCustomerCreateAttributes`, not `CreateCustomerInput` — map it on your server. Nested `billingAddress` / `shippingAddress` use Amos billing field names (`address_line1`, `state`, `postal_code`). `phone` and `shippingAddress` are omitted unless you passed `phoneRequired` / `shippingAddressRequired`.
 
 **Optional `options`:** `onHeightChange`, `onAppearanceReady`, plus:
 

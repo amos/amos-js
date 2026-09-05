@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.21
+
+### Patch Changes
+
+- Remove deprecated wallet contact fields
+
 ## 0.11.20
 
 ### Patch Changes

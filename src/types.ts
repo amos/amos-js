@@ -132,12 +132,9 @@ export type WalletPostalAddress = Pick<
  * present when the host opted in (`phoneRequired` /
  * `shippingAddressRequired`).
  *
- * Top-level `line1` / `line2` / `city` / `region` / `postalCode` /
- * `country` duplicate `billingAddress` (as `address_line1` / `state` /
- * `postal_code`) so existing Apple Pay hosts keep working. Prefer
- * `billingAddress`; the flat keys will be removed.
- *
- * This is not Amos API `CreateCustomerInput`.
+ * Nested `billingAddress` / `shippingAddress` use Amos billing field
+ * names (`address_line1`, `state`, `postal_code`). This is not Amos API
+ * `CreateCustomerInput`.
  */
 export type WalletCustomerCreateAttributes = {
   email?: string;
@@ -145,22 +142,6 @@ export type WalletCustomerCreateAttributes = {
   phone?: string;
   billingAddress?: WalletPostalAddress;
   shippingAddress?: WalletPostalAddress;
-  /**
-   * @deprecated Duplicate of `billingAddress.address_line1` for hosts
-   * that still read the Apple Pay flat keys. Remove after callers
-   * migrate to `billingAddress`.
-   */
-  line1?: string;
-  /** @deprecated Use `billingAddress.address_line2`. */
-  line2?: string;
-  /** @deprecated Use `billingAddress.city`. */
-  city?: string;
-  /** @deprecated Use `billingAddress.state`. */
-  region?: string;
-  /** @deprecated Use `billingAddress.postal_code`. */
-  postalCode?: string;
-  /** @deprecated Use `billingAddress.country`. */
-  country?: string;
 };
 
 /**
