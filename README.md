@@ -191,8 +191,8 @@ On Safari, Apple Pay uses the native payment sheet. On other browsers, Apple's Q
 
 Setup intents are used to save payment methods for future use (e.g. recurring payments, subscriptions) without charging the customer immediately. The flow is identical to a payment intent, except:
 
-- On the server, call `POST /setup_intents` instead of `POST /payment_intents`.
-- On the client, `await confirmSetup({ iframe, token })` instead of `confirmPayment({ iframe, token })`.
+- On the server, call `POST /setup_intents` instead of `POST /payment_intents`. Setup intents are organization-scoped (`X-Account-Id` is ignored if sent). The embed JWT carries `organization_id` + `setup_intent_id` (`account_id` is null). Payment-intent tokens remain account-scoped (`account_id` + `payment_intent_id`).
+- On the client, `await confirmSetup({ iframe, token })` instead of `confirmPayment({ iframe, token })`. `confirmSetup` reads `setup_intent_id` from the JWT; it does not need `account_id`.
 - Both resolve with a status and the matching intent object when the confirm API returned a body (`ConfirmPaymentResult` / `ConfirmSetupResult`).
 
 The same `mountAmosCreditCardPaymentMethodForm` / `mountAmosBankAccountPaymentMethodForm` controllers support both payment intents and setup intents — they are differentiated by which confirmation function you call. For bank setup, pass `intent: "setup"` so Plaid is always shown (unless the render token disables verification).

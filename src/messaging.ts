@@ -534,8 +534,10 @@ export function confirmPayment({
  * Confirm a setup intent in the embedded iframe flow.
  *
  * Pass the embed JWT (`token`) returned by your server's
- * `POST /setup_intents` call. The matching `setup_intent_id` is
- * extracted from the JWT payload and forwarded to the iframe.
+ * `POST /setup_intents` call. Setup tokens are organization-scoped
+ * (`organization_id` + `setup_intent_id`; `account_id` is null).
+ * `setup_intent_id` is extracted from the JWT and forwarded to the
+ * iframe. Payment-intent tokens remain account-scoped.
  *
  * Optional `defaultValues` are applied immediately before building the
  * payment method payload. They do not replace the last mount/`update`
