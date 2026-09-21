@@ -1,4 +1,5 @@
 import type { components } from "@amos.com/node";
+import { isMessageFromEmbedIframe } from "./iframe-message";
 import { decodeJwt } from "./jwt";
 import { getBankPlaidSession } from "./plaid-session";
 import { randomRequestId } from "./random-id";
@@ -309,7 +310,7 @@ export function requestPlaidLinkToken({
     }, PLAID_LINK_TOKEN_TIMEOUT_MS);
 
     function handleMessage(event: MessageEvent<Message>) {
-      if (event.source !== contentWindow) {
+      if (!iframe || !isMessageFromEmbedIframe(event, iframe)) {
         return;
       }
       if (
@@ -467,7 +468,7 @@ function waitForConfirmResult(
     }, CONFIRM_TIMEOUT_MS);
 
     function handleMessage(event: MessageEvent<Message>) {
-      if (event.source !== contentWindow) {
+      if (!isMessageFromEmbedIframe(event, iframe)) {
         return;
       }
       if (event.data.type !== "CONFIRMATION_RESULT") {

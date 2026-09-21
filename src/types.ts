@@ -646,196 +646,208 @@ export type PaymentMethodFormField =
   | "country";
 
 /**
+ * Echoed on embed → parent messages as `window.name` so the host can
+ * match the sender when `event.source === iframe.contentWindow` disagrees
+ * (Firefox / some WebKit WindowProxy identity). Host → embed messages
+ * omit this.
+ */
+export type EmbedIframeName = {
+  iframeName?: string;
+};
+
+/**
  * Typed `postMessage` payloads exchanged between the host page and the
  * embedded Amos iframe.
  */
-export type Message =
-  | {
-      /** Embed → parent: iframe finished loading and is ready for messages. */
-      type: "IFRAME_READY";
-    }
-  | {
-      /** Parent → embed: host acknowledged `IFRAME_READY`. */
-      type: "PARENT_ACKNOWLEDGED_IFRAME_READY";
-    }
-  | {
-      /** Embed → parent: iframe content height changed (resize container). */
-      type: "UPDATE_HEIGHT";
-      height: string;
-    }
-  | {
-      /**
-       * Parent → embed: express-checkout amount changed. Major-currency
-       * decimal string (e.g. `"50.00"` for $50.00).
-       */
-      type: "UPDATE_AMOUNT";
-      amount: string;
-    }
-  | {
-      /** Parent → embed: express-checkout merchant display name changed. */
-      type: "UPDATE_MERCHANT_NAME";
-      merchantName: string;
-    }
-  | {
-      /** Parent → embed: push appearance overrides into the iframe. */
-      type: "UPDATE_APPEARANCE";
-      appearance: Appearance;
-    }
-  | {
-      /** Parent → embed: Apple Pay button visuals and contact flags. */
-      type: "UPDATE_APPLE_PAY_BUTTON";
-      height?: string;
-      props: ApplePayButtonElementProps;
-      phoneRequired?: boolean;
-      shippingAddressRequired?: boolean;
-    }
-  | {
-      /** Parent → embed: Google Pay button visuals and contact flags. */
-      type: "UPDATE_GOOGLE_PAY_BUTTON";
-      height?: string;
-      props: GooglePayButtonElementProps;
-      phoneRequired?: boolean;
-      shippingAddressRequired?: boolean;
-    }
-  | {
-      /**
-       * Parent → embed: validate form inputs (`requestId` only).
-       * Embed → parent: validation response (`isValid` set).
-       */
-      type: "VALIDATE_FORM";
-      requestId: string;
-      isValid?: boolean;
-    }
-  | {
-      /** Embed → parent: express checkout requests a payment intent from the host. */
-      type: "CREATE_PAYMENT_INTENT";
-      paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
-      customerCreateAttributes: WalletCustomerCreateAttributes;
-    }
-  | ({
-      /** Parent → embed: confirm a payment intent with an embed token. */
-      type: "CONFIRM_PAYMENT_INTENT";
-    } & Pick<components["schemas"]["PaymentIntent"], "id"> &
-      Pick<components["schemas"]["EmbedToken"], "token"> & {
-        /** Present when ACH verification completed via Plaid Link in the parent. */
-        plaid?: components["schemas"]["PlaidCredentialsInput"];
+export type Message = EmbedIframeName &
+  (
+    | {
+        /** Embed → parent: iframe finished loading and is ready for messages. */
+        type: "IFRAME_READY";
+      }
+    | {
+        /** Parent → embed: host acknowledged `IFRAME_READY`. */
+        type: "PARENT_ACKNOWLEDGED_IFRAME_READY";
+      }
+    | {
+        /** Embed → parent: iframe content height changed (resize container). */
+        type: "UPDATE_HEIGHT";
+        height: string;
+      }
+    | {
         /**
-         * Applied immediately before building `payment_method`. Does not
-         * replace the last mount/`update` defaultValues used by RESET_FORM.
+         * Parent → embed: express-checkout amount changed. Major-currency
+         * decimal string (e.g. `"50.00"` for $50.00).
          */
-        defaultValues?: PaymentMethodFormDefaultValues;
-      })
-  | ({
-      /** Parent → embed: confirm a setup intent with an embed token. */
-      type: "CONFIRM_SETUP_INTENT";
-    } & Pick<components["schemas"]["SetupIntent"], "id"> &
-      Pick<components["schemas"]["EmbedToken"], "token"> & {
-        /** Present when ACH verification completed via Plaid Link in the parent. */
-        plaid?: components["schemas"]["PlaidCredentialsInput"];
+        type: "UPDATE_AMOUNT";
+        amount: string;
+      }
+    | {
+        /** Parent → embed: express-checkout merchant display name changed. */
+        type: "UPDATE_MERCHANT_NAME";
+        merchantName: string;
+      }
+    | {
+        /** Parent → embed: push appearance overrides into the iframe. */
+        type: "UPDATE_APPEARANCE";
+        appearance: Appearance;
+      }
+    | {
+        /** Parent → embed: Apple Pay button visuals and contact flags. */
+        type: "UPDATE_APPLE_PAY_BUTTON";
+        height?: string;
+        props: ApplePayButtonElementProps;
+        phoneRequired?: boolean;
+        shippingAddressRequired?: boolean;
+      }
+    | {
+        /** Parent → embed: Google Pay button visuals and contact flags. */
+        type: "UPDATE_GOOGLE_PAY_BUTTON";
+        height?: string;
+        props: GooglePayButtonElementProps;
+        phoneRequired?: boolean;
+        shippingAddressRequired?: boolean;
+      }
+    | {
         /**
-         * Applied immediately before building `payment_method`. Does not
-         * replace the last mount/`update` defaultValues used by RESET_FORM.
+         * Parent → embed: validate form inputs (`requestId` only).
+         * Embed → parent: validation response (`isValid` set).
          */
-        defaultValues?: PaymentMethodFormDefaultValues;
-      })
-  | {
-      /** Parent → embed: seed or overwrite name and billing address fields. */
-      type: "UPDATE_DEFAULT_VALUES";
-      defaultValues: PaymentMethodFormDefaultValues;
-    }
-  | {
-      /** Parent → embed: focus a named form control. No-op if unmounted. */
-      type: "FOCUS_FIELD";
-      field: PaymentMethodFormField;
-    }
-  | {
-      /**
-       * Embed → parent: the interactive confirmation flow finished.
-       * Parent → embed: express-checkout initiation failed on the host.
-       * Not settlement proof — verify payment/setup success on your
-       * backend via webhooks (or by retrieving the intent).
-       */
-      type: "CONFIRMATION_RESULT";
-      result: ConfirmPaymentResult | ConfirmSetupResult;
-    }
-  | {
-      /** Embed → parent: appearance overrides were applied in the iframe. */
-      type: "UPDATED_APPEARANCE";
-    }
-  | {
-      /** Embed → parent: Apple Pay Code window / waiting UI should show. */
-      type: "APPLE_PAY_WINDOW_OPEN";
-    }
-  | {
-      /**
-       * Embed → parent: waiting UI should dismiss (cancel before authorize,
-       * abort, or session error — not authorize). After authorize the
-       * overlay stays until `onConfirm` settles.
-       */
-      type: "APPLE_PAY_WINDOW_CLOSE";
-    }
-  | {
-      /**
-       * Parent → embed: user cancelled from the host-page waiting overlay.
-       * Only offered before authorize; the overlay hides Cancel once
-       * `CREATE_PAYMENT_INTENT` arrives.
-       */
-      type: "APPLE_PAY_CANCEL";
-    }
-  | {
-      /** Parent → embed: clear all form field values and API errors. */
-      type: "RESET_FORM";
-    }
-  | {
-      /**
-       * Embed → parent: card/bank form validity changed.
-       * `isValid` is true when all required fields are present and
-       * valid. Does not include PCI data.
-       */
-      type: "FORM_VALIDITY_CHANGE";
-      isValid: boolean;
-    }
-  | {
-      /**
-       * Embed → parent: the customer pressed Enter in the iframe form.
-       * PCI-safe — no field values. The SDK submits the enclosing host
-       * `<form>` (same as Stripe Elements). No-op without a host form,
-       * or while Plaid Embedded Institution Search is showing.
-       */
-      type: "FORM_SUBMIT_REQUEST";
-    }
-  | {
-      /**
-       * Embed → parent: the customer pressed Escape in the iframe.
-       * PCI-safe — no field values. Use `onEscapeKeyPressed` to close a
-       * host modal. Not posted while an iframe dropdown or address
-       * suggestion list is open (that Escape dismisses the overlay
-       * first). No-op while Plaid Embedded Institution Search is
-       * showing.
-       */
-      type: "ESCAPE_KEY_PRESSED";
-    }
-  | {
-      /**
-       * Embed → parent: detected card brand changed. `brand` is the
-       * matched network, or `null` when the field is empty or the
-       * digits do not match a known brand. Does not include PCI data.
-       */
-      type: "CARD_BRAND_CHANGE";
-      brand: CardBrand | null;
-    }
-  | {
-      /** Parent → embed: mint a Plaid Link token for Embedded Link. */
-      type: "CREATE_PLAID_LINK_TOKEN";
-      requestId: string;
-    }
-  | {
-      /** Embed → parent: minted Plaid Link token, or `error`. */
-      type: "PLAID_LINK_TOKEN";
-      requestId: string;
-      link_token?: string;
-      error?: string;
-    };
+        type: "VALIDATE_FORM";
+        requestId: string;
+        isValid?: boolean;
+      }
+    | {
+        /** Embed → parent: express checkout requests a payment intent from the host. */
+        type: "CREATE_PAYMENT_INTENT";
+        paymentIntentCreateAttributes: components["schemas"]["CreatePaymentIntentInput"];
+        customerCreateAttributes: WalletCustomerCreateAttributes;
+      }
+    | ({
+        /** Parent → embed: confirm a payment intent with an embed token. */
+        type: "CONFIRM_PAYMENT_INTENT";
+      } & Pick<components["schemas"]["PaymentIntent"], "id"> &
+        Pick<components["schemas"]["EmbedToken"], "token"> & {
+          /** Present when ACH verification completed via Plaid Link in the parent. */
+          plaid?: components["schemas"]["PlaidCredentialsInput"];
+          /**
+           * Applied immediately before building `payment_method`. Does not
+           * replace the last mount/`update` defaultValues used by RESET_FORM.
+           */
+          defaultValues?: PaymentMethodFormDefaultValues;
+        })
+    | ({
+        /** Parent → embed: confirm a setup intent with an embed token. */
+        type: "CONFIRM_SETUP_INTENT";
+      } & Pick<components["schemas"]["SetupIntent"], "id"> &
+        Pick<components["schemas"]["EmbedToken"], "token"> & {
+          /** Present when ACH verification completed via Plaid Link in the parent. */
+          plaid?: components["schemas"]["PlaidCredentialsInput"];
+          /**
+           * Applied immediately before building `payment_method`. Does not
+           * replace the last mount/`update` defaultValues used by RESET_FORM.
+           */
+          defaultValues?: PaymentMethodFormDefaultValues;
+        })
+    | {
+        /** Parent → embed: seed or overwrite name and billing address fields. */
+        type: "UPDATE_DEFAULT_VALUES";
+        defaultValues: PaymentMethodFormDefaultValues;
+      }
+    | {
+        /** Parent → embed: focus a named form control. No-op if unmounted. */
+        type: "FOCUS_FIELD";
+        field: PaymentMethodFormField;
+      }
+    | {
+        /**
+         * Embed → parent: the interactive confirmation flow finished.
+         * Parent → embed: express-checkout initiation failed on the host.
+         * Not settlement proof — verify payment/setup success on your
+         * backend via webhooks (or by retrieving the intent).
+         */
+        type: "CONFIRMATION_RESULT";
+        result: ConfirmPaymentResult | ConfirmSetupResult;
+      }
+    | {
+        /** Embed → parent: appearance overrides were applied in the iframe. */
+        type: "UPDATED_APPEARANCE";
+      }
+    | {
+        /** Embed → parent: Apple Pay Code window / waiting UI should show. */
+        type: "APPLE_PAY_WINDOW_OPEN";
+      }
+    | {
+        /**
+         * Embed → parent: waiting UI should dismiss (cancel before authorize,
+         * abort, or session error — not authorize). After authorize the
+         * overlay stays until `onConfirm` settles.
+         */
+        type: "APPLE_PAY_WINDOW_CLOSE";
+      }
+    | {
+        /**
+         * Parent → embed: user cancelled from the host-page waiting overlay.
+         * Only offered before authorize; the overlay hides Cancel once
+         * `CREATE_PAYMENT_INTENT` arrives.
+         */
+        type: "APPLE_PAY_CANCEL";
+      }
+    | {
+        /** Parent → embed: clear all form field values and API errors. */
+        type: "RESET_FORM";
+      }
+    | {
+        /**
+         * Embed → parent: card/bank form validity changed.
+         * `isValid` is true when all required fields are present and
+         * valid. Does not include PCI data.
+         */
+        type: "FORM_VALIDITY_CHANGE";
+        isValid: boolean;
+      }
+    | {
+        /**
+         * Embed → parent: the customer pressed Enter in the iframe form.
+         * PCI-safe — no field values. The SDK submits the enclosing host
+         * `<form>` (same as Stripe Elements). No-op without a host form,
+         * or while Plaid Embedded Institution Search is showing.
+         */
+        type: "FORM_SUBMIT_REQUEST";
+      }
+    | {
+        /**
+         * Embed → parent: the customer pressed Escape in the iframe.
+         * PCI-safe — no field values. Use `onEscapeKeyPressed` to close a
+         * host modal. Not posted while an iframe dropdown or address
+         * suggestion list is open (that Escape dismisses the overlay
+         * first). No-op while Plaid Embedded Institution Search is
+         * showing.
+         */
+        type: "ESCAPE_KEY_PRESSED";
+      }
+    | {
+        /**
+         * Embed → parent: detected card brand changed. `brand` is the
+         * matched network, or `null` when the field is empty or the
+         * digits do not match a known brand. Does not include PCI data.
+         */
+        type: "CARD_BRAND_CHANGE";
+        brand: CardBrand | null;
+      }
+    | {
+        /** Parent → embed: mint a Plaid Link token for Embedded Link. */
+        type: "CREATE_PLAID_LINK_TOKEN";
+        requestId: string;
+      }
+    | {
+        /** Embed → parent: minted Plaid Link token, or `error`. */
+        type: "PLAID_LINK_TOKEN";
+        requestId: string;
+        link_token?: string;
+        error?: string;
+      }
+  );
 
 /**
  * Identity helper that brands an object as a typed `Message`.

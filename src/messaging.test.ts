@@ -28,6 +28,7 @@ function postFromIframe(
   window.dispatchEvent(
     new MessageEvent("message", {
       data: createMessage({ type: "CONFIRMATION_RESULT", result }),
+      origin: location.origin,
       source: iframe.contentWindow,
     }),
   );

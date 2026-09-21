@@ -1,5 +1,6 @@
 import { createAbortController } from "./abort-controller";
 import { ensureSkeletonStyles } from "./form-skeleton";
+import { isMessageFromEmbedIframe } from "./iframe-message";
 import { requestPlaidLinkToken } from "./messaging";
 import type { PaymentMethodFormListenerOptions } from "./payment-method-form";
 import {
@@ -513,7 +514,7 @@ export function attachPlaidBankUi({
   }
 
   function handleIframeMessage(event: MessageEvent<Message>): void {
-    if (event.source !== iframe.contentWindow) {
+    if (!isMessageFromEmbedIframe(event, iframe)) {
       return;
     }
     if (event.data.type === "IFRAME_READY") {

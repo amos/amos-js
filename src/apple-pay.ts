@@ -7,6 +7,7 @@ import {
 } from "./apple-pay-waiting-overlay";
 import { embedIframeSearchParams } from "./embed-src";
 import { armIframeHandshakeReload } from "./handshake-reload";
+import { isMessageFromEmbedIframe } from "./iframe-message";
 import { getEmbedOrigin } from "./jwt";
 import {
   confirmPayment,
@@ -174,7 +175,7 @@ export function attachApplePayButtonListeners(
 
   function handleMessage(event: MessageEvent<Message>) {
     // Ignore messages from other frames / windows.
-    if (event.source !== iframe.contentWindow) {
+    if (!isMessageFromEmbedIframe(event, iframe)) {
       return;
     }
 

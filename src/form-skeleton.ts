@@ -210,7 +210,9 @@ export const SKELETON_STYLES = `
   margin: 0 -4px;
   padding-block: 0.25rem;
   pointer-events: none;
+  position: relative;
   width: calc(100% + 8px);
+  z-index: 1;
 }
 .amos-js-form-skeleton-field {
   display: flex;
@@ -276,7 +278,9 @@ export const SKELETON_STYLES = `
 }
 .amos-js-wallet-skeleton {
   flex: none;
+  position: relative;
   width: 100%;
+  z-index: 1;
 }
 @keyframes amos-js-skeleton-pulse {
   50% { opacity: 0.5; }
@@ -480,9 +484,9 @@ export type PaymentMethodFormSkeleton = {
 
 /**
  * Host-page placeholder that mirrors card/bank field layout using the
- * same appearance variables the iframe will apply. Shown immediately
- * while the iframe document loads, then removed when appearance is
- * ready.
+ * same appearance variables the iframe will apply. Covers a visible
+ * iframe while it loads (WebKit still runs iframe JS), then is removed
+ * when appearance is ready or the host-side reveal timeout fires.
  */
 export function createPaymentMethodFormSkeleton(
   options: PaymentMethodFormSkeletonOptions,

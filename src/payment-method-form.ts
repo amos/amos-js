@@ -1,6 +1,7 @@
 import { appearanceWithDefaults } from "./appearance-defaults";
 import { embedIframeSearchParams } from "./embed-src";
 import { armIframeHandshakeReload } from "./handshake-reload";
+import { isMessageFromEmbedIframe } from "./iframe-message";
 import { getEmbedOrigin } from "./jwt";
 import {
   focusField as sendFocusField,
@@ -285,7 +286,7 @@ export function attachPaymentMethodFormListeners(
   }
 
   function handleMessage(event: MessageEvent<Message>) {
-    if (event.source !== iframe.contentWindow) {
+    if (!isMessageFromEmbedIframe(event, iframe)) {
       return;
     }
 

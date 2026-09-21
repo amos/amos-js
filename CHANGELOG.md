@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.23
+
+### Patch Changes
+
+- Keep the payment iframe visible under the skeleton overlay so WebKit runs its JS, and match embed messages by origin plus iframe name when WindowProxy identity disagrees.
+
 ## 0.11.22
 
 ### Patch Changes

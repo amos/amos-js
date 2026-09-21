@@ -66,6 +66,7 @@ function signalIframeReady(iframe: HTMLIFrameElement): void {
   window.dispatchEvent(
     new MessageEvent("message", {
       data: createMessage({ type: "IFRAME_READY" }),
+      origin: location.origin,
       source: iframe.contentWindow,
     }),
   );

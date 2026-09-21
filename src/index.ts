@@ -42,6 +42,10 @@ export {
   getGooglePayButtonInitialHeight,
   getGooglePayButtonSrc,
 } from "./google-pay";
+export {
+  iframeNameFromMessage,
+  isMessageFromEmbedIframe,
+} from "./iframe-message";
 export { decodeJwt, getEmbedOrigin } from "./jwt";
 export {
   confirmPayment,
@@ -73,6 +77,7 @@ export {
   mountAmosBankAccountPaymentMethodForm,
   mountAmosCreditCardPaymentMethodForm,
   mountAmosGooglePayButton,
+  SKELETON_REVEAL_TIMEOUT_MS,
 } from "./mount";
 export type {
   BillingAddressRequirement,
