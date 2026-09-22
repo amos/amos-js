@@ -32,6 +32,19 @@ export type PaymentMethodFormCardBrandChangeEvent = {
 };
 
 /**
+ * Billing postal code committed inside the card or bank iframe.
+ *
+ * `postalCode` is a finished code, or `null` when a finished code
+ * becomes incomplete. Incomplete keystrokes are not posted. US and PR
+ * are 5 digits, Canada is `A1A 1A1`, and the UK is a full postcode.
+ * Not sent for `defaultValues` writes.
+ */
+export type PaymentMethodFormPostalCodeChangeEvent = {
+  postalCode: string | null;
+  country: string;
+};
+
+/**
  * Confirm never heard back from the iframe (or the iframe aborted
  * hung `/confirm`). Not a processor decline — the charge may still
  * settle. Do not retry as a new payment.
@@ -834,6 +847,18 @@ export type Message = EmbedIframeName &
          */
         type: "CARD_BRAND_CHANGE";
         brand: CardBrand | null;
+      }
+    | {
+        /**
+         * Embed → parent: the customer committed a billing postal code,
+         * or cleared one that was previously committed. `postalCode` is
+         * null when a finished code becomes incomplete. Incomplete
+         * keystrokes are not posted. Not sent for `defaultValues`.
+         * Includes the postal code and country, and no PCI data.
+         */
+        type: "POSTAL_CODE_CHANGE";
+        postalCode: string | null;
+        country: string;
       }
     | {
         /** Parent → embed: mint a Plaid Link token for Embedded Link. */

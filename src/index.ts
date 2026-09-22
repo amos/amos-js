@@ -127,6 +127,7 @@ export type {
   PaymentMethodFormCardBrandChangeEvent,
   PaymentMethodFormDefaultValues,
   PaymentMethodFormField,
+  PaymentMethodFormPostalCodeChangeEvent,
   PaymentMethodFormValidityChangeEvent,
   ThemeVariable,
   WalletContactRequirements,

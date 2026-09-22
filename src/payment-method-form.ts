@@ -16,6 +16,7 @@ import type {
   PaymentMethodFormCardBrandChangeEvent,
   PaymentMethodFormDefaultValues,
   PaymentMethodFormField,
+  PaymentMethodFormPostalCodeChangeEvent,
   PaymentMethodFormValidityChangeEvent,
 } from "./types";
 
@@ -170,6 +171,14 @@ export type PaymentMethodFormListenerOptions = {
    * only — never fired for bank account.
    */
   onCardBrandChanged?: (event: PaymentMethodFormCardBrandChangeEvent) => void;
+  /**
+   * Called when the customer commits a billing postal code, or clears
+   * one that was already committed. `postalCode` is null when a finished
+   * code becomes incomplete (backspace or country change). Incomplete
+   * keystrokes are not reported. Not called for `defaultValues` or
+   * `update({ defaultValues })`. Card and bank forms only.
+   */
+  onPostalCodeChange?: (event: PaymentMethodFormPostalCodeChangeEvent) => void;
   /**
    * Called when the customer presses Escape in the iframe. PCI-safe —
    * no field values. Use this to close a host modal that contains the
@@ -340,6 +349,13 @@ export function attachPaymentMethodFormListeners(
 
       case "CARD_BRAND_CHANGE":
         current.onCardBrandChanged?.({ brand: event.data.brand });
+        break;
+
+      case "POSTAL_CODE_CHANGE":
+        current.onPostalCodeChange?.({
+          postalCode: event.data.postalCode,
+          country: event.data.country,
+        });
         break;
     }
   }

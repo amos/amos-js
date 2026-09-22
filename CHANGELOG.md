@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.24
+
+### Patch Changes
+
+- Add onPostalCodeChange so hosts can react when the customer commits or clears a billing postal code, without events for incomplete keystrokes or defaultValues writes.
+
 ## 0.11.23
 
 ### Patch Changes
