@@ -87,36 +87,71 @@ const PLAID_BANK_UI_STYLES = `
   display: none;
 }
 .amos-js-plaid-linked {
+  align-items: center;
+  background: var(--background, oklch(1 0 0));
+  border: 1px solid var(--border, oklch(0.922 0 0));
+  border-radius: var(--radius, 0.625rem);
+  box-sizing: border-box;
   display: none;
-  flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.75rem;
+  padding: 0.75rem;
 }
 .amos-js-plaid-panel[data-mode="linked"] .amos-js-plaid-linked {
   display: flex;
 }
+.amos-js-plaid-linked-mark {
+  align-items: center;
+  background: var(--muted, var(--accent, oklch(0.97 0 0)));
+  border-radius: calc(var(--radius, 0.625rem) * 0.8);
+  color: var(--foreground, oklch(0.145 0 0));
+  display: flex;
+  flex: none;
+  height: 2.25rem;
+  justify-content: center;
+  width: 2.25rem;
+}
+.amos-js-plaid-linked-mark svg {
+  display: block;
+}
+.amos-js-plaid-linked-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
 .amos-js-plaid-linked-name {
-  font-size: var(--input-font-size, 0.875rem);
+  color: var(--foreground, oklch(0.145 0 0));
+  font-size: 0.875rem;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .amos-js-plaid-linked-meta {
   color: var(--muted-foreground, oklch(0.556 0 0));
   font-size: 0.75rem;
 }
 .amos-js-plaid-disconnect {
-  align-self: flex-start;
-  background: none;
-  border: none;
+  background: var(--background, oklch(1 0 0));
+  border: 1px solid var(--border, oklch(0.922 0 0));
   border-radius: calc(var(--radius, 0.625rem) * 0.8);
-  color: var(--muted-foreground, oklch(0.556 0 0));
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  color: var(--foreground, oklch(0.145 0 0));
   cursor: pointer;
+  flex: none;
   font: inherit;
-  font-size: var(--input-font-size, 0.875rem);
-  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  height: 2rem;
   outline: none;
-  padding: 0;
+  padding: 0 0.75rem;
 }
 .amos-js-plaid-disconnect:hover {
+  background: var(--accent, oklch(0.97 0 0));
   color: var(--accent-foreground, oklch(0.205 0 0));
+}
+:is(.dark, .dark *) .amos-js-plaid-disconnect {
+  border-color: var(--input, var(--border, oklch(0.922 0 0)));
 }
 .amos-js-plaid-disconnect:focus-visible {
   box-shadow:
@@ -143,6 +178,47 @@ const PLAID_BANK_UI_STYLES = `
   width: 0 !important;
 }
 `;
+
+/** Same Lucide building mark as the hosted-checkout Bank method. */
+function createBuildingIcon(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "16");
+  svg.setAttribute("height", "16");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+
+  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  rect.setAttribute("width", "16");
+  rect.setAttribute("height", "20");
+  rect.setAttribute("x", "4");
+  rect.setAttribute("y", "2");
+  rect.setAttribute("rx", "2");
+  rect.setAttribute("ry", "2");
+  svg.append(rect);
+
+  for (const d of [
+    "M9 22v-4h6v4",
+    "M8 6h.01",
+    "M16 6h.01",
+    "M12 6h.01",
+    "M12 10h.01",
+    "M12 14h.01",
+    "M16 10h.01",
+    "M16 14h.01",
+    "M8 10h.01",
+    "M8 14h.01",
+  ]) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+
+  return svg;
+}
 
 function ensurePlaidBankUiStyles(): void {
   ensureSkeletonStyles();
@@ -253,11 +329,21 @@ export function attachPlaidBankUi({
   const linkedEl = document.createElement("div");
   linkedEl.className = "amos-js-plaid-linked";
 
+  const linkedMark = document.createElement("div");
+  linkedMark.className = "amos-js-plaid-linked-mark";
+  linkedMark.setAttribute("aria-hidden", "true");
+  linkedMark.append(createBuildingIcon());
+
+  const linkedCopy = document.createElement("div");
+  linkedCopy.className = "amos-js-plaid-linked-copy";
+
   const linkedName = document.createElement("span");
   linkedName.className = "amos-js-plaid-linked-name";
 
   const linkedMeta = document.createElement("span");
   linkedMeta.className = "amos-js-plaid-linked-meta";
+
+  linkedCopy.append(linkedName, linkedMeta);
 
   const disconnect = document.createElement("button");
   disconnect.type = "button";
@@ -269,7 +355,7 @@ export function attachPlaidBankUi({
   errorEl.className = "amos-js-plaid-error";
   errorEl.setAttribute("role", "alert");
 
-  linkedEl.append(linkedName, linkedMeta, disconnect);
+  linkedEl.append(linkedMark, linkedCopy, disconnect);
   panel.append(embedEl, linkedEl, errorEl);
   host.append(panel);
   const formWrapper = iframe.parentElement;

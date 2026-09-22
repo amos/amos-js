@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.25
+
+### Patch Changes
+
+- Redesign Plaid disconnect state
+
 ## 0.11.24
 
 ### Patch Changes
