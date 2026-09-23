@@ -7,8 +7,10 @@ It is the foundation for `@amos.com/react-amos-js`, but is fully usable on its o
 ## Installation
 
 ```bash
-npm install @amos.com/amos-js
+npm install @amos.com/amos-js @amos.com/node
 ```
+
+`@amos.com/node` is a **peer dependency** (requires `>=0.1.65`). Install it for OpenAPI schema types (for example `components["schemas"]["PaymentIntent"]`).
 
 ## What it gives you
 
@@ -530,7 +532,7 @@ Fills omitted Inter `fonts` / `--font-family` (or a system stack when `fonts` is
 
 ### Exported types
 
-`ConfirmPaymentResult`, `ConfirmSetupResult`, `Message`, `Appearance`, `ThemeVariable`, `FontSource`, `CssFontSource`, `CustomFontSource`, `AppearanceRuleSelector`, `AppearanceRuleDeclarations`, `FormattedGooglePayPaymentData`, `WalletCustomerCreateAttributes`, `WalletPostalAddress`, `WalletContactRequirements`, `PaymentMethodFormValidityChangeEvent`, `CardBrand`, `PaymentMethodFormCardBrandChangeEvent`, `PaymentMethodFormPostalCodeChangeEvent`, `PaymentMethodFormDefaultValues`, `PaymentMethodFormField`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
+`ConfirmPaymentResult`, `ConfirmSetupResult`, `isConfirmTimeout`, `CONFIRM_TIMEOUT_MS`, `Message`, `Appearance`, `ThemeVariable`, `FontSource`, `CssFontSource`, `CustomFontSource`, `AppearanceRuleSelector`, `AppearanceRuleDeclarations`, `FormattedGooglePayPaymentData`, `WalletCustomerCreateAttributes`, `WalletPostalAddress`, `WalletContactRequirements`, `PaymentMethodFormValidityChangeEvent`, `CardBrand`, `PaymentMethodFormCardBrandChangeEvent`, `PaymentMethodFormPostalCodeChangeEvent`, `PaymentMethodFormDefaultValues`, `PaymentMethodFormField`, plus the per-form `*Options` and `*Controller` types. For OpenAPI schema types, import `components` from `@amos.com/node`.
 
 ## Notes and potential gotchas
 
