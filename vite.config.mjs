@@ -36,14 +36,16 @@ const build = {
     },
     formats: ["es", "cjs"],
   },
+  rolldownOptions: {
+    output: {
+      keepNames: true,
+    },
+  },
 };
 
 export default defineConfig({
   plugins,
   build,
-  esbuild: {
-    keepNames: true,
-  },
   test: {
     include: ["src/**/*.test.ts"],
     browser: {

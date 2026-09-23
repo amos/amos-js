@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.26
+
+### Patch Changes
+
+- Update @amos.com/node
+
 ## 0.11.25
 
 ### Patch Changes
