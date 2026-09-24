@@ -484,9 +484,9 @@ export type PaymentMethodFormSkeleton = {
 
 /**
  * Host-page placeholder that mirrors card/bank field layout using the
- * same appearance variables the iframe will apply. Covers a visible
- * iframe while it loads (WebKit still runs iframe JS), then is removed
- * when appearance is ready or the host-side reveal timeout fires.
+ * same appearance variables the iframe will apply. Shown while the
+ * iframe is `opacity: 0`, then removed when appearance is ready or the
+ * host-side reveal timeout fires.
  */
 export function createPaymentMethodFormSkeleton(
   options: PaymentMethodFormSkeletonOptions,

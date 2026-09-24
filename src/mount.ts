@@ -49,9 +49,9 @@ function resolveContainer(container: Container): HTMLElement {
 }
 
 /**
- * Host skeleton is removed this long after `IFRAME_READY` if appearance
- * never acks. The clock waits for that message so a slow document is
- * not uncovered before embed JS has run.
+ * Host skeleton is removed this long after mount if appearance never
+ * acks. The clock starts when the form is inserted, not on
+ * `IFRAME_READY`, so a dropped handshake still uncovers the iframe.
  */
 export const SKELETON_REVEAL_TIMEOUT_MS = 1500;
 
@@ -59,7 +59,7 @@ const FORM_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   width: "calc(100% + 8px)",
   transition: "height 200ms ease-in-out",
   margin: "0 -4px",
-  opacity: "1",
+  opacity: "0",
   border: "0",
 };
 
@@ -67,7 +67,7 @@ const WALLET_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   width: "100%",
   transition: "height 200ms ease-in-out",
   margin: "0",
-  opacity: "1",
+  opacity: "0",
   border: "0",
 };
 
@@ -76,12 +76,11 @@ const WALLET_SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   top: "0",
   left: "0",
   width: "100%",
-  height: "100%",
   margin: "0",
-  opacity: "1",
+  opacity: "0",
   zIndex: "0",
-  // Cover with the skeleton instead of hiding the iframe: some WebKit
-  // builds skip or freeze script in opacity:0 / display:none frames.
+  // Pixel height is assigned separately. opacity: 0 still runs iframe
+  // JS; a 0px frame or visibility:hidden can pause it.
   transition: "none",
   pointerEvents: "none",
 };
@@ -91,10 +90,11 @@ const SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   top: "0",
   left: "-4px",
   width: "calc(100% + 8px)",
-  height: "100%",
   margin: "0",
-  opacity: "1",
+  opacity: "0",
   zIndex: "0",
+  // Pixel height is assigned separately. opacity: 0 still runs iframe
+  // JS; a 0px frame or visibility:hidden can pause it.
   transition: "none",
   pointerEvents: "none",
 };
@@ -150,7 +150,9 @@ function mountPaymentMethodFormWithSkeleton({
   wrapper.setAttribute("aria-busy", "true");
 
   const skeleton = createPaymentMethodFormSkeleton(skeletonOptions);
+  const defaultHeight = iframe.style.height;
   Object.assign(iframe.style, SKELETON_IFRAME_STYLE);
+  iframe.style.height = defaultHeight;
 
   let revealed = false;
   let lastHeight: string | undefined;
@@ -227,13 +229,13 @@ function mountPaymentMethodFormWithSkeleton({
       currentOptions.onAppearanceReady?.();
     },
     onIframeReady: () => {
-      startFallbackReveal();
       currentOptions.onIframeReady?.();
     },
   });
 
   wrapper.append(skeleton.element, iframe);
   host.appendChild(wrapper);
+  startFallbackReveal();
 
   return {
     iframe,
@@ -323,7 +325,7 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
   wrapper.setAttribute("aria-busy", "true");
 
   Object.assign(iframe.style, WALLET_SKELETON_IFRAME_STYLE);
-  iframe.style.height = "100%";
+  iframe.style.height = initialHeight;
 
   let revealed = false;
   let appearanceReady = false;
@@ -373,13 +375,13 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
       currentOptions.onAppearanceReady?.();
     },
     onIframeReady: () => {
-      startFallbackReveal();
       currentOptions.onIframeReady?.();
     },
   } as TOptions);
 
   wrapper.append(skeleton.element, iframe);
   host.appendChild(wrapper);
+  startFallbackReveal();
 
   return {
     iframe,
@@ -400,6 +402,7 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
         }),
       };
       wrapper.style.height = skeletonOptions.height;
+      iframe.style.height = skeletonOptions.height;
       if (!revealed) {
         skeleton.update(skeletonOptions);
       }
@@ -473,10 +476,10 @@ export type AmosBankAccountPaymentMethodFormMountController = Omit<
  * element. Returns a controller exposing the underlying iframe, an
  * `update()` method, and a `destroy()` method.
  *
- * A field-shaped skeleton covers the iframe immediately. The iframe
- * stays `opacity: 1` underneath so WebKit runs its JS. The skeleton is
- * removed once appearance is applied, or {@link SKELETON_REVEAL_TIMEOUT_MS}
- * after `IFRAME_READY` if appearance never acks.
+ * A field-shaped skeleton is shown immediately. The iframe stays
+ * `opacity: 0` at its default pixel height so WebKit still runs its JS.
+ * The skeleton is removed once appearance is applied, or
+ * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
  *
  * Use the returned `controller.iframe` when calling
  * {@link validateForm}, {@link confirmPayment}, or
@@ -676,10 +679,10 @@ export type AmosGooglePayButtonMountController = GooglePayButtonController & {
  * container element. Returns a controller exposing the underlying
  * iframe, an `update()` method, and a `destroy()` method.
  *
- * A button-shaped skeleton covers the iframe immediately. The iframe
- * stays `opacity: 1` underneath so WebKit runs its JS. The skeleton is
- * removed once appearance is applied, or {@link SKELETON_REVEAL_TIMEOUT_MS}
- * after `IFRAME_READY` if appearance never acks.
+ * A button-shaped skeleton is shown immediately. The iframe stays
+ * `opacity: 0` at its default pixel height so WebKit still runs its JS.
+ * The skeleton is removed once appearance is applied, or
+ * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
  */
 export function mountAmosGooglePayButton(
   container: Container,
@@ -744,10 +747,10 @@ export type AmosApplePayButtonMountController = ApplePayButtonController & {
  * container element. Returns a controller exposing the underlying
  * iframe, an `update()` method, and a `destroy()` method.
  *
- * A button-shaped skeleton covers the iframe immediately. The iframe
- * stays `opacity: 1` underneath so WebKit runs its JS. The skeleton is
- * removed once appearance is applied, or {@link SKELETON_REVEAL_TIMEOUT_MS}
- * after `IFRAME_READY` if appearance never acks.
+ * A button-shaped skeleton is shown immediately. The iframe stays
+ * `opacity: 0` at its default pixel height so WebKit still runs its JS.
+ * The skeleton is removed once appearance is applied, or
+ * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
  */
 export function mountAmosApplePayButton(
   container: Container,

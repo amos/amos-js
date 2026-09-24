@@ -273,7 +273,7 @@ appearance: {
 
 Rules override `themeVariables` for the properties they set (Stripe). `--input-height` / `--floating-input-height` are a **minimum**; `.Input` `padding`, `fontSize`, and `lineHeight` can grow the field. Rule values may reference allowlisted tokens as `var(--primary)` (no fallback argument).
 
-The host skeleton (shown until `UPDATED_APPEARANCE`, or 1.5s after `IFRAME_READY` if appearance never acks) copies `themeVariables` and resting **`.Input` / `.Label`** declarations (the same allowlisted properties as iframe rules). It covers a visible iframe (`opacity: 1`) so WebKit still runs iframe JS. It does not inject webfonts: it uses `--font-family` / `fontFamily` when that face is already on the host page, and falls back to `ui-sans-serif, system-ui, sans-serif`. Hover, invalid, placeholder, dropdown, and radio rules have no skeleton equivalent. Floating labels sit inside the control, so `.Label` / `.Label--floating` do not change skeleton height.
+The host skeleton (shown until `UPDATED_APPEARANCE`, or 1.5s after mount if appearance never acks) copies `themeVariables` and resting **`.Input` / `.Label`** declarations (the same allowlisted properties as iframe rules). The iframe stays `opacity: 0` at its default pixel height underneath, so the skeleton is the only thing visible and WebKit still runs iframe JS. It does not inject webfonts: it uses `--font-family` / `fontFamily` when that face is already on the host page, and falls back to `ui-sans-serif, system-ui, sans-serif`. Hover, invalid, placeholder, dropdown, and radio rules have no skeleton equivalent. Floating labels sit inside the control, so `.Label` / `.Label--floating` do not change skeleton height.
 
 | Selector | Targets |
 | --- | --- |
