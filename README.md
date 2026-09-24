@@ -16,7 +16,7 @@ npm install @amos.com/amos-js @amos.com/node
 
 - **Types** for the `postMessage` protocol used between your page and the Amos iframe (`Message`, `Appearance`, `ThemeVariable`, `ConfirmPaymentResult`, `ConfirmSetupResult`). OpenAPI schema types (for example `components["schemas"]["PaymentIntent"]`) come from `@amos.com/node`.
 - **Iframe-targeted helpers** to validate the form, confirm a payment intent, confirm a setup intent, update appearance, etc.
-- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height, cover it with a loading skeleton (field-shaped for card/bank forms, button-shaped for Google Pay / Apple Pay) until appearance acks, and return a small controller for updating options and tearing it down.
+- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height, and show a loading skeleton (field-shaped for card/bank forms, button-shaped for Google Pay / Apple Pay) while the iframe stays `opacity: 0`, until appearance acks or 1.5s after mount. They return a small controller for updating options and tearing it down.
 - **Lower-level building blocks** (`getCreditCardFormSrc`, `attachPaymentMethodFormListeners`, `attachGooglePayButtonListeners`, `attachApplePayButtonListeners`, ...) for integrators (such as `@amos.com/react-amos-js`) that want to render the iframe element themselves.
 
 > **Note:** A server-side SDK (for example `@amos.com/node`) must be used alongside `@amos.com/amos-js` for end-to-end payment processing. `@amos.com/amos-js` is the client-side half.
@@ -370,7 +370,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 - `onCardBrandChanged` (`(event: { brand: CardBrand | null }) => void`) — called when the detected card brand changes. `brand` is `"visa"`, `"mastercard"`, `"amex"`, `"discover"`, `"diners"`, or `"jcb"`, or `null` when the field is empty or the number does not match a known brand. Does not include PCI data. Credit-card form only.
 - `onPostalCodeChange` (`(event: { postalCode: string | null; country: string }) => void`) — called when the customer commits a billing postal code, or clears one. `postalCode` is a finished code, or `null` when a finished code is deleted or the country changes. Incomplete keystrokes are not reported. US and PR commit at 5 digits (ZIP+4 is reported as the first 5). Canada commits as `A1A 1A1`. The UK commits at a full postcode. Not called for `defaultValues` or `update({ defaultValues })`, so a host can copy its own postal field into the iframe until the first callback and then stop. Debounce shipping-rate requests on the host. Card and bank forms only — not Apple Pay or Google Pay.
 - `onEscapeKeyPressed` (`() => void`) — called when the customer presses Escape in the iframe. PCI-safe — no field values. Use this to close a host modal that contains the iframe. Not fired while an iframe dropdown or address suggestion list is open (that Escape dismisses the overlay first), or while Plaid Embedded Institution Search is showing. The parent cannot attach a keydown listener for this itself because the iframe is cross-origin.
-- `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic). The skeleton is removed and the iframe faded in when `onAppearanceReady` fires.
+- `onHeightChange`, `onAppearanceReady` (advanced — override the default iframe styling logic). The skeleton is removed and the iframe revealed (`opacity: 0` until then) when `onAppearanceReady` fires, or 1.5s after mount if appearance never acks.
 
 Enter in a card or bank iframe field submits the enclosing host `<form>` via `requestSubmit()` (same as Stripe Elements). Listen to that form's `submit` event — do not attach a keydown listener on the parent, which cannot see keys typed in the cross-origin iframe. No-op if the mount is not inside a `<form>`, or while Plaid Embedded Institution Search is showing.
 
@@ -420,7 +420,7 @@ mountAmosBankAccountPaymentMethodForm("#bank-form", {
 
 ### `mountAmosGooglePayButton(container, options)`
 
-Mount the secure Google Pay button (express checkout) into a container element. A button-shaped skeleton covers a visible iframe immediately and is removed once appearance is applied, or 1.5s after `IFRAME_READY` if appearance never acks.
+Mount the secure Google Pay button (express checkout) into a container element. A button-shaped skeleton is shown immediately. The iframe stays `opacity: 0` at its default pixel height until appearance is applied, or for 1.5s after mount if appearance never acks.
 
 **Required `options`:**
 
@@ -457,7 +457,7 @@ The wallet iframe is flush with its mount container (`width: 100%`, zero margin)
 
 ### `mountAmosApplePayButton(container, options)`
 
-Mount the secure Apple Pay button (express checkout). Same required options and return shape as `mountAmosGooglePayButton`. A button-shaped skeleton covers a visible iframe immediately and is removed once appearance is applied, or 1.5s after `IFRAME_READY` if appearance never acks.
+Mount the secure Apple Pay button (express checkout). Same required options and return shape as `mountAmosGooglePayButton`. A button-shaped skeleton is shown immediately. The iframe stays `opacity: 0` at its default pixel height until appearance is applied, or for 1.5s after mount if appearance never acks.
 
 **Optional options:**
 
@@ -516,7 +516,7 @@ The Google Pay / Apple Pay equivalents of `attachPaymentMethodFormListeners`.
 
 ### `getCreditCardFormSrc(renderToken, additionalFields?, billingAddressRequirement?)` / `getBankAccountFormSrc(renderToken, billingAddressRequirement?, intent?)` / `getGooglePayButtonSrc(renderToken)` / `getApplePayButtonSrc(renderToken)`
 
-Build the iframe `src` URL for each form type. Appearance is applied after handshake via `UPDATE_APPEARANCE`. A host-page skeleton covers the visible iframe until then, or for 1.5s after `IFRAME_READY` if appearance never acks.
+Build the iframe `src` URL for each form type. Appearance is applied after handshake via `UPDATE_APPEARANCE`. A host-page skeleton is shown until then. The iframe stays `opacity: 0` at its default pixel height, and is revealed 1.5s after mount if appearance never acks.
 
 ### `formatGooglePayPaymentData({ paymentData })`
 
