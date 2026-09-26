@@ -367,6 +367,20 @@ export type ThemeVariable =
    */
   | "--floating-label-offset"
   /*
+   * Top padding of the typed value when the floating label is floated
+   * (e.g. `1.5rem`).
+   *
+   * Default: calc(var(--floating-label-offset) + var(--floating-label-font-size) + 0.125rem)
+   */
+  | "--floating-value-padding-top"
+  /*
+   * Bottom padding of the typed value when the floating label is floated
+   * (e.g. `0.625rem`).
+   *
+   * Default: var(--floating-label-offset)
+   */
+  | "--floating-value-padding-bottom"
+  /*
    * Font size of above-style field labels and radio option labels.
    *
    * Default: 0.875rem

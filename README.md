@@ -271,7 +271,7 @@ appearance: {
 
 `rules` uses the same **replace** model as `themeVariables` and `fonts`: omit `rules` to keep the previous set; pass a new object to replace it (`{}` clears). Unknown class names and properties are ignored.
 
-Rules override `themeVariables` for the properties they set (Stripe). `--input-height` / `--floating-input-height` are a **minimum**; `.Input` `padding`, `fontSize`, and `lineHeight` can grow the field. Rule values may reference allowlisted tokens as `var(--primary)` (no fallback argument).
+Rules override `themeVariables` for the properties they set (Stripe). `--input-height` / `--floating-input-height` are a **minimum**; `.Input` `padding`, `fontSize`, and `lineHeight` can grow the field. Floated input text padding is `--floating-value-padding-top` and `--floating-value-padding-bottom`. Rule values may reference allowlisted tokens as `var(--primary)` (no fallback argument).
 
 The host skeleton (shown until `UPDATED_APPEARANCE`, or 1.5s after mount if appearance never acks) copies `themeVariables` and resting **`.Input` / `.Label`** declarations (the same allowlisted properties as iframe rules). The iframe stays `opacity: 0` at its default pixel height underneath, so the skeleton is the only thing visible and WebKit still runs iframe JS. It does not inject webfonts: it uses `--font-family` / `fontFamily` when that face is already on the host page, and falls back to `ui-sans-serif, system-ui, sans-serif`. Hover, invalid, placeholder, dropdown, and radio rules have no skeleton equivalent. Floating labels sit inside the control, so `.Label` / `.Label--floating` do not change skeleton height.
 
@@ -339,6 +339,8 @@ Radio groups (e.g. account type) always use an above-style group label regardles
 | `--floating-label-color`           | Color of floating labels when empty (unfocused)          | `var(--muted-foreground)`       |
 | `--floating-label-floated-color`   | Color of floating labels when focused or filled          | `var(--floating-label-color)`   |
 | `--floating-label-offset`          | Top offset of the shrunk floating label                  | `0.625rem`                      |
+| `--floating-value-padding-top`     | Top padding of the typed value when the label is floated | `calc(var(--floating-label-offset) + var(--floating-label-font-size) + 0.125rem)` |
+| `--floating-value-padding-bottom`  | Bottom padding of the typed value when the label is floated | `var(--floating-label-offset)` |
 | `--label-font-size`                | Font size of above-style field labels                    | `0.875rem`                      |
 | `--label-font-weight`              | Font weight of above-style field labels                  | `500`                           |
 | `--field-gap`                      | Vertical gap between stacked form fields                 | `1rem`                          |
