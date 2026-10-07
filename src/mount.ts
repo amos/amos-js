@@ -59,7 +59,7 @@ const FORM_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   width: "calc(100% + 8px)",
   transition: "height 200ms ease-in-out",
   margin: "0 -4px",
-  opacity: "0",
+  opacity: "1",
   border: "0",
 };
 
@@ -67,7 +67,7 @@ const WALLET_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   width: "100%",
   transition: "height 200ms ease-in-out",
   margin: "0",
-  opacity: "0",
+  opacity: "1",
   border: "0",
 };
 
@@ -77,10 +77,10 @@ const WALLET_SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   left: "0",
   width: "100%",
   margin: "0",
-  opacity: "0",
+  opacity: "1",
   zIndex: "0",
-  // Pixel height is assigned separately. opacity: 0 still runs iframe
-  // JS; a 0px frame or visibility:hidden can pause it.
+  // Pixel height stays assigned so the document lays out under the
+  // opaque skeleton. A 0px frame or visibility:hidden can pause iframe JS.
   transition: "none",
   pointerEvents: "none",
 };
@@ -91,13 +91,19 @@ const SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   left: "-4px",
   width: "calc(100% + 8px)",
   margin: "0",
-  opacity: "0",
+  opacity: "1",
   zIndex: "0",
-  // Pixel height is assigned separately. opacity: 0 still runs iframe
-  // JS; a 0px frame or visibility:hidden can pause it.
+  // Same box the iframe uses after reveal, so the document lays out at
+  // that width. The wrapper clips this 4px bleed. A 0px frame or
+  // visibility:hidden can pause iframe JS.
   transition: "none",
   pointerEvents: "none",
 };
+
+function setIframeCovered(iframe: HTMLIFrameElement, covered: boolean): void {
+  iframe.inert = covered;
+  iframe.style.pointerEvents = covered ? "none" : "";
+}
 
 function createIframe({
   src,
@@ -147,12 +153,16 @@ function mountPaymentMethodFormWithSkeleton({
   wrapper.style.position = "relative";
   wrapper.style.width = "100%";
   wrapper.style.isolation = "isolate";
+  // Clip the iframe's focus-ring bleed and any extra height. The skeleton
+  // is the content width, so this clip does not cut its corner radius.
+  wrapper.style.overflow = "hidden";
   wrapper.setAttribute("aria-busy", "true");
 
   const skeleton = createPaymentMethodFormSkeleton(skeletonOptions);
   const defaultHeight = iframe.style.height;
   Object.assign(iframe.style, SKELETON_IFRAME_STYLE);
   iframe.style.height = defaultHeight;
+  setIframeCovered(iframe, true);
 
   let revealed = false;
   let lastHeight: string | undefined;
@@ -192,10 +202,12 @@ function mountPaymentMethodFormWithSkeleton({
     iframe.style.position = "";
     iframe.style.top = "";
     iframe.style.left = "";
+    iframe.style.width = FORM_IFRAME_STYLE.width ?? "";
     iframe.style.margin = FORM_IFRAME_STYLE.margin ?? "";
     iframe.style.height = `${revealPx}px`;
     iframe.style.opacity = "1";
-    iframe.style.pointerEvents = "";
+    setIframeCovered(iframe, false);
+    wrapper.style.overflow = "";
     skeleton.element.remove();
     wrapper.removeAttribute("aria-busy");
 
@@ -326,6 +338,7 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
 
   Object.assign(iframe.style, WALLET_SKELETON_IFRAME_STYLE);
   iframe.style.height = initialHeight;
+  setIframeCovered(iframe, true);
 
   let revealed = false;
   let appearanceReady = false;
@@ -343,7 +356,7 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
     }
 
     iframe.style.opacity = "1";
-    iframe.style.pointerEvents = "";
+    setIframeCovered(iframe, false);
     skeleton.element.remove();
     wrapper.removeAttribute("aria-busy");
   }
@@ -476,9 +489,10 @@ export type AmosBankAccountPaymentMethodFormMountController = Omit<
  * element. Returns a controller exposing the underlying iframe, an
  * `update()` method, and a `destroy()` method.
  *
- * A field-shaped skeleton is shown immediately. The iframe stays
- * `opacity: 0` at its default pixel height so WebKit still runs its JS.
- * The skeleton is removed once appearance is applied, or
+ * A field-shaped skeleton with an opaque background covers the iframe
+ * immediately. The iframe stays at opacity 1 and its default pixel height
+ * so WebKit lays it out and runs its JS. It is inert until the skeleton
+ * is removed, once appearance is applied or
  * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
  *
  * Use the returned `controller.iframe` when calling
@@ -679,9 +693,10 @@ export type AmosGooglePayButtonMountController = GooglePayButtonController & {
  * container element. Returns a controller exposing the underlying
  * iframe, an `update()` method, and a `destroy()` method.
  *
- * A button-shaped skeleton is shown immediately. The iframe stays
- * `opacity: 0` at its default pixel height so WebKit still runs its JS.
- * The skeleton is removed once appearance is applied, or
+ * A button-shaped skeleton with an opaque background covers the iframe
+ * immediately. The iframe stays at opacity 1 and its default pixel height
+ * so WebKit lays it out and runs its JS. It is inert until the skeleton
+ * is removed, once appearance is applied or
  * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
  */
 export function mountAmosGooglePayButton(
@@ -747,9 +762,10 @@ export type AmosApplePayButtonMountController = ApplePayButtonController & {
  * container element. Returns a controller exposing the underlying
  * iframe, an `update()` method, and a `destroy()` method.
  *
- * A button-shaped skeleton is shown immediately. The iframe stays
- * `opacity: 0` at its default pixel height so WebKit still runs its JS.
- * The skeleton is removed once appearance is applied, or
+ * A button-shaped skeleton with an opaque background covers the iframe
+ * immediately. The iframe stays at opacity 1 and its default pixel height
+ * so WebKit lays it out and runs its JS. It is inert until the skeleton
+ * is removed, once appearance is applied or
  * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
  */
 export function mountAmosApplePayButton(

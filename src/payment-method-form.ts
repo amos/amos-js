@@ -150,8 +150,8 @@ export type PaymentMethodFormListenerOptions = {
   onHeightChange?: (height: string) => void;
   /**
    * Called once the iframe has applied the requested appearance and is
-   * ready to be revealed. A common implementation is to set the
-   * iframe's opacity from `0` to `1` to fade it in.
+   * ready to be revealed. The mount helpers remove the opaque skeleton
+   * here. A custom listener can do the same.
    */
   onAppearanceReady?: () => void;
   /**

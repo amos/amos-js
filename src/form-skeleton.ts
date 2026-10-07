@@ -21,6 +21,7 @@ let skeletonSeq = 0;
 
 const SKELETON_THEME_DEFAULTS: Record<string, string> = {
   "--accent": "oklch(0.97 0 0)",
+  "--background": "oklch(1 0 0)",
   "--radius": "0.625rem",
   "--input-height": "2.25rem",
   "--floating-input-height": "3.25rem",
@@ -201,17 +202,19 @@ export function skeletonRulesToCss(
 
 export const SKELETON_STYLES = `
 .amos-js-form-skeleton {
+  background: var(--background, oklch(1 0 0));
   box-sizing: border-box;
   container-type: inline-size;
   display: flex;
   flex-direction: column;
   font-family: var(--font-family), ${SYSTEM_FONT_FAMILY};
   gap: var(--field-gap);
-  margin: 0 -4px;
+  /* Match the embed form (mx-1), not the iframe's 4px focus-ring bleed. */
+  margin: 0;
   padding-block: 0.25rem;
   pointer-events: none;
   position: relative;
-  width: calc(100% + 8px);
+  width: 100%;
   z-index: 1;
 }
 .amos-js-form-skeleton-field {
@@ -277,16 +280,31 @@ export const SKELETON_STYLES = `
   }
 }
 .amos-js-wallet-skeleton {
+  /* The plate itself stays opaque. Pulsing this element would show the
+   * iframe through it, so the pulse lives on ::after. */
+  animation: none;
+  background: var(--background, oklch(1 0 0));
   flex: none;
+  overflow: hidden;
   position: relative;
   width: 100%;
   z-index: 1;
+}
+.amos-js-wallet-skeleton::after {
+  animation: amos-js-skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: var(--input, var(--accent));
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
 }
 @keyframes amos-js-skeleton-pulse {
   50% { opacity: 0.5; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .amos-js-form-skeleton-input {
+  .amos-js-form-skeleton-input,
+  .amos-js-wallet-skeleton::after {
     animation: none;
   }
 }
@@ -484,9 +502,9 @@ export type PaymentMethodFormSkeleton = {
 
 /**
  * Host-page placeholder that mirrors card/bank field layout using the
- * same appearance variables the iframe will apply. Shown while the
- * iframe is `opacity: 0`, then removed when appearance is ready or the
- * host-side reveal timeout fires.
+ * same appearance variables the iframe will apply. Its background covers
+ * the iframe, which stays at opacity 1. Removed when appearance is ready
+ * or the host-side reveal timeout fires.
  */
 export function createPaymentMethodFormSkeleton(
   options: PaymentMethodFormSkeletonOptions,

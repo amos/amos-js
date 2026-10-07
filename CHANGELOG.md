@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.28
+
+### Patch Changes
+
+- Keep iframe opacity at 1 (under skeleton)
+
 ## 0.11.27
 
 ### Patch Changes
