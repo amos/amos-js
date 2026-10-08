@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.29
+
+### Patch Changes
+
+- Add debug overlay
+
 ## 0.11.28
 
 ### Patch Changes
