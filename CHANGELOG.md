@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.30
+
+### Patch Changes
+
+- Add sandbox, async, width & height attributes. Add preload.
+
 ## 0.11.29
 
 ### Patch Changes

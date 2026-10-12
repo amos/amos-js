@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   mountAmosCreditCardPaymentMethodForm,
+  mountAmosGooglePayButton,
+  PAYMENT_IFRAME_SANDBOX,
   SKELETON_REVEAL_TIMEOUT_MS,
+  WALLET_IFRAME_SANDBOX,
 } from "./mount";
 
 const RENDER_TOKEN = [
@@ -46,7 +49,15 @@ describe("mountAmosCreditCardPaymentMethodForm skeleton", () => {
     ) as HTMLElement;
     expect(controller.iframe.style.opacity).toBe("1");
     expect(controller.iframe.style.height).toBe("212px");
+    expect(controller.iframe.height).toBe("212");
+    expect(controller.iframe.width).toMatch(/^\d+$/);
+    expect(Number(controller.iframe.width)).toBeGreaterThan(0);
+    expect(controller.iframe.style.width).toBe(`${controller.iframe.width}px`);
     expect(controller.iframe.style.visibility).not.toBe("hidden");
+    expect(controller.iframe.getAttribute("sandbox")).toBe(
+      PAYMENT_IFRAME_SANDBOX,
+    );
+    expect(controller.iframe.allow).toBe("");
     expect(controller.iframe.inert).toBe(true);
     expect(controller.iframe.style.pointerEvents).toBe("none");
     expect(wrapper).not.toBeNull();
@@ -73,7 +84,10 @@ describe("mountAmosCreditCardPaymentMethodForm skeleton", () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(host.querySelector(".amos-js-form-skeleton")).toBeNull();
     expect(controller.iframe.style.opacity).toBe("1");
-    expect(controller.iframe.style.width).toBe("calc(100% + 8px)");
+    expect(controller.iframe.style.width).toMatch(/^\d+px$/);
+    expect(controller.iframe.width).toBe(
+      controller.iframe.style.width.replace("px", ""),
+    );
     expect(controller.iframe.inert).toBe(false);
     expect(controller.iframe.style.pointerEvents).toBe("");
     expect((host.firstElementChild as HTMLElement).style.overflow).toBe("");
@@ -94,7 +108,10 @@ describe("mountAmosCreditCardPaymentMethodForm skeleton", () => {
 
     expect(host.querySelector(".amos-js-form-skeleton")).toBeNull();
     expect(controller.iframe.style.opacity).toBe("1");
-    expect(controller.iframe.style.width).toBe("calc(100% + 8px)");
+    expect(controller.iframe.style.width).toMatch(/^\d+px$/);
+    expect(controller.iframe.width).toBe(
+      controller.iframe.style.width.replace("px", ""),
+    );
     expect(controller.iframe.inert).toBe(false);
     expect(controller.iframe.style.pointerEvents).toBe("");
     expect((host.firstElementChild as HTMLElement).style.overflow).toBe("");
@@ -103,6 +120,26 @@ describe("mountAmosCreditCardPaymentMethodForm skeleton", () => {
     await vi.advanceTimersByTimeAsync(SKELETON_REVEAL_TIMEOUT_MS);
     expect(controller.iframe.style.opacity).toBe("1");
     expect(host.querySelector(".amos-js-form-skeleton")).toBeNull();
+
+    controller.destroy();
+  });
+});
+
+describe("mountAmosGooglePayButton sandbox", () => {
+  test("allows the payment sheet popup to leave the sandbox", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const controller = mountAmosGooglePayButton(host, {
+      renderToken: RENDER_TOKEN,
+      amount: "10.00",
+      merchantName: "Amos",
+      onConfirm: () => Promise.resolve({ status: "failed" }),
+    });
+
+    expect(controller.iframe.getAttribute("sandbox")).toBe(
+      WALLET_IFRAME_SANDBOX,
+    );
+    expect(controller.iframe.allow).toBe("payment");
 
     controller.destroy();
   });

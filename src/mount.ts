@@ -55,8 +55,25 @@ function resolveContainer(container: Container): HTMLElement {
  */
 export const SKELETON_REVEAL_TIMEOUT_MS = 1500;
 
+/**
+ * Sandbox for card and bank frames.
+ *
+ * The embed origin differs from the merchant page, so `allow-scripts`
+ * together with `allow-same-origin` cannot be used to remove this
+ * sandbox. `allow-same-origin` keeps `postMessage` on the embed origin
+ * and lets the frame use its own storage. `allow-forms` lets the card
+ * and bank forms submit. Top-level navigation stays blocked.
+ */
+export const PAYMENT_IFRAME_SANDBOX =
+  "allow-forms allow-same-origin allow-scripts";
+
+/**
+ * Wallet frames open Apple Pay Code and the Google Pay sheet in a new
+ * window. That window has to leave the sandbox, or the sheet cannot run.
+ */
+export const WALLET_IFRAME_SANDBOX = `${PAYMENT_IFRAME_SANDBOX} allow-popups allow-popups-to-escape-sandbox`;
+
 const FORM_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
-  width: "calc(100% + 8px)",
   transition: "height 200ms ease-in-out",
   margin: "0 -4px",
   opacity: "1",
@@ -64,7 +81,6 @@ const FORM_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
 };
 
 const WALLET_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
-  width: "100%",
   transition: "height 200ms ease-in-out",
   margin: "0",
   opacity: "1",
@@ -75,12 +91,11 @@ const WALLET_SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   position: "absolute",
   top: "0",
   left: "0",
-  width: "100%",
   margin: "0",
   opacity: "1",
   zIndex: "0",
-  // Pixel height stays assigned so the document lays out under the
-  // opaque skeleton. A 0px frame or visibility:hidden can pause iframe JS.
+  // Width and height are assigned as pixels below. A 0px frame,
+  // a percentage, or visibility:hidden can pause iframe JS.
   transition: "none",
   pointerEvents: "none",
 };
@@ -89,16 +104,110 @@ const SKELETON_IFRAME_STYLE: Partial<CSSStyleDeclaration> = {
   position: "absolute",
   top: "0",
   left: "-4px",
-  width: "calc(100% + 8px)",
   margin: "0",
   opacity: "1",
   zIndex: "0",
-  // Same box the iframe uses after reveal, so the document lays out at
-  // that width. The wrapper clips this 4px bleed. A 0px frame or
-  // visibility:hidden can pause iframe JS.
+  // Same box the iframe uses after reveal. The wrapper clips the 4px
+  // bleed on each side. Width and height stay explicit pixels so
+  // WebKit does not pause layout under the skeleton.
   transition: "none",
   pointerEvents: "none",
 };
+
+/**
+ * Card and bank frames extend 4px past each side of the mount so the
+ * focus ring is not clipped. The wrapper's overflow hides that bleed.
+ */
+const FORM_IFRAME_BLEED_PX = 8;
+
+const CSS_PX = /^(\d+(?:\.\d+)?)px$/u;
+
+function positiveCssPx(value: string): number | undefined {
+  const match = CSS_PX.exec(value.trim());
+  if (!match?.[1]) {
+    return undefined;
+  }
+  const parsed = Number(match[1]);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined;
+  }
+  return parsed;
+}
+
+/**
+ * WebKit pauses an iframe's layout engine unless both axes are definite
+ * pixel lengths. Percentage and calc() widths do not count, and a
+ * missing content attribute is treated like an empty box. Keep the HTML
+ * width/height attributes and the used CSS lengths in positive pixels.
+ */
+function setExplicitIframeBox(
+  iframe: HTMLIFrameElement,
+  widthPx: number,
+  heightPx: number,
+): void {
+  const width = String(Math.max(1, Math.round(widthPx)));
+  const height = String(Math.max(1, Math.round(heightPx)));
+  if (iframe.width !== width) {
+    iframe.width = width;
+  }
+  if (iframe.height !== height) {
+    iframe.height = height;
+  }
+  const widthCss = `${width}px`;
+  const heightCss = `${height}px`;
+  if (iframe.style.width !== widthCss) {
+    iframe.style.width = widthCss;
+  }
+  if (iframe.style.height !== heightCss) {
+    iframe.style.height = heightCss;
+  }
+}
+
+function explicitWidthPx(container: HTMLElement, extraPx: number): number {
+  const measured = container.getBoundingClientRect().width;
+  const base = measured > 0 ? measured : container.clientWidth;
+  return Math.max(1, (base > 0 ? base : 1) + extraPx);
+}
+
+function currentHeightPx(iframe: HTMLIFrameElement): number {
+  const fromStyle = positiveCssPx(iframe.style.height);
+  if (fromStyle != null) {
+    return fromStyle;
+  }
+  const measured = iframe.getBoundingClientRect().height;
+  if (measured > 0) {
+    return measured;
+  }
+  return positiveCssPx(`${iframe.height}px`) ?? 1;
+}
+
+function trackExplicitIframeBox(
+  iframe: HTMLIFrameElement,
+  container: HTMLElement,
+  extraWidthPx: number,
+): { apply: () => void; stop: () => void } {
+  const apply = () => {
+    setExplicitIframeBox(
+      iframe,
+      explicitWidthPx(container, extraWidthPx),
+      currentHeightPx(iframe),
+    );
+  };
+  apply();
+  if (typeof ResizeObserver === "undefined") {
+    return { apply, stop: () => {} };
+  }
+  const observer = new ResizeObserver(() => {
+    apply();
+  });
+  observer.observe(container);
+  return {
+    apply,
+    stop: () => {
+      observer.disconnect();
+    },
+  };
+}
 
 function setIframeCovered(iframe: HTMLIFrameElement, covered: boolean): void {
   iframe.inert = covered;
@@ -111,6 +220,7 @@ function createIframe({
   name,
   height,
   allow,
+  sandbox,
   className,
   style = FORM_IFRAME_STYLE,
 }: {
@@ -119,22 +229,33 @@ function createIframe({
   name: string;
   height: string;
   allow?: string;
+  sandbox: string;
   className?: string;
   style?: Partial<CSSStyleDeclaration>;
 }): HTMLIFrameElement {
   const iframe = document.createElement("iframe");
-  iframe.src = src;
   iframe.title = title;
   iframe.name = name;
   iframe.setAttribute("role", "presentation");
   iframe.scrolling = "no";
+  // Apply sandbox before `src` so the first navigation is already restricted.
+  iframe.setAttribute("sandbox", sandbox);
   if (allow) {
     iframe.allow = allow;
   }
   if (className != null) {
     iframe.className = className;
   }
-  Object.assign(iframe.style, style, { height });
+  const heightPx = Math.max(1, Math.round(positiveCssPx(height) ?? 1));
+  // A non-zero pixel box before the mount measures the container. A
+  // percentage here is not an explicit size, so WebKit may skip layout.
+  Object.assign(iframe.style, style, {
+    width: "1px",
+    height: `${heightPx}px`,
+  });
+  iframe.width = "1";
+  iframe.height = String(heightPx);
+  iframe.src = src;
   return iframe;
 }
 
@@ -163,6 +284,10 @@ function mountPaymentMethodFormWithSkeleton({
   Object.assign(iframe.style, SKELETON_IFRAME_STYLE);
   iframe.style.height = defaultHeight;
   setIframeCovered(iframe, true);
+  let explicitBox: { apply: () => void; stop: () => void } = {
+    apply: () => {},
+    stop: () => {},
+  };
 
   let revealed = false;
   let lastHeight: string | undefined;
@@ -202,10 +327,10 @@ function mountPaymentMethodFormWithSkeleton({
     iframe.style.position = "";
     iframe.style.top = "";
     iframe.style.left = "";
-    iframe.style.width = FORM_IFRAME_STYLE.width ?? "";
     iframe.style.margin = FORM_IFRAME_STYLE.margin ?? "";
     iframe.style.height = `${revealPx}px`;
     iframe.style.opacity = "1";
+    explicitBox.apply();
     setIframeCovered(iframe, false);
     wrapper.style.overflow = "";
     skeleton.element.remove();
@@ -233,6 +358,7 @@ function mountPaymentMethodFormWithSkeleton({
       lastHeight = height;
       if (revealed) {
         iframe.style.height = height;
+        explicitBox.apply();
       }
       currentOptions.onHeightChange?.(height);
     },
@@ -247,6 +373,8 @@ function mountPaymentMethodFormWithSkeleton({
 
   wrapper.append(skeleton.element, iframe);
   host.appendChild(wrapper);
+  explicitBox.stop();
+  explicitBox = trackExplicitIframeBox(iframe, wrapper, FORM_IFRAME_BLEED_PX);
   startFallbackReveal();
 
   return {
@@ -275,6 +403,7 @@ function mountPaymentMethodFormWithSkeleton({
       if (fallbackRevealTimer !== undefined) {
         clearTimeout(fallbackRevealTimer);
       }
+      explicitBox.stop();
       controller.destroy();
       wrapper.remove();
     },
@@ -339,6 +468,10 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
   Object.assign(iframe.style, WALLET_SKELETON_IFRAME_STYLE);
   iframe.style.height = initialHeight;
   setIframeCovered(iframe, true);
+  let explicitBox: { apply: () => void; stop: () => void } = {
+    apply: () => {},
+    stop: () => {},
+  };
 
   let revealed = false;
   let appearanceReady = false;
@@ -394,6 +527,7 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
 
   wrapper.append(skeleton.element, iframe);
   host.appendChild(wrapper);
+  explicitBox = trackExplicitIframeBox(iframe, wrapper, 0);
   startFallbackReveal();
 
   return {
@@ -416,6 +550,7 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
       };
       wrapper.style.height = skeletonOptions.height;
       iframe.style.height = skeletonOptions.height;
+      explicitBox.apply();
       if (!revealed) {
         skeleton.update(skeletonOptions);
       }
@@ -424,6 +559,7 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
       if (fallbackRevealTimer !== undefined) {
         clearTimeout(fallbackRevealTimer);
       }
+      explicitBox.stop();
       controller.destroy();
       wrapper.remove();
     },
@@ -490,9 +626,9 @@ export type AmosBankAccountPaymentMethodFormMountController = Omit<
  * `update()` method, and a `destroy()` method.
  *
  * A field-shaped skeleton with an opaque background covers the iframe
- * immediately. The iframe stays at opacity 1 and its default pixel height
- * so WebKit lays it out and runs its JS. It is inert until the skeleton
- * is removed, once appearance is applied or
+ * immediately. The iframe stays at opacity 1 with an explicit pixel
+ * width and height so WebKit lays it out and runs its JS. It is inert
+ * until the skeleton is removed, once appearance is applied or
  * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
  *
  * Use the returned `controller.iframe` when calling
@@ -523,6 +659,7 @@ export function mountAmosCreditCardPaymentMethodForm(
       additionalFields,
       billingAddressRequirement,
     ),
+    sandbox: PAYMENT_IFRAME_SANDBOX,
   });
 
   return mountPaymentMethodFormWithSkeleton({
@@ -617,6 +754,7 @@ export function mountAmosBankAccountPaymentMethodForm(
     title: "Secure bank account payment method form powered by Amos",
     name: "amos-bank-account-payment-method-form",
     height: getBankAccountFormInitialHeight(billingAddressRequirement),
+    sandbox: PAYMENT_IFRAME_SANDBOX,
   });
 
   const iframeMount = mountPaymentMethodFormWithSkeleton({
@@ -694,9 +832,9 @@ export type AmosGooglePayButtonMountController = GooglePayButtonController & {
  * iframe, an `update()` method, and a `destroy()` method.
  *
  * A button-shaped skeleton with an opaque background covers the iframe
- * immediately. The iframe stays at opacity 1 and its default pixel height
- * so WebKit lays it out and runs its JS. It is inert until the skeleton
- * is removed, once appearance is applied or
+ * immediately. The iframe stays at opacity 1 with an explicit pixel
+ * width and height so WebKit lays it out and runs its JS. It is inert
+ * until the skeleton is removed, once appearance is applied or
  * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
  */
 export function mountAmosGooglePayButton(
@@ -713,6 +851,7 @@ export function mountAmosGooglePayButton(
     name: "amos-google-pay-button",
     height: listenerOptions.height ?? getGooglePayButtonInitialHeight(),
     allow: "payment",
+    sandbox: WALLET_IFRAME_SANDBOX,
     className: iframeClassName,
     style: WALLET_IFRAME_STYLE,
   });
@@ -763,9 +902,9 @@ export type AmosApplePayButtonMountController = ApplePayButtonController & {
  * iframe, an `update()` method, and a `destroy()` method.
  *
  * A button-shaped skeleton with an opaque background covers the iframe
- * immediately. The iframe stays at opacity 1 and its default pixel height
- * so WebKit lays it out and runs its JS. It is inert until the skeleton
- * is removed, once appearance is applied or
+ * immediately. The iframe stays at opacity 1 with an explicit pixel
+ * width and height so WebKit lays it out and runs its JS. It is inert
+ * until the skeleton is removed, once appearance is applied or
  * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
  */
 export function mountAmosApplePayButton(
@@ -782,6 +921,7 @@ export function mountAmosApplePayButton(
     name: "amos-apple-pay-button",
     height: listenerOptions.height ?? getApplePayButtonInitialHeight(),
     allow: "payment",
+    sandbox: WALLET_IFRAME_SANDBOX,
     className: iframeClassName,
     style: WALLET_IFRAME_STYLE,
   });

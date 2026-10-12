@@ -185,6 +185,7 @@ export function loadPlaidScript(): Promise<void> {
     const script = document.createElement("script");
     script.src = PLAID_SCRIPT_SRC;
     script.async = true;
+    script.setAttribute("async", "");
 
     const fail = (message: string) => {
       script.remove();
