@@ -71,13 +71,17 @@ describe("mountAmosCreditCardPaymentMethodForm skeleton", () => {
     controller.destroy();
   });
 
-  test("reveals 1.5s after mount if appearance never acks", async () => {
+  test("stays covered until the handshake starts, then reveals 1.5s later if appearance never acks", async () => {
     const host = document.createElement("div");
     document.body.append(host);
     const controller = mountAmosCreditCardPaymentMethodForm(host, {
       renderToken: RENDER_TOKEN,
     });
 
+    await vi.advanceTimersByTimeAsync(SKELETON_REVEAL_TIMEOUT_MS);
+    expect(host.querySelector(".amos-js-form-skeleton")).not.toBeNull();
+
+    postFromIframe(controller.iframe, { type: "IFRAME_READY" });
     await vi.advanceTimersByTimeAsync(SKELETON_REVEAL_TIMEOUT_MS - 1);
     expect(host.querySelector(".amos-js-form-skeleton")).not.toBeNull();
 
@@ -97,12 +101,16 @@ describe("mountAmosCreditCardPaymentMethodForm skeleton", () => {
     controller.destroy();
   });
 
-  test("reveals immediately when appearance acks and cancels the timer", async () => {
+  test("reveals when the handshake completes and cancels the timer", async () => {
     const host = document.createElement("div");
     document.body.append(host);
     const controller = mountAmosCreditCardPaymentMethodForm(host, {
       renderToken: RENDER_TOKEN,
     });
+
+    postFromIframe(controller.iframe, { type: "IFRAME_READY" });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(host.querySelector(".amos-js-form-skeleton")).not.toBeNull();
 
     postFromIframe(controller.iframe, { type: "UPDATED_APPEARANCE" });
 
@@ -122,6 +130,45 @@ describe("mountAmosCreditCardPaymentMethodForm skeleton", () => {
     expect(host.querySelector(".amos-js-form-skeleton")).toBeNull();
 
     controller.destroy();
+  });
+});
+
+describe("mountAmosGooglePayButton skeleton", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  test("reveals 1.5s after the handshake starts, or sooner when appearance acks", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const waiting = mountAmosGooglePayButton(host, {
+      renderToken: RENDER_TOKEN,
+      amount: "10.00",
+      merchantName: "Amos",
+      onConfirm: () => Promise.resolve({ status: "failed" }),
+    });
+
+    await vi.advanceTimersByTimeAsync(SKELETON_REVEAL_TIMEOUT_MS);
+    expect(host.querySelector(".amos-js-wallet-skeleton")).not.toBeNull();
+
+    postFromIframe(waiting.iframe, { type: "IFRAME_READY" });
+    await vi.advanceTimersByTimeAsync(SKELETON_REVEAL_TIMEOUT_MS);
+    expect(host.querySelector(".amos-js-wallet-skeleton")).toBeNull();
+    waiting.destroy();
+
+    host.replaceChildren();
+    const early = mountAmosGooglePayButton(host, {
+      renderToken: RENDER_TOKEN,
+      amount: "10.00",
+      merchantName: "Amos",
+      onConfirm: () => Promise.resolve({ status: "failed" }),
+    });
+    postFromIframe(early.iframe, { type: "IFRAME_READY" });
+    postFromIframe(early.iframe, { type: "UPDATED_APPEARANCE" });
+    expect(host.querySelector(".amos-js-wallet-skeleton")).toBeNull();
+    await vi.advanceTimersByTimeAsync(SKELETON_REVEAL_TIMEOUT_MS);
+    expect(early.iframe.inert).toBe(false);
+    early.destroy();
   });
 });
 

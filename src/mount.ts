@@ -49,9 +49,11 @@ function resolveContainer(container: Container): HTMLElement {
 }
 
 /**
- * Host skeleton is removed this long after mount if appearance never
- * acks. The clock starts when the form is inserted, not on
- * `IFRAME_READY`, so a dropped handshake still uncovers the iframe.
+ * Host skeleton is removed this long after the postMessage handshake
+ * starts (`IFRAME_READY`) if appearance never acks. The clock does not
+ * start at mount, so a slow download stays covered.
+ * `UPDATED_APPEARANCE` still uncovers the iframe as soon as the
+ * handshake completes.
  */
 export const SKELETON_REVEAL_TIMEOUT_MS = 1500;
 
@@ -367,6 +369,7 @@ function mountPaymentMethodFormWithSkeleton({
       currentOptions.onAppearanceReady?.();
     },
     onIframeReady: () => {
+      startFallbackReveal();
       currentOptions.onIframeReady?.();
     },
   });
@@ -375,7 +378,6 @@ function mountPaymentMethodFormWithSkeleton({
   host.appendChild(wrapper);
   explicitBox.stop();
   explicitBox = trackExplicitIframeBox(iframe, wrapper, FORM_IFRAME_BLEED_PX);
-  startFallbackReveal();
 
   return {
     iframe,
@@ -521,6 +523,7 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
       currentOptions.onAppearanceReady?.();
     },
     onIframeReady: () => {
+      startFallbackReveal();
       currentOptions.onIframeReady?.();
     },
   } as TOptions);
@@ -528,7 +531,6 @@ function mountWalletButtonWithSkeleton<TOptions extends WalletListenerOptions>({
   wrapper.append(skeleton.element, iframe);
   host.appendChild(wrapper);
   explicitBox = trackExplicitIframeBox(iframe, wrapper, 0);
-  startFallbackReveal();
 
   return {
     iframe,
@@ -629,7 +631,8 @@ export type AmosBankAccountPaymentMethodFormMountController = Omit<
  * immediately. The iframe stays at opacity 1 with an explicit pixel
  * width and height so WebKit lays it out and runs its JS. It is inert
  * until the skeleton is removed, once appearance is applied or
- * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
+ * {@link SKELETON_REVEAL_TIMEOUT_MS} after the postMessage handshake
+ * starts (`IFRAME_READY`) if appearance never acks.
  *
  * Use the returned `controller.iframe` when calling
  * {@link validateForm}, {@link confirmPayment}, or
@@ -729,8 +732,8 @@ export type AmosBankAccountPaymentMethodFormOptions =
  * [Plaid Embedded Institution Search](https://plaid.com/docs/link/embedded-institution-search/)
  * in the parent. `update({ requireAchVerification })` hides or shows
  * that handler; it does not destroy it. Hosts do not proxy Pay API
- * (`GET /merchants`, `POST /plaid_link_tokens`); embed does that with
- * `PAY_API_KEY`. Do not put Plaid secrets in the browser.
+ * (`POST /plaid_link_tokens`); embed does that with `PAY_API_KEY`. Do not
+ * put Plaid secrets in the browser.
  *
  * Use the returned `controller.iframe` when calling
  * {@link validateForm}, {@link confirmPayment}, or
@@ -835,7 +838,8 @@ export type AmosGooglePayButtonMountController = GooglePayButtonController & {
  * immediately. The iframe stays at opacity 1 with an explicit pixel
  * width and height so WebKit lays it out and runs its JS. It is inert
  * until the skeleton is removed, once appearance is applied or
- * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
+ * {@link SKELETON_REVEAL_TIMEOUT_MS} after the postMessage handshake
+ * starts (`IFRAME_READY`) if appearance never acks.
  */
 export function mountAmosGooglePayButton(
   container: Container,
@@ -905,7 +909,8 @@ export type AmosApplePayButtonMountController = ApplePayButtonController & {
  * immediately. The iframe stays at opacity 1 with an explicit pixel
  * width and height so WebKit lays it out and runs its JS. It is inert
  * until the skeleton is removed, once appearance is applied or
- * {@link SKELETON_REVEAL_TIMEOUT_MS} after mount if appearance never acks.
+ * {@link SKELETON_REVEAL_TIMEOUT_MS} after the postMessage handshake
+ * starts (`IFRAME_READY`) if appearance never acks.
  */
 export function mountAmosApplePayButton(
   container: Container,

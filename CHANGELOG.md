@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.31
+
+### Patch Changes
+
+- Hide skeleton after handshake starts
+
 ## 0.11.30
 
 ### Patch Changes
