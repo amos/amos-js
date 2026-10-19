@@ -238,7 +238,6 @@ function createIframe({
   const iframe = document.createElement("iframe");
   iframe.title = title;
   iframe.name = name;
-  iframe.setAttribute("role", "presentation");
   iframe.scrolling = "no";
   // Apply sandbox before `src` so the first navigation is already restricted.
   iframe.setAttribute("sandbox", sandbox);
