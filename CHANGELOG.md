@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.32
+
+### Patch Changes
+
+- d63eb19: Name payment iframes with their title instead of role="presentation"
+
 ## 0.11.31
 
 ### Patch Changes
