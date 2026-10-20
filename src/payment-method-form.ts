@@ -141,6 +141,9 @@ export type PaymentMethodFormListenerOptions = {
    * Name and billing address to seed into the iframe. Can be updated
    * later via `update({ defaultValues })`. Provided keys overwrite
    * matching fields, including ones the customer already edited.
+   * `accountHolderName` prefills the bank account holder.
+   * `cardholderName` prefills the cardholder input only when that field
+   * is shown.
    */
   defaultValues?: PaymentMethodFormDefaultValues;
   /**

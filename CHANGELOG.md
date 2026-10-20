@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.11.33
+
+### Patch Changes
+
+- Replace defaultValues name with the field it fills
+
 ## 0.11.32
 
 ### Patch Changes

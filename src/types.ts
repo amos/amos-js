@@ -631,15 +631,27 @@ export type GooglePayButtonElementProps = Omit<
 /**
  * Non-PCI values the host can seed into the card or bank iframe.
  *
- * `name` maps to cardholder name or account holder name depending on
- * which form is mounted. Billing fields that are not shown still go on
- * the confirm payload when present.
+ * `accountHolderName` prefills the bank account-holder input.
+ * `cardholderName` prefills the cardholder input and is sent on confirm
+ * only when that field is shown (`additionalFields.cardholderName`).
+ *
+ * Billing fields that are not shown still go on the confirm payload when
+ * present, including `billingAddress.name`, `email`, and `phone`.
  *
  * Never send PAN, CVC, account number, or routing number here.
  */
 export type PaymentMethodFormDefaultValues = {
-  name?: string;
+  /** Bank account-holder prefill. */
+  accountHolderName?: string;
+  /**
+   * Cardholder-name prefill. Applied and confirmed only when the
+   * cardholder input is shown.
+   */
+  cardholderName?: string;
   billingAddress?: {
+    name?: string;
+    email?: string;
+    phone?: string;
     line1?: string;
     line2?: string;
     city?: string;

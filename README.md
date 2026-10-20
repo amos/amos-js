@@ -48,7 +48,7 @@ const card = mountAmosCreditCardPaymentMethodForm(
     renderToken: "the-render-token-created-on-dashboard.amos.com",
     additionalFields: { cardholderName: true },
     defaultValues: {
-      name: "Jane Doe",
+      cardholderName: "Jane Doe",
       billingAddress: {
         line1: "354 Oyster Point Blvd",
         city: "South San Francisco",
@@ -367,7 +367,7 @@ Mount the secure credit-card payment method form into a container element (an `H
 - `appearance` (`{ themeVariables?: Partial<Record<ThemeVariable, string>>; labels?: "above" | "floating" | "placeholder"; fonts?: FontSource[]; rules?: Partial<Record<AppearanceRuleSelector, AppearanceRuleDeclarations>> }`)
 - `additionalFields` (`{ cardholderName: boolean }`, defaults to `{ cardholderName: false }`)
 - `billingAddressRequirement` (`"country" | "full"`, defaults to `"country"`) — how much billing address the iframe collects. `country` collects country / region and, for CA / PR / GB / US, a postal code (labeled ZIP for the United States). `full` shows a full street address form with Smarty autocomplete.
-- `defaultValues` (`{ name?: string; billingAddress?: { line1?, line2?, city?, state?, postalCode?, country? } }`) — seed cardholder / account-holder name and billing address. Provided keys overwrite matching fields, including ones the customer already edited. Values are also sent on confirm even when those inputs are hidden (cardholder name off, or `country` billing mode). Never send PAN, CVC, account number, or routing number.
+- `defaultValues` (`{ accountHolderName?: string; cardholderName?: string; billingAddress?: { name?, email?, phone?, line1?, line2?, city?, state?, postalCode?, country? } }`) — seed account-holder name, cardholder name, and billing address. Provided keys overwrite matching fields, including ones the customer already edited. `cardholderName` is applied and confirmed only when that input is shown. Billing fields are sent on confirm even when those inputs are hidden (`country` billing mode). Never send PAN, CVC, account number, or routing number.
 - `onValidityChange` (`(event: { isValid: boolean }) => void`) — called when form validity changes. `isValid` is true when all required fields are present and valid. Does not include PCI data. Use this to enable or disable your checkout button.
 - `onCardBrandChanged` (`(event: { brand: CardBrand | null }) => void`) — called when the detected card brand changes. `brand` is `"visa"`, `"mastercard"`, `"amex"`, `"discover"`, `"diners"`, or `"jcb"`, or `null` when the field is empty or the number does not match a known brand. Does not include PCI data. Credit-card form only.
 - `onPostalCodeChange` (`(event: { postalCode: string | null; country: string }) => void`) — called when the customer commits a billing postal code, or clears one. `postalCode` is a finished code, or `null` when a finished code is deleted or the country changes. Incomplete keystrokes are not reported. US and PR commit at 5 digits (ZIP+4 is reported as the first 5). Canada commits as `A1A 1A1`. The UK commits at a full postcode. Not called for `defaultValues` or `update({ defaultValues })`, so a host can copy its own postal field into the iframe until the first callback and then stop. Debounce shipping-rate requests on the host. Card and bank forms only — not Apple Pay or Google Pay.

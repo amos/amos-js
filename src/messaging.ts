@@ -79,6 +79,7 @@ export function updateAppearance({
  * Push name and billing-address defaults into the embedded card or bank
  * iframe. Provided keys overwrite matching form fields, including ones
  * the customer already edited. Omitted keys are left as-is.
+ * `cardholderName` applies only when that input is shown.
  */
 export function updateDefaultValues({
   iframe,
