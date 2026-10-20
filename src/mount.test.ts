@@ -54,6 +54,10 @@ describe("mountAmosCreditCardPaymentMethodForm skeleton", () => {
     expect(Number(controller.iframe.width)).toBeGreaterThan(0);
     expect(controller.iframe.style.width).toBe(`${controller.iframe.width}px`);
     expect(controller.iframe.style.visibility).not.toBe("hidden");
+    expect(controller.iframe.getAttribute("role")).toBeNull();
+    expect(controller.iframe.title).toBe(
+      "Secure credit card payment method form powered by Amos",
+    );
     expect(controller.iframe.getAttribute("sandbox")).toBe(
       PAYMENT_IFRAME_SANDBOX,
     );
