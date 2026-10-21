@@ -7,9 +7,56 @@ import type { components } from "@amos.com/node";
  * constraint validation changes. Use this to enable or disable a host
  * checkout button.
  */
+export type BankVerificationStatus =
+  | "pending_manual_verification"
+  | "pending_automatic_verification"
+  | "unsent"
+  | "verification_failed"
+  | "verification_expired"
+  | "manually_verified"
+  | "automatically_verified"
+  | "database_matched";
+
+/**
+ * PCI-safe Plaid micro-deposit state. `id` is safe to store and pass back
+ * as `plaidVerificationId`. It is not a Plaid access token.
+ */
+export type BankVerificationState = {
+  id?: string;
+  status: BankVerificationStatus;
+};
+
 export type PaymentMethodFormValidityChangeEvent = {
   isValid: boolean;
+  /**
+   * Set while a Plaid bank is pending micro-deposit verification, or once
+   * that stored Item becomes chargeable. Omitted for instant Auth.
+   */
+  bankVerification?: BankVerificationState;
 };
+
+export const BANK_VERIFICATION_CONFIRM_ERRORS = [
+  "bank_verification_pending",
+  "bank_verification_failed",
+  "bank_verification_expired",
+] as const;
+
+export type BankVerificationConfirmError =
+  (typeof BANK_VERIFICATION_CONFIRM_ERRORS)[number];
+
+export function isBankVerificationConfirmError(
+  error: string | undefined,
+): error is BankVerificationConfirmError {
+  return (
+    error !== undefined &&
+    (BANK_VERIFICATION_CONFIRM_ERRORS as ReadonlyArray<string>).includes(error)
+  );
+}
+
+/** Instant Auth public token, or a stored micro-deposit verification. */
+export type PlaidConfirmCredentials =
+  | components["schemas"]["PlaidCredentialsInput"]
+  | { verification_id: string };
 
 /**
  * Detected card network from the PAN prefix inside the iframe.
@@ -87,6 +134,11 @@ export type ConfirmPaymentResult =
   | ConfirmTimeoutResult
   | {
       status: "failed";
+      error: BankVerificationConfirmError;
+      paymentIntent?: components["schemas"]["PaymentIntent"];
+    }
+  | {
+      status: "failed";
       paymentIntent?: components["schemas"]["PaymentIntent"];
     };
 
@@ -107,6 +159,11 @@ export type ConfirmSetupResult =
       setupIntent: components["schemas"]["SetupIntent"];
     }
   | ConfirmTimeoutResult
+  | {
+      status: "failed";
+      error: BankVerificationConfirmError;
+      setupIntent?: components["schemas"]["SetupIntent"];
+    }
   | {
       status: "failed";
       setupIntent?: components["schemas"]["SetupIntent"];
@@ -768,7 +825,7 @@ export type Message = EmbedIframeName &
       } & Pick<components["schemas"]["PaymentIntent"], "id"> &
         Pick<components["schemas"]["EmbedToken"], "token"> & {
           /** Present when ACH verification completed via Plaid Link in the parent. */
-          plaid?: components["schemas"]["PlaidCredentialsInput"];
+          plaid?: PlaidConfirmCredentials;
           /**
            * Applied immediately before building `payment_method`. Does not
            * replace the last mount/`update` defaultValues used by RESET_FORM.
@@ -781,7 +838,7 @@ export type Message = EmbedIframeName &
       } & Pick<components["schemas"]["SetupIntent"], "id"> &
         Pick<components["schemas"]["EmbedToken"], "token"> & {
           /** Present when ACH verification completed via Plaid Link in the parent. */
-          plaid?: components["schemas"]["PlaidCredentialsInput"];
+          plaid?: PlaidConfirmCredentials;
           /**
            * Applied immediately before building `payment_method`. Does not
            * replace the last mount/`update` defaultValues used by RESET_FORM.
@@ -890,6 +947,34 @@ export type Message = EmbedIframeName &
         /** Parent → embed: mint a Plaid Link token for Embedded Link. */
         type: "CREATE_PLAID_LINK_TOKEN";
         requestId: string;
+        /** Present to open Link in update mode for a stored micro-deposit. */
+        plaidBankVerificationId?: string;
+      }
+    | {
+        /** Parent → embed: exchange a pending Link public token and store it. */
+        type: "REGISTER_PLAID_BANK_VERIFICATION";
+        requestId: string;
+        publicToken: string;
+        accountId: string;
+        verificationStatus: string;
+        institutionName?: string;
+        mask?: string;
+      }
+    | {
+        /** Embed → parent: stored verification id, or `error`. */
+        type: "PLAID_BANK_VERIFICATION";
+        requestId: string;
+        id?: string;
+        status?: string;
+        institutionName?: string;
+        mask?: string;
+        error?: string;
+      }
+    | {
+        /** Parent → embed: refresh a stored verification from Plaid. */
+        type: "REFRESH_PLAID_BANK_VERIFICATION";
+        requestId: string;
+        plaidBankVerificationId: string;
       }
     | {
         /** Embed → parent: minted Plaid Link token, or `error`. */

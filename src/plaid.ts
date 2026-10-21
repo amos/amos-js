@@ -12,6 +12,7 @@ export type PlaidLinkAccount = {
   name?: string;
   subtype?: string | null;
   type?: string;
+  verification_status?: string | null;
 };
 
 export type PlaidLinkOnSuccessMetadata = {
@@ -144,6 +145,71 @@ export function plaidAccountIdFromMetadata(
 ): string | undefined {
   return (
     metadata.account_id ?? metadata.account?.id ?? metadata.accounts?.[0]?.id
+  );
+}
+
+export const PENDING_BANK_VERIFICATION_STATUSES = [
+  "pending_manual_verification",
+  "pending_automatic_verification",
+  "unsent",
+] as const;
+
+export type PendingBankVerificationStatus =
+  (typeof PENDING_BANK_VERIFICATION_STATUSES)[number];
+
+const CHARGEABLE_BANK_VERIFICATION_STATUSES = [
+  "manually_verified",
+  "automatically_verified",
+  "database_matched",
+];
+
+export type PlaidLinkOutcome = "ready" | "pending" | "failed";
+
+export function plaidVerificationStatusFromMetadata(
+  metadata: PlaidLinkOnSuccessMetadata,
+): string | undefined {
+  const accountId = plaidAccountIdFromMetadata(metadata);
+  const account =
+    metadata.accounts?.find((item) => item.id === accountId) ??
+    metadata.account ??
+    metadata.accounts?.[0];
+  const status = account?.verification_status;
+  if (typeof status !== "string") {
+    return undefined;
+  }
+  const trimmed = status.trim();
+  return trimmed === "" ? undefined : trimmed;
+}
+
+/**
+ * Instant Auth (no status) and finished verification are chargeable.
+ * Pending micro-deposits are not. Failed and expired are not.
+ */
+export function plaidLinkOutcome(status: string | undefined): PlaidLinkOutcome {
+  if (status == null) {
+    return "ready";
+  }
+  if (
+    (PENDING_BANK_VERIFICATION_STATUSES as ReadonlyArray<string>).includes(
+      status,
+    )
+  ) {
+    return "pending";
+  }
+  if (status === "verification_failed" || status === "verification_expired") {
+    return "failed";
+  }
+  if (CHARGEABLE_BANK_VERIFICATION_STATUSES.includes(status)) {
+    return "ready";
+  }
+  return "ready";
+}
+
+export function isPendingBankVerificationStatus(
+  status: string,
+): status is PendingBankVerificationStatus {
+  return (PENDING_BANK_VERIFICATION_STATUSES as ReadonlyArray<string>).includes(
+    status,
   );
 }
 

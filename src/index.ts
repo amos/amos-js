@@ -96,16 +96,22 @@ export {
 } from "./payment-method-form";
 export type {
   MountPlaidEmbeddedLinkInput,
+  PendingBankVerificationStatus,
   PlaidCredentials,
   PlaidLinkOnSuccessMetadata,
+  PlaidLinkOutcome,
 } from "./plaid";
 export {
   isBankVerificationEnabled,
+  isPendingBankVerificationStatus,
   linkedBankLabelFromMetadata,
   loadPlaidScript,
   majorAmountToMinorUnits,
   mountPlaidEmbeddedLink,
+  PENDING_BANK_VERIFICATION_STATUSES,
   plaidAccountIdFromMetadata,
+  plaidLinkOutcome,
+  plaidVerificationStatusFromMetadata,
   requiresAchVerification,
   shouldShowPlaidLink,
 } from "./plaid";
@@ -116,6 +122,9 @@ export type {
   AppearanceRuleProperty,
   AppearanceRuleSelector,
   ApplePayButtonElementProps,
+  BankVerificationConfirmError,
+  BankVerificationState,
+  BankVerificationStatus,
   CardBrand,
   ConfirmPaymentResult,
   ConfirmSetupResult,
@@ -131,14 +140,17 @@ export type {
   PaymentMethodFormField,
   PaymentMethodFormPostalCodeChangeEvent,
   PaymentMethodFormValidityChangeEvent,
+  PlaidConfirmCredentials,
   ThemeVariable,
   WalletContactRequirements,
   WalletCustomerCreateAttributes,
   WalletPostalAddress,
 } from "./types";
 export {
+  BANK_VERIFICATION_CONFIRM_ERRORS,
   CONFIRM_TIMEOUT_ERROR,
   CONFIRM_TIMEOUT_MS,
   createMessage,
+  isBankVerificationConfirmError,
   isConfirmTimeout,
 } from "./types";
