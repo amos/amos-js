@@ -6,12 +6,14 @@ import { randomRequestId } from "./random-id";
 import {
   type Appearance,
   type ApplePayButtonElementProps,
+  type BankVerificationConfirmError,
   CONFIRM_TIMEOUT_MS,
   type ConfirmPaymentResult,
   type ConfirmSetupResult,
   type ConfirmTimeoutResult,
   createMessage,
   type GooglePayButtonElementProps,
+  isBankVerificationConfirmError,
   isConfirmTimeout,
   type Message,
   type PaymentMethodFormDefaultValues,
@@ -288,8 +290,10 @@ const PLAID_LINK_TOKEN_TIMEOUT_MS = 10_000;
  */
 export function requestPlaidLinkToken({
   iframe,
+  plaidBankVerificationId,
 }: {
   iframe: Iframe;
+  plaidBankVerificationId?: string;
 }): Promise<string> {
   const requestId = randomRequestId();
 
@@ -301,7 +305,11 @@ export function requestPlaidLinkToken({
 
     const contentWindow = iframe.contentWindow;
     contentWindow.postMessage(
-      createMessage({ type: "CREATE_PLAID_LINK_TOKEN", requestId }),
+      createMessage({
+        type: "CREATE_PLAID_LINK_TOKEN",
+        requestId,
+        ...(plaidBankVerificationId ? { plaidBankVerificationId } : {}),
+      }),
       getIframeTargetOrigin(iframe),
     );
 
@@ -332,6 +340,117 @@ export function requestPlaidLinkToken({
     }
 
     window.addEventListener("message", handleMessage);
+  });
+}
+
+export type RegisteredPlaidBankVerification = {
+  id: string;
+  status?: string;
+  institutionName?: string;
+  mask?: string;
+};
+
+function requestPlaidBankVerification({
+  iframe,
+  message,
+}: {
+  iframe: Iframe;
+  message: Extract<
+    Message,
+    | { type: "REGISTER_PLAID_BANK_VERIFICATION" }
+    | { type: "REFRESH_PLAID_BANK_VERIFICATION" }
+  >;
+}): Promise<RegisteredPlaidBankVerification> {
+  return new Promise((resolve, reject) => {
+    if (!iframe?.contentWindow) {
+      reject(new Error("Bank form is not ready."));
+      return;
+    }
+
+    const requestId = message.requestId;
+    iframe.contentWindow.postMessage(
+      createMessage(message),
+      getIframeTargetOrigin(iframe),
+    );
+
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener("message", handleMessage);
+      reject(new Error("Timed out waiting for Plaid verification."));
+    }, PLAID_LINK_TOKEN_TIMEOUT_MS);
+
+    function handleMessage(event: MessageEvent<Message>) {
+      if (!iframe || !isMessageFromEmbedIframe(event, iframe)) {
+        return;
+      }
+      if (
+        event.data.type !== "PLAID_BANK_VERIFICATION" ||
+        event.data.requestId !== requestId
+      ) {
+        return;
+      }
+      window.removeEventListener("message", handleMessage);
+      clearTimeout(timeoutId);
+      if (event.data.id) {
+        resolve({
+          id: event.data.id,
+          status: event.data.status,
+          institutionName: event.data.institutionName,
+          mask: event.data.mask,
+        });
+        return;
+      }
+      reject(
+        new Error(event.data.error ?? "Could not save Plaid verification."),
+      );
+    }
+
+    window.addEventListener("message", handleMessage);
+  });
+}
+
+export function registerPlaidBankVerification({
+  iframe,
+  publicToken,
+  accountId,
+  verificationStatus,
+  institutionName,
+  mask,
+}: {
+  iframe: Iframe;
+  publicToken: string;
+  accountId: string;
+  verificationStatus: string;
+  institutionName?: string;
+  mask?: string;
+}): Promise<RegisteredPlaidBankVerification> {
+  return requestPlaidBankVerification({
+    iframe,
+    message: {
+      type: "REGISTER_PLAID_BANK_VERIFICATION",
+      requestId: randomRequestId(),
+      publicToken,
+      accountId,
+      verificationStatus,
+      institutionName,
+      mask,
+    },
+  });
+}
+
+export function refreshPlaidBankVerification({
+  iframe,
+  plaidBankVerificationId,
+}: {
+  iframe: Iframe;
+  plaidBankVerificationId: string;
+}): Promise<RegisteredPlaidBankVerification> {
+  return requestPlaidBankVerification({
+    iframe,
+    message: {
+      type: "REFRESH_PLAID_BANK_VERIFICATION",
+      requestId: randomRequestId(),
+      plaidBankVerificationId,
+    },
   });
 }
 
@@ -409,6 +528,25 @@ function fromConfirmationMessage(
     return CONFIRM_TIMEOUT_RESULT;
   }
 
+  const bankError = bankVerificationError(result);
+  if (bankError) {
+    if ("paymentIntent" in result && result.paymentIntent !== undefined) {
+      return {
+        status: "failed",
+        error: bankError,
+        paymentIntent: result.paymentIntent,
+      };
+    }
+    if ("setupIntent" in result && result.setupIntent !== undefined) {
+      return {
+        status: "failed",
+        error: bankError,
+        setupIntent: result.setupIntent,
+      };
+    }
+    return { status: "failed", error: bankError };
+  }
+
   if ("paymentIntent" in result && result.paymentIntent !== undefined) {
     return { status: "failed", paymentIntent: result.paymentIntent };
   }
@@ -430,6 +568,17 @@ function toConfirmPaymentResult(
   if (isConfirmTimeout(result)) {
     return CONFIRM_TIMEOUT_RESULT;
   }
+  const bankError = bankVerificationError(result);
+  if (bankError) {
+    if ("paymentIntent" in result && result.paymentIntent !== undefined) {
+      return {
+        status: "failed",
+        error: bankError,
+        paymentIntent: result.paymentIntent,
+      };
+    }
+    return { status: "failed", error: bankError };
+  }
   if ("paymentIntent" in result) {
     return { status: "failed", paymentIntent: result.paymentIntent };
   }
@@ -448,10 +597,32 @@ function toConfirmSetupResult(
   if (isConfirmTimeout(result)) {
     return CONFIRM_TIMEOUT_RESULT;
   }
+  const bankError = bankVerificationError(result);
+  if (bankError) {
+    if ("setupIntent" in result && result.setupIntent !== undefined) {
+      return {
+        status: "failed",
+        error: bankError,
+        setupIntent: result.setupIntent,
+      };
+    }
+    return { status: "failed", error: bankError };
+  }
   if ("setupIntent" in result) {
     return { status: "failed", setupIntent: result.setupIntent };
   }
   return { status: "failed" };
+}
+
+function bankVerificationError(
+  result: ConfirmPaymentResult | ConfirmSetupResult,
+): BankVerificationConfirmError | undefined {
+  if (result.status !== "failed" || !("error" in result)) {
+    return undefined;
+  }
+  return isBankVerificationConfirmError(result.error)
+    ? result.error
+    : undefined;
 }
 
 function waitForConfirmResult(
@@ -477,7 +648,12 @@ function waitForConfirmResult(
       }
       window.removeEventListener("message", handleMessage);
       clearTimeout(timeoutId);
-      resolve(fromConfirmationMessage(event.data.result));
+      const confirmed = fromConfirmationMessage(event.data.result);
+      const bankError = bankVerificationError(confirmed);
+      if (bankError) {
+        getBankPlaidSession(iframe)?.showConfirmError?.(bankError);
+      }
+      resolve(confirmed);
     }
 
     window.addEventListener("message", handleMessage);
