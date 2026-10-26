@@ -96,6 +96,7 @@ export {
 } from "./payment-method-form";
 export type {
   MountPlaidEmbeddedLinkInput,
+  OpenPlaidPopupLinkInput,
   PlaidCredentials,
   PlaidLinkOnSuccessMetadata,
 } from "./plaid";
@@ -105,6 +106,7 @@ export {
   loadPlaidScript,
   majorAmountToMinorUnits,
   mountPlaidEmbeddedLink,
+  openPlaidPopupLink,
   plaidAccountIdFromMetadata,
   requiresAchVerification,
   shouldShowPlaidLink,
@@ -123,6 +125,11 @@ export type {
   ConfirmTimeoutResult,
   CssFontSource,
   CustomFontSource,
+  ExternalBankAccountConfirmResult,
+  ExternalBankAccountLinkMode,
+  ExternalBankAccountState,
+  ExternalBankAccountVerificationStatus,
+  ExternalBankAccountView,
   FontSource,
   GooglePayButtonElementProps,
   Message,

@@ -25,6 +25,12 @@ type PlaidEmbeddedHandler = {
   destroy: () => void;
 };
 
+/** Regular (popup) Link session. `open` shows the overlay, `exit` tears it down. */
+type PlaidPopupHandler = {
+  open: (name?: string) => void;
+  exit: () => void;
+};
+
 type PlaidCreateConfig = {
   token: string;
   onSuccess: (
@@ -45,6 +51,7 @@ declare global {
         config: PlaidCreateConfig,
         target: HTMLElement,
       ) => PlaidEmbeddedHandler;
+      create: (config: PlaidCreateConfig) => PlaidPopupHandler;
     };
   }
 }
@@ -267,5 +274,60 @@ export async function mountPlaidEmbeddedLink({
 
   return () => {
     handler.destroy();
+  };
+}
+
+export type OpenPlaidPopupLinkInput = {
+  token: string;
+  onSuccess: (
+    publicToken: string,
+    metadata: PlaidLinkOnSuccessMetadata,
+  ) => void;
+  onExit?: (error: { error_code?: string } | null) => void;
+  signal?: AbortSignal;
+};
+
+/**
+ * Open a regular Link session, which is the only kind Plaid allows for
+ * **update** tokens (used to re-enter an account, e.g. micro-deposit codes).
+ *
+ * Why it is separate from {@link mountPlaidEmbeddedLink} rather than a flag on
+ * it: Embedded Institution Search cannot be used in update mode at all, so the
+ * caller must know which session a token supports. That is also why the iframe
+ * sends `mode` with the token instead of the parent inferring it.
+ *
+ * Link renders this session as an overlay in the host document, not a browser
+ * popup, so awaiting the token before `open()` does not lose a user gesture.
+ * Returns a teardown function that exits the session.
+ */
+export async function openPlaidPopupLink({
+  token,
+  onSuccess,
+  onExit,
+  signal,
+}: OpenPlaidPopupLinkInput): Promise<() => void> {
+  await loadPlaidScript();
+  if (signal?.aborted) {
+    return () => {};
+  }
+  const handler = window.Plaid?.create?.({
+    token,
+    onSuccess,
+    onExit: (error) => {
+      onExit?.(error);
+    },
+  });
+  if (!handler) {
+    throw new Error("Plaid Link failed to initialize");
+  }
+  if (signal?.aborted) {
+    handler.exit();
+    return () => {};
+  }
+
+  handler.open();
+
+  return () => {
+    handler.exit();
   };
 }
