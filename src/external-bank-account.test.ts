@@ -427,6 +427,46 @@ describe("confirmExternalBankAccountIntent", () => {
     expect(c).not.toBe(b);
   });
 
+  test.each([
+    { status: "succeeded" as const },
+    {
+      status: "requires_verification" as const,
+      verificationStatus: "pending_manual_verification" as const,
+    },
+  ])(
+    "a $status result drops the spent bank without reopening Link",
+    async (result) => {
+      const form = setup();
+      form.holder(true);
+      await linkBank(form);
+      expect(form.lastValidity()).toBe(true);
+      mountPlaidEmbeddedLink.mockClear();
+      form.posted.length = 0;
+
+      const pending = confirmExternalBankAccountIntent({
+        iframe: form.iframe,
+        token: "embed-token",
+      });
+      form.result(result);
+      await expect(pending).resolves.toEqual(result);
+
+      expect(form.panel()?.dataset["mode"]).toBe("hidden");
+      expect(form.lastValidity()).toBe(false);
+      expect(mountPlaidEmbeddedLink).not.toHaveBeenCalled();
+      expect(
+        form.posted.filter((m) => m.type === "EXTERNAL_BANK_ACCOUNT_INTENT"),
+      ).toEqual([]);
+
+      const retry = confirmExternalBankAccountIntent({
+        iframe: form.iframe,
+        token: "embed-token-2",
+      });
+      expect(form.confirms()[1]).not.toHaveProperty("plaid");
+      form.result({ status: "succeeded" });
+      await retry;
+    },
+  );
+
   test("a rejected first link drops the spent bank and mounts the next session", async () => {
     const form = setup();
     await linkBank(form);

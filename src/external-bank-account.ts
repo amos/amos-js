@@ -454,15 +454,25 @@ export function attachExternalBankAccountUi({
   }
 
   function onResult(result: ExternalBankAccountConfirmResult): void {
-    // A rejected first link removes the Plaid Item, so its public_token is
-    // spent; the iframe has already posted the next Link token.
-    if (
-      result.status === "succeeded" ||
-      (result.status === "failed" && result.reason === "rejected")
-    ) {
-      linked = undefined;
-      render();
+    if (result.status === "failed") {
+      // A rejected first link removes the Plaid Item, so its public_token is
+      // spent; the iframe has already posted the next Link token.
+      if (result.reason === "rejected") {
+        linked = undefined;
+        render();
+      }
+      return;
     }
+    // The public_token was exchanged and there is no Link step left on this
+    // screen. Wait for the iframe's next state instead of reopening Link.
+    linked = undefined;
+    link = undefined;
+    teardownEmbedded();
+    if (screen === "connect") {
+      panel.dataset["mode"] = "hidden";
+      panel.setAttribute("aria-hidden", "true");
+    }
+    publishValidity();
   }
 
   // A reloaded iframe forgets the intent; ask again on its next handshake.
