@@ -727,14 +727,22 @@ export type ExternalBankAccountVerificationStatus =
  * the right screen without any saved session.
  */
 export type ExternalBankAccountView = {
-  screen:
+  screen: /** Pick a bank in Plaid Link (new session). */
     | "connect"
+    /** Enter the micro-deposit code (update session). */
     | "code"
+    /** The bank is verifying on its own; nothing for the donor to do. */
     | "verifying"
+    /** Account verified; a confirm is what remains. */
     | "finish"
     | "done"
     | "failed"
-    | "closed";
+    | "closed"
+    /**
+     * The intent's state could not be read, so no Link session was started.
+     * Not terminal: the host can mint a fresh embed token and retry.
+     */
+    | "unavailable";
   /** Link must open for this step. */
   needsLink: boolean;
   /** A `link_token` is worth asking for. False while pending or finished. */
@@ -745,19 +753,42 @@ export type ExternalBankAccountView = {
 };
 
 /**
+ * Why a step ended without connecting an account. `retryable` is the field a
+ * host acts on; this is for copy and logging.
+ */
+export type ExternalBankAccountFailureReason =
+  /** `/confirm` never answered. The account may already be connected. */
+  | "timeout"
+  /** Plaid could not be reached, or returned something unrecognised. */
+  | "plaid_unreachable"
+  /** The state could not be read, so nothing was started. */
+  | "state_unavailable"
+  /** Verification failed or expired: only a new intent can finish. */
+  | "verification_unusable"
+  /** Anything else. Report it; do not silently retry. */
+  | "unknown";
+
+/**
  * Outcome of a confirm, posted to the host.
  *
  * `requires_verification` is not a failure: micro-deposits are pending and the
  * intent simply waits, so treating it as a decline closes the only path that
  * finishes the connection.
+ *
+ * `retryable: false` means a repeat call cannot succeed either — the intent is
+ * finished — which is different from a timeout, where the account may already
+ * be connected and re-sending the same idempotency key is the only safe move.
  */
 export type ExternalBankAccountConfirmResult =
   | { status: "succeeded"; externalAccountId?: string; mask?: string }
   | { status: "requires_verification"; verificationStatus?: string }
   | {
       status: "failed";
-      /** `"timeout"` means unconfirmed, not declined. Never retry blindly. */
+      /** Presentable text, never a raw API body. */
       error?: string;
+      reason?: ExternalBankAccountFailureReason;
+      /** True when retrying could work: mint a fresh token and try again. */
+      retryable?: boolean;
     };
 
 /**

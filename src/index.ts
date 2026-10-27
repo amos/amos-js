@@ -126,6 +126,7 @@ export type {
   CssFontSource,
   CustomFontSource,
   ExternalBankAccountConfirmResult,
+  ExternalBankAccountFailureReason,
   ExternalBankAccountLinkMode,
   ExternalBankAccountState,
   ExternalBankAccountVerificationStatus,
