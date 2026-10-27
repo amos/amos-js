@@ -463,16 +463,21 @@ export function attachExternalBankAccountUi({
       }
       return;
     }
-    // The public_token was exchanged and there is no Link step left on this
-    // screen. Wait for the iframe's next state instead of reopening Link.
+    // The public_token was exchanged. The iframe posts any next Link session
+    // before the result, so only the token that linked this bank is spent.
     linked = undefined;
-    link = undefined;
-    teardownEmbedded();
-    if (screen === "connect") {
+    if (link?.used) {
+      link = undefined;
+    }
+    if (screen === "connect" && !link) {
+      // Wait for the iframe's next state instead of reopening Link.
+      teardownEmbedded();
       panel.dataset["mode"] = "hidden";
       panel.setAttribute("aria-hidden", "true");
+      publishValidity();
+      return;
     }
-    publishValidity();
+    render();
   }
 
   // A reloaded iframe forgets the intent; ask again on its next handshake.

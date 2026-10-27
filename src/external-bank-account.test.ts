@@ -467,6 +467,31 @@ describe("confirmExternalBankAccountIntent", () => {
     },
   );
 
+  test("keeps a Link session the iframe posted before the result", async () => {
+    const form = setup();
+    await linkBank(form);
+
+    const pending = confirmExternalBankAccountIntent({
+      iframe: form.iframe,
+      token: "embed-token",
+    });
+    form.state("code");
+    form.linkToken("link-update-1", "update");
+    form.result({
+      status: "requires_verification",
+      verificationStatus: "pending_manual_verification",
+    });
+    await pending;
+
+    expect(form.panel()?.dataset["mode"]).toBe("update");
+    const button = form
+      .panel()
+      ?.querySelector<HTMLButtonElement>(".amos-js-plaid-update");
+    expect(button?.disabled).toBe(false);
+    button?.click();
+    expect(openPlaidPopupLink.mock.lastCall?.[0].token).toBe("link-update-1");
+  });
+
   test("a rejected first link drops the spent bank and mounts the next session", async () => {
     const form = setup();
     await linkBank(form);
