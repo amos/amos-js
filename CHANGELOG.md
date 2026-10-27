@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.12.1
+
+### Patch Changes
+
+- Add `mountAmosExternalBankAccountForm` and `confirmExternalBankAccountIntent` for linking a bank account to pay out to through an external bank account intent. The SDK runs Plaid Link on the host page (Embedded Institution Search for a first link, Link's overlay for micro-deposit codes), combines it with the iframe's account holder fields into one `onValidityChange`, and manages the confirm idempotency key so a retry after a timeout never links twice.
+
 ## 0.12.0
 
 ### Minor Changes
