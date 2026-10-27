@@ -6,6 +6,11 @@ import {
   getApplePayButtonSrc,
 } from "./apple-pay";
 import {
+  attachExternalBankAccountUi,
+  type ExternalBankAccountStateEvent,
+  getExternalBankAccountFormSrc,
+} from "./external-bank-account";
+import {
   createPaymentMethodFormSkeleton,
   createWalletButtonSkeleton,
   type PaymentMethodFormSkeletonOptions,
@@ -32,6 +37,7 @@ import {
   type PaymentMethodFormListenerOptions,
 } from "./payment-method-form";
 import { attachPlaidBankUi } from "./plaid-bank-ui";
+import type { Appearance } from "./types";
 
 type Container = HTMLElement | string;
 
@@ -793,6 +799,121 @@ export function mountAmosBankAccountPaymentMethodForm(
     },
     destroy() {
       plaidUi.destroy();
+      iframeMount.destroy();
+    },
+  };
+}
+
+/**
+ * Options accepted by {@link mountAmosExternalBankAccountForm}.
+ */
+export type AmosExternalBankAccountFormOptions = {
+  /**
+   * The Amos render token for the form. It must allow bank accounts.
+   *
+   * It is safe to pass this to the client. Create this on
+   * https://dashboard.amos.com.
+   */
+  renderToken: string;
+  /** The external bank account intent this form links. */
+  intentId: string;
+  appearance?: Appearance;
+  /**
+   * Called with each screen the form shows, e.g. to hide your submit
+   * button once the account is `done`, or to poll with `refresh()`
+   * while it is `verifying`.
+   */
+  onStateChange?: (event: ExternalBankAccountStateEvent) => void;
+  /**
+   * True once the account holder is filled in and the bank step is
+   * done: a bank picked in Plaid, or the micro-deposit code entered.
+   */
+  onValidityChange?: (event: { isValid: boolean }) => void;
+  onEscapeKeyPressed?: () => void;
+};
+
+/**
+ * Controller returned by {@link mountAmosExternalBankAccountForm}.
+ */
+export type AmosExternalBankAccountFormMountController = {
+  /**
+   * The underlying `<iframe>` element. Pass this as the `iframe`
+   * argument to {@link confirmExternalBankAccountIntent}.
+   */
+  iframe: HTMLIFrameElement;
+  update: (
+    patch: Partial<
+      Omit<AmosExternalBankAccountFormOptions, "renderToken" | "intentId">
+    >,
+  ) => void;
+  /** Read the intent again, e.g. while it is `verifying`. */
+  refresh: () => void;
+  destroy: () => void;
+};
+
+/**
+ * Mount the external bank account form, which links a bank account to
+ * pay out to through an external bank account intent.
+ *
+ * The iframe shows the intent's status and collects the account holder.
+ * Plaid Link runs on the host page: Embedded Institution Search below
+ * the form for a first link, and Link's overlay to enter a
+ * micro-deposit code. Submit with
+ * {@link confirmExternalBankAccountIntent}.
+ */
+export function mountAmosExternalBankAccountForm(
+  container: Container,
+  options: AmosExternalBankAccountFormOptions,
+): AmosExternalBankAccountFormMountController {
+  const host = resolveContainer(container);
+  const {
+    renderToken,
+    intentId,
+    appearance,
+    onStateChange,
+    onValidityChange,
+    onEscapeKeyPressed,
+  } = options;
+
+  const iframe = createIframe({
+    src: getExternalBankAccountFormSrc(renderToken),
+    title: "Secure bank account connection powered by Amos",
+    name: "amos-external-bank-account-form",
+    height: "160px",
+    sandbox: PAYMENT_IFRAME_SANDBOX,
+  });
+
+  const iframeMount = mountPaymentMethodFormWithSkeleton({
+    host,
+    iframe,
+    listenerOptions: { appearance, onEscapeKeyPressed },
+    skeletonOptions: { kind: "external_bank", appearance },
+  });
+
+  const bankUi = attachExternalBankAccountUi({
+    host,
+    iframe,
+    options: { intentId, appearance, onStateChange, onValidityChange },
+  });
+
+  return {
+    iframe,
+    update(patch) {
+      const iframePatch: Partial<PaymentMethodFormListenerOptions> = {};
+      if ("appearance" in patch) {
+        iframePatch.appearance = patch.appearance;
+      }
+      if ("onEscapeKeyPressed" in patch) {
+        iframePatch.onEscapeKeyPressed = patch.onEscapeKeyPressed;
+      }
+      iframeMount.update(iframePatch);
+      bankUi.update(patch);
+    },
+    refresh() {
+      bankUi.refresh();
+    },
+    destroy() {
+      bankUi.destroy();
       iframeMount.destroy();
     },
   };

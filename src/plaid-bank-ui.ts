@@ -99,6 +99,17 @@ const PLAID_BANK_UI_STYLES = `
 .amos-js-plaid-panel[data-mode="linked"] .amos-js-plaid-linked {
   display: flex;
 }
+.amos-js-plaid-panel[data-mode="update"] .amos-js-plaid-embed {
+  display: none;
+}
+.amos-js-plaid-update {
+  align-self: flex-start;
+  display: none;
+}
+.amos-js-plaid-panel[data-mode="update"] .amos-js-plaid-update {
+  display: inline-flex;
+  align-items: center;
+}
 .amos-js-plaid-linked-mark {
   align-items: center;
   background: var(--muted, var(--accent, oklch(0.97 0 0)));
@@ -180,7 +191,7 @@ const PLAID_BANK_UI_STYLES = `
 `;
 
 /** Same Lucide building mark as the hosted-checkout Bank method. */
-function createBuildingIcon(): SVGSVGElement {
+export function createBuildingIcon(): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("width", "16");
   svg.setAttribute("height", "16");
@@ -220,7 +231,7 @@ function createBuildingIcon(): SVGSVGElement {
   return svg;
 }
 
-function ensurePlaidBankUiStyles(): void {
+export function ensurePlaidBankUiStyles(): void {
   ensureSkeletonStyles();
   if (document.getElementById(STYLE_ID)) {
     return;
@@ -231,7 +242,7 @@ function ensurePlaidBankUiStyles(): void {
   document.head.append(style);
 }
 
-function applyTheme(
+export function applyTheme(
   panel: HTMLElement,
   appearance: Appearance | undefined,
   appliedKeys: Array<string>,

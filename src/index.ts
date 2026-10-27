@@ -16,6 +16,12 @@ export {
   getApplePayButtonInitialHeight,
   getApplePayButtonSrc,
 } from "./apple-pay";
+export type { ExternalBankAccountStateEvent } from "./external-bank-account";
+export {
+  confirmExternalBankAccountIntent,
+  getExternalBankAccountFormSrc,
+  refreshExternalBankAccountIntent,
+} from "./external-bank-account";
 export type {
   PaymentMethodFormSkeleton,
   PaymentMethodFormSkeletonKind,
@@ -68,6 +74,8 @@ export type {
   AmosBankAccountPaymentMethodFormMountController,
   AmosBankAccountPaymentMethodFormOptions,
   AmosCreditCardPaymentMethodFormOptions,
+  AmosExternalBankAccountFormMountController,
+  AmosExternalBankAccountFormOptions,
   AmosGooglePayButtonMountController,
   AmosGooglePayButtonOptions,
   AmosPaymentMethodFormMountController,
@@ -76,6 +84,7 @@ export {
   mountAmosApplePayButton,
   mountAmosBankAccountPaymentMethodForm,
   mountAmosCreditCardPaymentMethodForm,
+  mountAmosExternalBankAccountForm,
   mountAmosGooglePayButton,
   PAYMENT_IFRAME_SANDBOX,
   SKELETON_REVEAL_TIMEOUT_MS,

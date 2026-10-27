@@ -16,7 +16,7 @@ npm install @amos.com/amos-js @amos.com/node
 
 - **Types** for the `postMessage` protocol used between your page and the Amos iframe (`Message`, `Appearance`, `ThemeVariable`, `ConfirmPaymentResult`, `ConfirmSetupResult`). OpenAPI schema types (for example `components["schemas"]["PaymentIntent"]`) come from `@amos.com/node`.
 - **Iframe-targeted helpers** to validate the form, confirm a payment intent, confirm a setup intent, update appearance, etc.
-- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height, and show a loading skeleton (field-shaped for card/bank forms, button-shaped for Google Pay / Apple Pay) with an opaque background over an opacity-1 iframe, until appearance acks or 1.5s after the postMessage handshake starts (`IFRAME_READY`). They return a small controller for updating options and tearing it down.
+- **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosExternalBankAccountForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height, and show a loading skeleton (field-shaped for card/bank forms, button-shaped for Google Pay / Apple Pay) with an opaque background over an opacity-1 iframe, until appearance acks or 1.5s after the postMessage handshake starts (`IFRAME_READY`). They return a small controller for updating options and tearing it down.
 - **Lower-level building blocks** (`getCreditCardFormSrc`, `attachPaymentMethodFormListeners`, `attachGooglePayButtonListeners`, `attachApplePayButtonListeners`, ...) for integrators (such as `@amos.com/react-amos-js`) that want to render the iframe element themselves.
 
 > **Note:** A server-side SDK (for example `@amos.com/node`) must be used alongside `@amos.com/amos-js` for end-to-end payment processing. `@amos.com/amos-js` is the client-side half.
@@ -419,6 +419,41 @@ mountAmosBankAccountPaymentMethodForm("#bank-form", {
 `validateForm` / `confirmPayment` / `confirmSetup` stay iframe-based. When Plaid succeeded, confirm sends `payment_method.plaid` (`public_token`, `account_id`) and does not require typed account numbers.
 
 **CSP:** the parent page must allow Plaid’s script and frames, for example `script-src https://cdn.plaid.com` and `frame-src https://cdn.plaid.com https://*.plaid.com`. Amos never loads `PLAID_SECRET` / `PLAID_CLIENT_ID` in the SDK or embed iframe.
+
+### `mountAmosExternalBankAccountForm(container, options)`
+
+Links a bank account to pay out to through an external bank account intent. The iframe reads the intent, shows its status, and collects the account holder. Plaid Link runs on the host page below it: Embedded Institution Search for a first link (`connect`), or a button that opens Link's overlay to enter micro-deposit codes (`code`). Same Plaid CSP as `mountAmosBankAccountPaymentMethodForm`.
+
+Options: `renderToken` and `intentId` (required), `appearance`, `onStateChange({ screen, institutionName, mask, error? })`, `onValidityChange({ isValid })` (true once the holder is filled in and the bank step is done), and `onEscapeKeyPressed`. The controller has `iframe`, `update(patch)`, `refresh()` (read the intent again, e.g. while `verifying`), and `destroy()`.
+
+```js
+import {
+  confirmExternalBankAccountIntent,
+  mountAmosExternalBankAccountForm,
+} from "@amos.com/amos-js";
+
+const form = mountAmosExternalBankAccountForm("#payout-bank", {
+  renderToken,
+  intentId,
+  onStateChange: ({ screen }) => {
+    submit.hidden = !["connect", "code", "finish"].includes(screen);
+  },
+  onValidityChange: ({ isValid }) => {
+    submit.disabled = !isValid;
+  },
+});
+
+// On submit, mint the embed token on your server
+// (POST /external_bank_account_intents/:id/embed_token), then:
+const result = await confirmExternalBankAccountIntent({
+  iframe: form.iframe,
+  token,
+});
+```
+
+### `confirmExternalBankAccountIntent({ iframe, token, metadata?, idempotencyKey? })` / `refreshExternalBankAccountIntent({ iframe })`
+
+`confirmExternalBankAccountIntent` resolves `{ status: "succeeded" }`, `{ status: "requires_verification" }` (micro-deposits sent), or `{ status: "failed", reason, retryable, error? }`, and never throws. The SDK sends the picked bank only on a first link and manages the idempotency key: a new one per submit, reused only after a `timeout`, so a retry never links twice. Pass `idempotencyKey` only to override that. After 15 seconds without an answer it resolves `{ status: "failed", reason: "timeout", retryable: true }`. `refreshExternalBankAccountIntent` reads the intent again, like `controller.refresh()`.
 
 ### `mountAmosGooglePayButton(container, options)`
 

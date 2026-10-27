@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   mountAmosCreditCardPaymentMethodForm,
+  mountAmosExternalBankAccountForm,
   mountAmosGooglePayButton,
   PAYMENT_IFRAME_SANDBOX,
   SKELETON_REVEAL_TIMEOUT_MS,
@@ -173,6 +174,33 @@ describe("mountAmosGooglePayButton skeleton", () => {
     await vi.advanceTimersByTimeAsync(SKELETON_REVEAL_TIMEOUT_MS);
     expect(early.iframe.inert).toBe(false);
     early.destroy();
+  });
+});
+
+describe("mountAmosExternalBankAccountForm", () => {
+  test("mounts the intent iframe under a skeleton with the Plaid panel beside it", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const controller = mountAmosExternalBankAccountForm(host, {
+      renderToken: RENDER_TOKEN,
+      intentId: "ebai_123",
+    });
+
+    const src = new URL(controller.iframe.src);
+    expect(`${src.origin}${src.pathname}`).toBe(
+      "https://js-sandbox.amos.com/iframe/external-bank-account",
+    );
+    expect(src.searchParams.get("token")).toBe(RENDER_TOKEN);
+    expect(controller.iframe.getAttribute("sandbox")).toBe(
+      PAYMENT_IFRAME_SANDBOX,
+    );
+    expect(host.querySelector(".amos-js-form-skeleton")).not.toBeNull();
+    expect(
+      host.querySelector("[data-amos-external-bank-account-panel]"),
+    ).not.toBeNull();
+
+    controller.destroy();
+    expect(host.childElementCount).toBe(0);
   });
 });
 
