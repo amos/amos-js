@@ -15,9 +15,11 @@
   The `Message` union gains `EXTERNAL_BANK_ACCOUNT_INTENT`,
   `CONFIRM_EXTERNAL_BANK_ACCOUNT_INTENT`, `EXTERNAL_BANK_ACCOUNT_STATE`,
   `EXTERNAL_BANK_ACCOUNT_LINK_TOKEN` and `EXTERNAL_BANK_ACCOUNT_INTENT_RESULT`,
-  plus `ExternalBankAccountView` and `ExternalBankAccountConfirmResult`, so the
-  host page and the iframe share one definition of the flow. Note
-  `requires_verification` is a waiting outcome, not a decline.
+  plus `ExternalBankAccountScreen` and `ExternalBankAccountConfirmResult`, so
+  the host page and the iframe share one definition of the flow. The host sends
+  only the intent id to load; the iframe reads the intent and posts its screen.
+  Confirm requires an `idempotencyKey`. `requires_verification` is a waiting
+  outcome, not a decline, and a timeout can be retried with the same key.
   
   Nothing mounts these yet; the host-side component comes next.
 

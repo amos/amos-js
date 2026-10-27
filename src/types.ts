@@ -722,73 +722,64 @@ export type ExternalBankAccountVerificationStatus =
   | "verification_expired";
 
 /**
- * What the iframe is showing and what the host can do next. Derived from the
- * intent, never stored: a returning visitor re-reads the intent and lands on
- * the right screen without any saved session.
+ * What the external bank account iframe is showing, derived from the intent on
+ * every read. `connect` and `code` are followed by an
+ * `EXTERNAL_BANK_ACCOUNT_LINK_TOKEN` message for the parent to open Link.
  */
-export type ExternalBankAccountView = {
-  screen: /** Pick a bank in Plaid Link (new session). */
-    | "connect"
-    /** Enter the micro-deposit code (update session). */
-    | "code"
-    /** The bank is verifying on its own; nothing for the donor to do. */
-    | "verifying"
-    /** Account verified; a confirm is what remains. */
-    | "finish"
-    | "done"
-    | "failed"
-    | "closed"
-    /**
-     * The intent's state could not be read, so no Link session was started.
-     * Not terminal: the host can mint a fresh embed token and retry.
-     */
-    | "unavailable";
-  /** Link must open for this step. */
-  needsLink: boolean;
-  /** A `link_token` is worth asking for. False while pending or finished. */
-  canRequestLinkToken: boolean;
-  /** Nothing further happens in this iframe. */
-  terminal: boolean;
-  linkMode?: ExternalBankAccountLinkMode;
-};
+export type ExternalBankAccountScreen =
+  /** `requires_bank_account`: open a new Link session, then confirm. */
+  | "connect"
+  /** `pending_manual_verification`: open update-mode Link, then confirm. */
+  | "code"
+  /** `pending_automatic_verification`: nothing to do yet; re-check later. */
+  | "verifying"
+  /** Verified: confirm to finish, no Link. */
+  | "finish"
+  /** Confirm started micro-deposits: come back in 1-3 business days. */
+  | "deposits_sent"
+  /** `succeeded`. */
+  | "done"
+  /** Verification failed or expired. Create a new intent. */
+  | "failed"
+  /** `cancelled`. */
+  | "closed"
+  /** The intent could not be read or Plaid was unreachable. Re-check later. */
+  | "unavailable";
 
-/**
- * Why a step ended without connecting an account. `retryable` is the field a
- * host acts on; this is for copy and logging.
- */
 export type ExternalBankAccountFailureReason =
-  /** `/confirm` never answered. The account may already be connected. */
+  /** `/confirm` did not answer in time. Re-send with the same idempotency key. */
   | "timeout"
-  /** Plaid could not be reached, or returned something unrecognised. */
-  | "plaid_unreachable"
-  /** The state could not be read, so nothing was started. */
-  | "state_unavailable"
-  /** Verification failed or expired: only a new intent can finish. */
-  | "verification_unusable"
-  /** Anything else. Report it; do not silently retry. */
+  /** The account holder name or type is missing from the iframe form. */
+  | "holder_required"
+  /** The embed token is missing, invalid or expired. Mint a fresh one. */
+  | "unauthorized"
+  /** The embed token belongs to another intent. A bug: do not retry. */
+  | "forbidden"
+  /** The API refused the confirm. The posted screen says what is next. */
+  | "rejected"
   | "unknown";
 
 /**
  * Outcome of a confirm, posted to the host.
  *
  * `requires_verification` is not a failure: micro-deposits are pending and the
- * intent simply waits, so treating it as a decline closes the only path that
- * finishes the connection.
- *
- * `retryable: false` means a repeat call cannot succeed either — the intent is
- * finished — which is different from a timeout, where the account may already
- * be connected and re-sending the same idempotency key is the only safe move.
+ * intent waits. A timeout uses `error: "timeout"` as setup intents do; unlike a
+ * payment, re-sending the same idempotency key is safe and replays the first
+ * response.
  */
 export type ExternalBankAccountConfirmResult =
   | { status: "succeeded"; externalAccountId?: string; mask?: string }
-  | { status: "requires_verification"; verificationStatus?: string }
+  | {
+      status: "requires_verification";
+      verificationStatus?: ExternalBankAccountVerificationStatus;
+    }
   | {
       status: "failed";
-      /** Presentable text, never a raw API body. */
+      reason: ExternalBankAccountFailureReason;
+      /** True when another confirm on this intent can still succeed. */
+      retryable: boolean;
+      /** Presentable text, or `"timeout"`. */
       error?: string;
-      reason?: ExternalBankAccountFailureReason;
-      /** True when retrying could work: mint a fresh token and try again. */
-      retryable?: boolean;
     };
 
 /**
@@ -997,64 +988,47 @@ export type Message = EmbedIframeName &
       }
     | {
         /**
-         * Parent → embed: which external bank account intent this iframe is
-         * working on, plus whatever the host already knows. `token` is a fresh
-         * embed token (they last about 10 seconds, so they are never cached and
-         * never sit in a URL): with one, the iframe re-reads the intent before
-         * rendering. Without one it falls back to `state` /
-         * `verificationStatus`.
+         * Parent → embed: read this intent and show it. Send again to re-check
+         * an intent that is waiting on its bank.
          */
         type: "EXTERNAL_BANK_ACCOUNT_INTENT";
         intentId: string;
-        token?: string;
-        state?: ExternalBankAccountState;
-        verificationStatus?: ExternalBankAccountVerificationStatus | null;
-        institutionName?: string | null;
-        mask?: string | null;
       }
     | {
         /**
-         * Parent → embed: confirm the intent. Sent once, from the user's
-         * submit. `plaid` is present on the first confirm only; a resume has no
-         * new account to hand over. Account holder name and type are not here —
-         * the iframe owns those fields and reads them from its own form.
-         * `idempotencyKey` is one key per submit so a replay cannot repeat the
-         * Plaid calls.
+         * Parent → embed: confirm, from the user's submit. `token` is an embed
+         * token minted just now. `idempotencyKey` is one uuid per submit, reused
+         * only to retry a timeout. `plaid` is the new session's `onSuccess`
+         * values, omitted after update-mode Link and on resumes. The account
+         * holder comes from the iframe form.
          */
         type: "CONFIRM_EXTERNAL_BANK_ACCOUNT_INTENT";
         intentId: string;
         token: string;
-        idempotencyKey?: string;
+        idempotencyKey: string;
         plaid?: { public_token: string; account_id: string };
         metadata?: Record<string, string>;
       }
     | {
-        /**
-         * Embed → parent: current screen and options. Re-posted whenever the
-         * intent is re-read, including after a link token attempt that turned
-         * out to be a 422, which is a state rather than an error.
-         */
+        /** Embed → parent: the screen, posted after every read. */
         type: "EXTERNAL_BANK_ACCOUNT_STATE";
         intentId: string;
-        view: ExternalBankAccountView;
-        institutionName?: string | null;
-        mask?: string | null;
+        screen: ExternalBankAccountScreen;
+        institutionName: string | null;
+        mask: string | null;
+        error?: string;
       }
     | {
-        /**
-         * Embed → parent: this step needs Plaid Link, and it can only be
-         * mounted in the host page. `mode` says which kind of session; `error`
-         * means Link cannot run for this intent at all.
-         */
+        /** Embed → parent: open Plaid Link with this token in this mode. */
         type: "EXTERNAL_BANK_ACCOUNT_LINK_TOKEN";
         intentId: string;
-        linkToken?: string;
-        mode?: ExternalBankAccountLinkMode;
-        error?: string;
+        linkToken: string;
+        mode: ExternalBankAccountLinkMode;
       }
     | {
         /** Embed → parent: how the confirm ended. */
         type: "EXTERNAL_BANK_ACCOUNT_INTENT_RESULT";
+        intentId: string;
         result: ExternalBankAccountConfirmResult;
       }
   );
