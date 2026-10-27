@@ -25,10 +25,18 @@ type PlaidEmbeddedHandler = {
   destroy: () => void;
 };
 
-/** Regular (popup) Link session. `open` shows the overlay, `exit` tears it down. */
+/**
+ * Regular (popup) Link session.
+ *
+ * Only `destroy` tears anything down. The library also exposes `exit`, but that
+ * posts `{action: "exit"}` into an already-open frame and does nothing when the
+ * frame is closed, so it leaves both the overlay and its `message` listeners
+ * behind. Each `create()` builds a fresh frame, so skipping `destroy` stacks one
+ * more per session.
+ */
 type PlaidPopupHandler = {
   open: (name?: string) => void;
-  exit: () => void;
+  destroy: () => void;
 };
 
 type PlaidCreateConfig = {
@@ -298,7 +306,9 @@ export type OpenPlaidPopupLinkInput = {
  *
  * Link renders this session as an overlay in the host document, not a browser
  * popup, so awaiting the token before `open()` does not lose a user gesture.
- * Returns a teardown function that exits the session.
+ * Returns a teardown that destroys the session, which is also what removes the
+ * overlay; `open()` throws on a destroyed handler, so a session is never
+ * reopened after teardown — the caller creates a new one.
  */
 export async function openPlaidPopupLink({
   token,
@@ -321,13 +331,13 @@ export async function openPlaidPopupLink({
     throw new Error("Plaid Link failed to initialize");
   }
   if (signal?.aborted) {
-    handler.exit();
+    handler.destroy();
     return () => {};
   }
 
   handler.open();
 
   return () => {
-    handler.exit();
+    handler.destroy();
   };
 }

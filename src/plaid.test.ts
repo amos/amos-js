@@ -22,29 +22,53 @@ afterEach(() => {
 describe("openPlaidPopupLink", () => {
   test("opens a regular Link session with the token", async () => {
     const open = vi.fn();
-    const exit = vi.fn();
-    setPlaid({ create: () => ({ open, exit }) });
+    const destroy = vi.fn();
+    setPlaid({ create: () => ({ open, destroy }) });
 
-    const destroy = await openPlaidPopupLink({
+    const teardown = await openPlaidPopupLink({
       token: "link-sandbox-update",
       onSuccess: () => {},
     });
 
     expect(open).toHaveBeenCalledTimes(1);
-    expect(destroy).toBeTypeOf("function");
+    expect(teardown).toBeTypeOf("function");
   });
 
-  test("teardown exits the session", async () => {
-    const exit = vi.fn();
-    setPlaid({ create: () => ({ open: vi.fn(), exit }) });
+  test("teardown destroys the session rather than just exiting it", async () => {
+    const destroy = vi.fn();
+    setPlaid({ create: () => ({ open: vi.fn(), destroy }) });
 
-    const destroy = await openPlaidPopupLink({
+    const teardown = await openPlaidPopupLink({
       token: "link-sandbox-update",
       onSuccess: () => {},
     });
-    destroy();
+    teardown();
 
-    expect(exit).toHaveBeenCalledTimes(1);
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  test("a session aborted during create is destroyed without opening", async () => {
+    const open = vi.fn();
+    const destroy = vi.fn();
+    const controller = new AbortController();
+    setPlaid({
+      create: () => {
+        // The unmount landed while the Link script was still loading.
+        controller.abort();
+        return { open, destroy };
+      },
+    });
+
+    const teardown = await openPlaidPopupLink({
+      token: "link-sandbox-update",
+      onSuccess: () => {},
+      signal: controller.signal,
+    });
+
+    expect(open).not.toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalledTimes(1);
+    teardown();
+    expect(destroy).toHaveBeenCalledTimes(1);
   });
 
   test("routes success and exit through to the callers", async () => {
@@ -53,7 +77,7 @@ describe("openPlaidPopupLink", () => {
     setPlaid({
       create: (config) => {
         created = config;
-        return { open: vi.fn(), exit: vi.fn() };
+        return { open: vi.fn(), destroy: vi.fn() };
       },
     });
 
@@ -77,20 +101,20 @@ describe("openPlaidPopupLink", () => {
     expect(onExit).toHaveBeenCalledWith({ error_code: "USER_EXIT" });
   });
 
-  test("does nothing once aborted", async () => {
+  test("does nothing once aborted before create", async () => {
     const create = vi.fn();
     setPlaid({ create });
     const controller = new AbortController();
     controller.abort();
 
-    const destroy = await openPlaidPopupLink({
+    const teardown = await openPlaidPopupLink({
       token: "link-sandbox-update",
       onSuccess: () => {},
       signal: controller.signal,
     });
 
     expect(create).not.toHaveBeenCalled();
-    expect(destroy).toBeTypeOf("function");
+    expect(teardown).toBeTypeOf("function");
   });
 
   test("rejects when the script loaded without regular Link", async () => {
