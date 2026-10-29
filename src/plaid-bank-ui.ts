@@ -598,6 +598,7 @@ export function attachPlaidBankUi({
     // Plaid can call onExit before createEmbedded's promise resolves, so
     // the handler we are about to receive may already be dead.
     let invalidated = false;
+    const updateMode = codeEntry;
     if (preserveErrorOnNextMount) {
       preserveErrorOnNextMount = false;
     } else {
@@ -607,7 +608,7 @@ export function attachPlaidBankUi({
       if (!cachedLinkToken) {
         const minted = await requestPlaidLinkToken({
           iframe,
-          plaidBankVerificationId: codeEntry ? pending?.id : undefined,
+          plaidBankVerificationId: updateMode ? pending?.id : undefined,
         });
         if (superseded()) {
           return;
@@ -618,7 +619,6 @@ export function attachPlaidBankUi({
         return;
       }
       const token = cachedLinkToken;
-      const updateMode = codeEntry;
       teardownEmbedded();
       const onSuccess = (
         publicToken: string,
@@ -763,11 +763,15 @@ export function attachPlaidBankUi({
       }
       const message =
         error instanceof Error ? error.message : "Could not connect bank.";
-      if (message === "Bank form is not ready.") {
-        return;
+      if (message !== "Bank form is not ready.") {
+        setError(message);
+        setEmbedReady(true);
       }
-      setError(message);
-      setEmbedReady(true);
+      if (updateMode && codeEntry) {
+        // Back to the pending card so "Enter deposit code" can retry.
+        codeEntry = false;
+        syncSession();
+      }
     } finally {
       mounting = false;
       if (remountRequested) {

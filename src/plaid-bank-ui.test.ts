@@ -387,6 +387,59 @@ describe("attachPlaidBankUi requireAchVerification", () => {
     ui.destroy();
   });
 
+  test("a failed code entry open lets the customer retry", async () => {
+    const { host, iframe, panel } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+      },
+    });
+    const action = () =>
+      panel()?.querySelector<HTMLButtonElement>(".amos-js-plaid-action");
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(lastMount.current?.onSuccess).toBeTypeOf("function");
+    });
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      account_id: "acc_123",
+      accounts: [
+        {
+          id: "acc_123",
+          mask: "1234",
+          verification_status: "pending_manual_verification",
+        },
+      ],
+    });
+    await vi.waitFor(() => {
+      expect(panel()?.dataset["mode"]).toBe("pending");
+    });
+
+    vi.mocked(requestPlaidLinkToken).mockRejectedValueOnce(
+      new Error("Timed out waiting for the bank form."),
+    );
+    action()?.click();
+
+    await vi.waitFor(() => {
+      expect(action()?.disabled).toBe(false);
+    });
+    expect(panel()?.dataset["mode"]).toBe("pending");
+    expect(panel()?.querySelector(".amos-js-plaid-error")?.textContent).toMatch(
+      /timed out/i,
+    );
+    expect(openPlaidPopupLink).not.toHaveBeenCalled();
+
+    action()?.click();
+    await vi.waitFor(() => {
+      expect(openPlaidPopupLink).toHaveBeenCalledTimes(1);
+    });
+
+    ui.destroy();
+  });
+
   test("a pending handoff clears an earlier failure", async () => {
     const { host, iframe, panel } = mountHost();
     const ui = attachPlaidBankUi({
