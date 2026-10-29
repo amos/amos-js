@@ -752,6 +752,94 @@ export type EmbedIframeName = {
 };
 
 /**
+ * Which Plaid session a token can open.
+ *
+ * `new` mounts Embedded Institution Search. `update` re-enters an existing
+ * connection (micro-deposit code entry) and Plaid only allows that in a regular
+ * Link session, so the iframe has to say which one it means — the parent cannot
+ * infer it from the token.
+ */
+export type ExternalBankAccountLinkMode = "new" | "update";
+
+/** Intent state, as reported by the API. */
+export type ExternalBankAccountState =
+  | "requires_bank_account"
+  | "requires_verification"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
+
+/** Plaid verification status. `null` means nothing to verify yet. */
+export type ExternalBankAccountVerificationStatus =
+  | "pending_manual_verification"
+  | "pending_automatic_verification"
+  | "automatically_verified"
+  | "manually_verified"
+  | "verification_failed"
+  | "verification_expired";
+
+/**
+ * What the external bank account iframe is showing, derived from the intent on
+ * every read. `connect` and `code` are followed by an
+ * `EXTERNAL_BANK_ACCOUNT_LINK_TOKEN` message for the parent to open Link.
+ */
+export type ExternalBankAccountScreen =
+  /** `requires_bank_account`: open a new Link session, then confirm. */
+  | "connect"
+  /** `pending_manual_verification`: open update-mode Link, then confirm. */
+  | "code"
+  /** `pending_automatic_verification`: nothing to do yet; re-check later. */
+  | "verifying"
+  /** Verified: confirm to finish, no Link. */
+  | "finish"
+  /** Confirm started micro-deposits: come back in 1-3 business days. */
+  | "deposits_sent"
+  /** `succeeded`. */
+  | "done"
+  /** Verification failed or expired. Create a new intent. */
+  | "failed"
+  /** `cancelled`. */
+  | "closed"
+  /** The intent could not be read or Plaid was unreachable. Re-check later. */
+  | "unavailable";
+
+export type ExternalBankAccountFailureReason =
+  /** `/confirm` did not answer in time. Re-send with the same idempotency key. */
+  | "timeout"
+  /** The account holder name or type is missing from the iframe form. */
+  | "holder_required"
+  /** The embed token is missing, invalid or expired. Mint a fresh one. */
+  | "unauthorized"
+  /** The embed token belongs to another intent. A bug: do not retry. */
+  | "forbidden"
+  /** The API refused the confirm. The posted screen says what is next. */
+  | "rejected"
+  | "unknown";
+
+/**
+ * Outcome of a confirm, posted to the host.
+ *
+ * `requires_verification` is not a failure: micro-deposits are pending and the
+ * intent waits. A timeout uses `error: "timeout"` as setup intents do; unlike a
+ * payment, re-sending the same idempotency key is safe and replays the first
+ * response.
+ */
+export type ExternalBankAccountConfirmResult =
+  | { status: "succeeded"; externalAccountId?: string; mask?: string }
+  | {
+      status: "requires_verification";
+      verificationStatus?: ExternalBankAccountVerificationStatus;
+    }
+  | {
+      status: "failed";
+      reason: ExternalBankAccountFailureReason;
+      /** True when another confirm on this intent can still succeed. */
+      retryable: boolean;
+      /** Presentable text, or `"timeout"`. */
+      error?: string;
+    };
+
+/**
  * Typed `postMessage` payloads exchanged between the host page and the
  * embedded Amos iframe.
  */
@@ -982,6 +1070,51 @@ export type Message = EmbedIframeName &
         requestId: string;
         link_token?: string;
         error?: string;
+      }
+    | {
+        /**
+         * Parent → embed: read this intent and show it. Send again to re-check
+         * an intent that is waiting on its bank.
+         */
+        type: "EXTERNAL_BANK_ACCOUNT_INTENT";
+        intentId: string;
+      }
+    | {
+        /**
+         * Parent → embed: confirm, from the user's submit. `token` is an embed
+         * token minted just now. `idempotencyKey` is one uuid per submit, reused
+         * only to retry a timeout. `plaid` is the new session's `onSuccess`
+         * values, omitted after update-mode Link and on resumes. The account
+         * holder comes from the iframe form.
+         */
+        type: "CONFIRM_EXTERNAL_BANK_ACCOUNT_INTENT";
+        intentId: string;
+        token: string;
+        idempotencyKey: string;
+        plaid?: { public_token: string; account_id: string };
+        metadata?: Record<string, string>;
+      }
+    | {
+        /** Embed → parent: the screen, posted after every read. */
+        type: "EXTERNAL_BANK_ACCOUNT_STATE";
+        intentId: string;
+        screen: ExternalBankAccountScreen;
+        institutionName: string | null;
+        mask: string | null;
+        error?: string;
+      }
+    | {
+        /** Embed → parent: open Plaid Link with this token in this mode. */
+        type: "EXTERNAL_BANK_ACCOUNT_LINK_TOKEN";
+        intentId: string;
+        linkToken: string;
+        mode: ExternalBankAccountLinkMode;
+      }
+    | {
+        /** Embed → parent: how the confirm ended. */
+        type: "EXTERNAL_BANK_ACCOUNT_INTENT_RESULT";
+        intentId: string;
+        result: ExternalBankAccountConfirmResult;
       }
   );
 

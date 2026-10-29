@@ -26,6 +26,20 @@ type PlaidEmbeddedHandler = {
   destroy: () => void;
 };
 
+/**
+ * Regular (popup) Link session.
+ *
+ * Only `destroy` tears anything down. The library also exposes `exit`, but that
+ * posts `{action: "exit"}` into an already-open frame and does nothing when the
+ * frame is closed, so it leaves both the overlay and its `message` listeners
+ * behind. Each `create()` builds a fresh frame, so skipping `destroy` stacks one
+ * more per session.
+ */
+type PlaidPopupHandler = {
+  open: (name?: string) => void;
+  destroy: () => void;
+};
+
 type PlaidCreateConfig = {
   token: string;
   onSuccess: (
@@ -46,6 +60,7 @@ declare global {
         config: PlaidCreateConfig,
         target: HTMLElement,
       ) => PlaidEmbeddedHandler;
+      create: (config: PlaidCreateConfig) => PlaidPopupHandler;
     };
   }
 }
@@ -330,6 +345,63 @@ export async function mountPlaidEmbeddedLink({
     handler.destroy();
     return () => {};
   }
+
+  return () => {
+    handler.destroy();
+  };
+}
+
+export type OpenPlaidPopupLinkInput = {
+  token: string;
+  onSuccess: (
+    publicToken: string,
+    metadata: PlaidLinkOnSuccessMetadata,
+  ) => void;
+  onExit?: (error: { error_code?: string } | null) => void;
+  signal?: AbortSignal;
+};
+
+/**
+ * Open a regular Link session, which is the only kind Plaid allows for
+ * **update** tokens (used to re-enter an account, e.g. micro-deposit codes).
+ *
+ * Why it is separate from {@link mountPlaidEmbeddedLink} rather than a flag on
+ * it: Embedded Institution Search cannot be used in update mode at all, so the
+ * caller must know which session a token supports. That is also why the iframe
+ * sends `mode` with the token instead of the parent inferring it.
+ *
+ * Link renders this session as an overlay in the host document, not a browser
+ * popup, so awaiting the token before `open()` does not lose a user gesture.
+ * Returns a teardown that destroys the session, which is also what removes the
+ * overlay; `open()` throws on a destroyed handler, so a session is never
+ * reopened after teardown — the caller creates a new one.
+ */
+export async function openPlaidPopupLink({
+  token,
+  onSuccess,
+  onExit,
+  signal,
+}: OpenPlaidPopupLinkInput): Promise<() => void> {
+  await loadPlaidScript();
+  if (signal?.aborted) {
+    return () => {};
+  }
+  const handler = window.Plaid?.create?.({
+    token,
+    onSuccess,
+    onExit: (error) => {
+      onExit?.(error);
+    },
+  });
+  if (!handler) {
+    throw new Error("Plaid Link failed to initialize");
+  }
+  if (signal?.aborted) {
+    handler.destroy();
+    return () => {};
+  }
+
+  handler.open();
 
   return () => {
     handler.destroy();

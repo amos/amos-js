@@ -16,6 +16,12 @@ export {
   getApplePayButtonInitialHeight,
   getApplePayButtonSrc,
 } from "./apple-pay";
+export type { ExternalBankAccountStateEvent } from "./external-bank-account";
+export {
+  confirmExternalBankAccountIntent,
+  getExternalBankAccountFormSrc,
+  refreshExternalBankAccountIntent,
+} from "./external-bank-account";
 export type {
   PaymentMethodFormSkeleton,
   PaymentMethodFormSkeletonKind,
@@ -68,6 +74,8 @@ export type {
   AmosBankAccountPaymentMethodFormMountController,
   AmosBankAccountPaymentMethodFormOptions,
   AmosCreditCardPaymentMethodFormOptions,
+  AmosExternalBankAccountFormMountController,
+  AmosExternalBankAccountFormOptions,
   AmosGooglePayButtonMountController,
   AmosGooglePayButtonOptions,
   AmosPaymentMethodFormMountController,
@@ -76,6 +84,7 @@ export {
   mountAmosApplePayButton,
   mountAmosBankAccountPaymentMethodForm,
   mountAmosCreditCardPaymentMethodForm,
+  mountAmosExternalBankAccountForm,
   mountAmosGooglePayButton,
   PAYMENT_IFRAME_SANDBOX,
   SKELETON_REVEAL_TIMEOUT_MS,
@@ -96,6 +105,7 @@ export {
 } from "./payment-method-form";
 export type {
   MountPlaidEmbeddedLinkInput,
+  OpenPlaidPopupLinkInput,
   PendingBankVerificationStatus,
   PlaidCredentials,
   PlaidLinkOnSuccessMetadata,
@@ -108,6 +118,7 @@ export {
   loadPlaidScript,
   majorAmountToMinorUnits,
   mountPlaidEmbeddedLink,
+  openPlaidPopupLink,
   PENDING_BANK_VERIFICATION_STATUSES,
   plaidAccountIdFromMetadata,
   plaidLinkOutcome,
@@ -132,6 +143,12 @@ export type {
   ConfirmTimeoutResult,
   CssFontSource,
   CustomFontSource,
+  ExternalBankAccountConfirmResult,
+  ExternalBankAccountFailureReason,
+  ExternalBankAccountLinkMode,
+  ExternalBankAccountScreen,
+  ExternalBankAccountState,
+  ExternalBankAccountVerificationStatus,
   FontSource,
   GooglePayButtonElementProps,
   Message,

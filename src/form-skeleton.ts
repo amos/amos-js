@@ -430,7 +430,7 @@ function billingFields({
   ];
 }
 
-export type PaymentMethodFormSkeletonKind = "card" | "bank";
+export type PaymentMethodFormSkeletonKind = "card" | "bank" | "external_bank";
 
 export type PaymentMethodFormSkeletonOptions = {
   kind: PaymentMethodFormSkeletonKind;
@@ -468,6 +468,13 @@ function buildChildren(
       }),
     );
     return children;
+  }
+
+  if (options.kind === "external_bank") {
+    return [
+      field(labels, { label: "Account holder name" }),
+      field("above", { label: "Account holder type" }),
+    ];
   }
 
   return [
