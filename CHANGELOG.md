@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.12.2
+
+### Patch Changes
+
+- b554a30: Keep a Plaid micro-deposit handoff pending until the bank account is verified, and resume it with `plaidVerificationId`.
+
 ## 0.12.1
 
 ### Patch Changes
