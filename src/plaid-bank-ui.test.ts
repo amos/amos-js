@@ -1,25 +1,55 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  refreshPlaidBankVerification,
+  registerPlaidBankVerification,
+  requestPlaidLinkToken,
+} from "./messaging";
+import type { PlaidLinkOnSuccessMetadata } from "./plaid";
 import { attachPlaidBankUi } from "./plaid-bank-ui";
 import { createMessage } from "./types";
 
-const { destroyLink, mountPlaidEmbeddedLink } = vi.hoisted(() => {
+type MountHandlers = {
+  onLoad?: () => void;
+  onSuccess?: (
+    publicToken: string,
+    metadata: PlaidLinkOnSuccessMetadata,
+  ) => void;
+  onExit?: (error: { error_code?: string } | null) => void;
+  signal?: AbortSignal;
+};
+
+const {
+  destroyLink,
+  destroyPopup,
+  mountPlaidEmbeddedLink,
+  openPlaidPopupLink,
+  lastMount,
+  lastPopup,
+} = vi.hoisted(() => {
   const destroyLink = vi.fn();
-  const mountPlaidEmbeddedLink = vi.fn(
-    async ({
-      onLoad,
-      signal,
-    }: {
-      onLoad?: () => void;
-      signal?: AbortSignal;
-    }) => {
-      if (signal?.aborted) {
-        return () => {};
-      }
-      onLoad?.();
-      return destroyLink;
-    },
-  );
-  return { destroyLink, mountPlaidEmbeddedLink };
+  const destroyPopup = vi.fn();
+  const lastMount: { current?: MountHandlers } = {};
+  const lastPopup: { current?: MountHandlers } = {};
+  const mountPlaidEmbeddedLink = vi.fn(async (config: MountHandlers) => {
+    lastMount.current = config;
+    if (config.signal?.aborted) {
+      return () => {};
+    }
+    config.onLoad?.();
+    return destroyLink;
+  });
+  const openPlaidPopupLink = vi.fn(async (config: MountHandlers) => {
+    lastPopup.current = config;
+    return destroyPopup;
+  });
+  return {
+    destroyLink,
+    destroyPopup,
+    mountPlaidEmbeddedLink,
+    openPlaidPopupLink,
+    lastMount,
+    lastPopup,
+  };
 });
 
 vi.mock("./messaging", async (importOriginal) => {
@@ -27,6 +57,16 @@ vi.mock("./messaging", async (importOriginal) => {
   return {
     ...actual,
     requestPlaidLinkToken: vi.fn(async () => "link-sandbox-token"),
+    registerPlaidBankVerification: vi.fn(async () => ({
+      id: "ver_123",
+      status: "pending_manual_verification",
+    })),
+    refreshPlaidBankVerification: vi.fn(async () => ({
+      id: "ver_123",
+      status: "pending_manual_verification",
+      institutionName: "Synovus",
+      mask: "1234",
+    })),
   };
 });
 
@@ -34,7 +74,9 @@ vi.mock("./plaid", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./plaid")>();
   return {
     ...actual,
+    loadPlaidScript: vi.fn(async () => {}),
     mountPlaidEmbeddedLink,
+    openPlaidPopupLink,
   };
 });
 
@@ -75,7 +117,13 @@ function signalIframeReady(iframe: HTMLIFrameElement): void {
 describe("attachPlaidBankUi requireAchVerification", () => {
   beforeEach(() => {
     destroyLink.mockClear();
+    destroyPopup.mockClear();
     mountPlaidEmbeddedLink.mockClear();
+    openPlaidPopupLink.mockClear();
+    lastMount.current = undefined;
+    lastPopup.current = undefined;
+    vi.mocked(registerPlaidBankVerification).mockClear();
+    vi.mocked(requestPlaidLinkToken).mockClear();
   });
 
   afterEach(() => {
@@ -111,5 +159,389 @@ describe("attachPlaidBankUi requireAchVerification", () => {
 
     ui.destroy();
     expect(destroyLink).toHaveBeenCalledTimes(1);
+  });
+
+  test("pending micro-deposit success is not a valid bank", async () => {
+    const { host, iframe, panel } = mountHost();
+    const onValidityChange = vi.fn();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+        onValidityChange,
+      },
+    });
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(lastMount.current?.onSuccess).toBeTypeOf("function");
+    });
+
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      institution: { name: "Synovus" },
+      account_id: "acc_123",
+      accounts: [
+        {
+          id: "acc_123",
+          mask: "1234",
+          verification_status: "pending_manual_verification",
+        },
+      ],
+    });
+
+    await vi.waitFor(() => {
+      expect(registerPlaidBankVerification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          publicToken: "public-sandbox",
+          accountId: "acc_123",
+          verificationStatus: "pending_manual_verification",
+        }),
+      );
+    });
+    expect(panel()?.dataset["mode"]).toBe("pending");
+    expect(onValidityChange).toHaveBeenCalledWith({
+      isValid: false,
+      bankVerification: {
+        id: "ver_123",
+        status: "pending_manual_verification",
+      },
+    });
+    expect(onValidityChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ isValid: true }),
+    );
+
+    ui.destroy();
+  });
+
+  test("verification_failed shows an error and stays invalid", async () => {
+    const { host, iframe, panel } = mountHost();
+    const onValidityChange = vi.fn();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+        onValidityChange,
+      },
+    });
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(lastMount.current?.onSuccess).toBeTypeOf("function");
+    });
+
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      account_id: "acc_123",
+      accounts: [{ id: "acc_123", verification_status: "verification_failed" }],
+    });
+
+    await vi.waitFor(() => {
+      expect(
+        panel()?.querySelector(".amos-js-plaid-error")?.textContent,
+      ).toMatch(/failed/i);
+    });
+    expect(registerPlaidBankVerification).not.toHaveBeenCalled();
+    expect(onValidityChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ isValid: true }),
+    );
+
+    ui.destroy();
+  });
+
+  test("plaidVerificationId requests an update-mode token for manual verification", async () => {
+    const { host, iframe } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+        plaidVerificationId: "ver_saved",
+      },
+    });
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(requestPlaidLinkToken).toHaveBeenCalledWith(
+        expect.objectContaining({ plaidBankVerificationId: "ver_saved" }),
+      );
+    });
+
+    ui.destroy();
+  });
+
+  test("a failed resume lets the customer connect a bank again", async () => {
+    vi.mocked(refreshPlaidBankVerification).mockResolvedValueOnce({
+      id: "ver_saved",
+      status: "verification_expired",
+    });
+    const { host, iframe, panel } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+        plaidVerificationId: "ver_saved",
+      },
+    });
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(1);
+    });
+    expect(requestPlaidLinkToken).toHaveBeenCalledWith(
+      expect.objectContaining({ plaidBankVerificationId: undefined }),
+    );
+    expect(panel()?.dataset["mode"]).toBe("embed");
+    expect(
+      panel()?.querySelector(".amos-js-plaid-error")?.textContent,
+    ).not.toBe("");
+
+    ui.destroy();
+  });
+
+  test("a late plaidVerificationId replaces Institution Search with code entry", async () => {
+    const { host, iframe } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+      },
+    });
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(1);
+    });
+
+    ui.update({ plaidVerificationId: "ver_saved" });
+
+    expect(destroyLink).toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(requestPlaidLinkToken).toHaveBeenLastCalledWith(
+        expect.objectContaining({ plaidBankVerificationId: "ver_saved" }),
+      );
+    });
+    await vi.waitFor(() => {
+      expect(openPlaidPopupLink).toHaveBeenCalledTimes(1);
+    });
+    expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(1);
+
+    ui.destroy();
+  });
+
+  test("deposit code entry opens update-mode Link as an overlay", async () => {
+    const { host, iframe, panel } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+      },
+    });
+    const action = () =>
+      panel()?.querySelector<HTMLButtonElement>(".amos-js-plaid-action");
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(lastMount.current?.onSuccess).toBeTypeOf("function");
+    });
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      account_id: "acc_123",
+      accounts: [
+        {
+          id: "acc_123",
+          mask: "1234",
+          verification_status: "pending_manual_verification",
+        },
+      ],
+    });
+    await vi.waitFor(() => {
+      expect(panel()?.dataset["mode"]).toBe("pending");
+    });
+
+    action()?.click();
+
+    await vi.waitFor(() => {
+      expect(openPlaidPopupLink).toHaveBeenCalledTimes(1);
+    });
+    expect(requestPlaidLinkToken).toHaveBeenLastCalledWith(
+      expect.objectContaining({ plaidBankVerificationId: "ver_123" }),
+    );
+    expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(1);
+    expect(panel()?.dataset["mode"]).toBe("pending");
+    expect(action()?.disabled).toBe(true);
+
+    lastPopup.current?.onExit?.(null);
+
+    expect(destroyPopup).toHaveBeenCalledTimes(1);
+    expect(panel()?.dataset["mode"]).toBe("pending");
+    expect(action()?.disabled).toBe(false);
+
+    ui.destroy();
+  });
+
+  test("a failed code entry open lets the customer retry", async () => {
+    const { host, iframe, panel } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+      },
+    });
+    const action = () =>
+      panel()?.querySelector<HTMLButtonElement>(".amos-js-plaid-action");
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(lastMount.current?.onSuccess).toBeTypeOf("function");
+    });
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      account_id: "acc_123",
+      accounts: [
+        {
+          id: "acc_123",
+          mask: "1234",
+          verification_status: "pending_manual_verification",
+        },
+      ],
+    });
+    await vi.waitFor(() => {
+      expect(panel()?.dataset["mode"]).toBe("pending");
+    });
+
+    vi.mocked(requestPlaidLinkToken).mockRejectedValueOnce(
+      new Error("Timed out waiting for the bank form."),
+    );
+    action()?.click();
+
+    await vi.waitFor(() => {
+      expect(action()?.disabled).toBe(false);
+    });
+    expect(panel()?.dataset["mode"]).toBe("pending");
+    expect(panel()?.querySelector(".amos-js-plaid-error")?.textContent).toMatch(
+      /timed out/i,
+    );
+    expect(openPlaidPopupLink).not.toHaveBeenCalled();
+
+    action()?.click();
+    await vi.waitFor(() => {
+      expect(openPlaidPopupLink).toHaveBeenCalledTimes(1);
+    });
+
+    ui.destroy();
+  });
+
+  test("disconnecting while code entry loads mounts Institution Search", async () => {
+    const { host, iframe, panel } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+      },
+    });
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(lastMount.current?.onSuccess).toBeTypeOf("function");
+    });
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      account_id: "acc_123",
+      accounts: [
+        {
+          id: "acc_123",
+          mask: "1234",
+          verification_status: "pending_manual_verification",
+        },
+      ],
+    });
+    await vi.waitFor(() => {
+      expect(panel()?.dataset["mode"]).toBe("pending");
+    });
+
+    let resolveToken: (token: string) => void = () => {};
+    vi.mocked(requestPlaidLinkToken).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveToken = resolve;
+        }),
+    );
+    panel()?.querySelector<HTMLButtonElement>(".amos-js-plaid-action")?.click();
+    await vi.waitFor(() => {
+      expect(requestPlaidLinkToken).toHaveBeenLastCalledWith(
+        expect.objectContaining({ plaidBankVerificationId: "ver_123" }),
+      );
+    });
+
+    panel()
+      ?.querySelector<HTMLButtonElement>(
+        ".amos-js-plaid-linked .amos-js-plaid-disconnect",
+      )
+      ?.click();
+    resolveToken("link-update-token");
+
+    await vi.waitFor(() => {
+      expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(2);
+    });
+    expect(openPlaidPopupLink).not.toHaveBeenCalled();
+    expect(panel()?.dataset["mode"]).toBe("embed");
+
+    ui.destroy();
+  });
+
+  test("a pending handoff clears an earlier failure", async () => {
+    const { host, iframe, panel } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+      },
+    });
+    const errorText = () =>
+      panel()?.querySelector(".amos-js-plaid-error")?.textContent;
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(1);
+    });
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      account_id: "acc_123",
+      accounts: [{ id: "acc_123", verification_status: "verification_failed" }],
+    });
+    await vi.waitFor(() => {
+      expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(2);
+    });
+    expect(errorText()).toMatch(/failed/i);
+
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      account_id: "acc_123",
+      accounts: [
+        {
+          id: "acc_123",
+          mask: "1234",
+          verification_status: "pending_manual_verification",
+        },
+      ],
+    });
+
+    await vi.waitFor(() => {
+      expect(panel()?.dataset["mode"]).toBe("pending");
+    });
+    expect(errorText()).toBe("");
+
+    ui.destroy();
   });
 });

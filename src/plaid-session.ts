@@ -1,10 +1,15 @@
-import type { PlaidCredentials } from "./plaid";
+import type {
+  BankVerificationConfirmError,
+  PlaidConfirmCredentials,
+} from "./types";
 
 type BankPlaidSession = {
   requiresVerification: boolean;
-  plaid?: PlaidCredentials;
+  plaid?: PlaidConfirmCredentials;
   /** Drop linked Plaid credentials and restore Embedded Link. */
   clearLinked?: () => void;
+  /** Paint a micro-deposit confirm failure on the Plaid panel. */
+  showConfirmError?: (error: BankVerificationConfirmError) => void;
 };
 
 const sessions = new WeakMap<HTMLIFrameElement, BankPlaidSession>();
@@ -36,6 +41,6 @@ export function clearBankPlaidSession(
 
 export function getBankPlaidCredentials(
   iframe: HTMLIFrameElement | null | undefined,
-): PlaidCredentials | undefined {
+): PlaidConfirmCredentials | undefined {
   return getBankPlaidSession(iframe)?.plaid;
 }

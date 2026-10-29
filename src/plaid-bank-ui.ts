@@ -1,17 +1,34 @@
 import { createAbortController } from "./abort-controller";
 import { ensureSkeletonStyles } from "./form-skeleton";
 import { isMessageFromEmbedIframe } from "./iframe-message";
-import { requestPlaidLinkToken } from "./messaging";
+import {
+  refreshPlaidBankVerification,
+  registerPlaidBankVerification,
+  requestPlaidLinkToken,
+} from "./messaging";
 import type { PaymentMethodFormListenerOptions } from "./payment-method-form";
 import {
+  isPendingBankVerificationStatus,
   linkedBankLabelFromMetadata,
+  loadPlaidScript,
   mountPlaidEmbeddedLink,
-  type PlaidCredentials,
+  openPlaidPopupLink,
+  type PlaidLinkOnSuccessMetadata,
   plaidAccountIdFromMetadata,
+  plaidLinkOutcome,
+  plaidVerificationStatusFromMetadata,
   shouldShowPlaidLink,
 } from "./plaid";
 import { clearBankPlaidSession, setBankPlaidSession } from "./plaid-session";
-import type { Appearance, Message, ThemeVariable } from "./types";
+import type {
+  Appearance,
+  BankVerificationConfirmError,
+  BankVerificationStatus,
+  Message,
+  PaymentMethodFormValidityChangeEvent,
+  PlaidConfirmCredentials,
+  ThemeVariable,
+} from "./types";
 
 const STYLE_ID = "amos-js-plaid-bank-ui-styles";
 
@@ -83,7 +100,8 @@ const PLAID_BANK_UI_STYLES = `
     animation: none;
   }
 }
-.amos-js-plaid-panel[data-mode="linked"] .amos-js-plaid-embed {
+.amos-js-plaid-panel[data-mode="linked"] .amos-js-plaid-embed,
+.amos-js-plaid-panel[data-mode="pending"] .amos-js-plaid-embed {
   display: none;
 }
 .amos-js-plaid-linked {
@@ -96,8 +114,22 @@ const PLAID_BANK_UI_STYLES = `
   gap: 0.75rem;
   padding: 0.75rem;
 }
-.amos-js-plaid-panel[data-mode="linked"] .amos-js-plaid-linked {
+.amos-js-plaid-panel[data-mode="linked"] .amos-js-plaid-linked,
+.amos-js-plaid-panel[data-mode="pending"] .amos-js-plaid-linked {
   display: flex;
+}
+.amos-js-plaid-pending,
+.amos-js-plaid-action {
+  display: none;
+}
+.amos-js-plaid-panel[data-mode="pending"] .amos-js-plaid-pending,
+.amos-js-plaid-panel[data-mode="pending"] .amos-js-plaid-action {
+  display: block;
+}
+.amos-js-plaid-pending {
+  color: var(--muted-foreground, oklch(0.556 0 0));
+  font-size: 0.75rem;
+  margin: 0;
 }
 .amos-js-plaid-panel[data-mode="update"] .amos-js-plaid-embed {
   display: none;
@@ -157,7 +189,11 @@ const PLAID_BANK_UI_STYLES = `
   outline: none;
   padding: 0 0.75rem;
 }
-.amos-js-plaid-disconnect:hover {
+.amos-js-plaid-disconnect:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.amos-js-plaid-disconnect:hover:not(:disabled) {
   background: var(--accent, oklch(0.97 0 0));
   color: var(--accent-foreground, oklch(0.205 0 0));
 }
@@ -265,10 +301,42 @@ export function applyTheme(
   }
 }
 
+type LinkedBank = {
+  credentials: PlaidConfirmCredentials;
+  bankName: string;
+  last4: string;
+  verificationId?: string;
+  verificationStatus?: BankVerificationStatus;
+};
+
+type PendingBank = {
+  id: string;
+  status:
+    | "pending_manual_verification"
+    | "pending_automatic_verification"
+    | "unsent";
+  bankName: string;
+  last4: string;
+};
+
+const CONFIRM_ERROR_COPY: Record<BankVerificationConfirmError, string> = {
+  bank_verification_pending:
+    "Bank account verification is pending. Come back after the deposit arrives.",
+  bank_verification_failed:
+    "Bank account verification failed. Connect the bank again.",
+  bank_verification_expired:
+    "Bank account verification expired. Connect the bank again.",
+};
+
 export type PlaidBankUiOptions = {
   renderToken: string;
   requireAchVerification?: boolean;
   intent?: "payment" | "setup";
+  /**
+   * Stored micro-deposit verification to resume. The host keeps this id
+   * from `onValidityChange` and passes it back on a later visit.
+   */
+  plaidVerificationId?: string;
   appearance?: PaymentMethodFormListenerOptions["appearance"];
   onValidityChange?: PaymentMethodFormListenerOptions["onValidityChange"];
 };
@@ -301,16 +369,21 @@ export function attachPlaidBankUi({
   const appliedThemeKeys: Array<string> = [];
   let cachedLinkToken: string | undefined;
   let mounting = false;
+  /** Bumped to drop a mount that is still fetching its token or script. */
+  let mountGeneration = 0;
   let remountRequested = false;
   let invalidTokenRemounts = 0;
   let iframeReady = false;
-  let lastEmittedValid: boolean | undefined;
+  let lastEmittedValidity: string | undefined;
   let destroyLink: (() => void) | undefined;
   let fallbackRevealTimer: ReturnType<typeof setTimeout> | undefined;
   const abort = createAbortController();
-  let linked:
-    | { credentials: PlaidCredentials; bankName: string; last4: string }
-    | undefined;
+  let linked: LinkedBank | undefined;
+  let pending: PendingBank | undefined;
+  let codeEntry = false;
+  let preserveErrorOnNextMount = false;
+  let resumeHandledFor: string | undefined;
+  let dismissedVerificationId: string | undefined;
 
   const panel = document.createElement("div");
   panel.className = "amos-js-plaid-panel";
@@ -366,8 +439,15 @@ export function attachPlaidBankUi({
   errorEl.className = "amos-js-plaid-error";
   errorEl.setAttribute("role", "alert");
 
+  const pendingNote = document.createElement("p");
+  pendingNote.className = "amos-js-plaid-pending";
+
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = "amos-js-plaid-disconnect amos-js-plaid-action";
+
   linkedEl.append(linkedMark, linkedCopy, disconnect);
-  panel.append(embedEl, linkedEl, errorEl);
+  panel.append(embedEl, linkedEl, pendingNote, action, errorEl);
   host.append(panel);
   const formWrapper = iframe.parentElement;
 
@@ -383,13 +463,50 @@ export function attachPlaidBankUi({
     });
   }
 
+  function validityEvent(): PaymentMethodFormValidityChangeEvent {
+    if (linked?.verificationId && linked.verificationStatus) {
+      return {
+        isValid: true,
+        bankVerification: {
+          id: linked.verificationId,
+          status: linked.verificationStatus,
+        },
+      };
+    }
+    if (linked) {
+      return { isValid: true };
+    }
+    if (pending) {
+      return {
+        isValid: false,
+        bankVerification: { id: pending.id, status: pending.status },
+      };
+    }
+    return { isValid: false };
+  }
+
   function publishPlaidValidity(): void {
-    const isValid = Boolean(linked);
-    if (lastEmittedValid === isValid) {
+    const event = validityEvent();
+    const serialized = JSON.stringify(event);
+    if (lastEmittedValidity === serialized) {
       return;
     }
-    lastEmittedValid = isValid;
-    current.onValidityChange?.({ isValid });
+    lastEmittedValidity = serialized;
+    current.onValidityChange?.(event);
+  }
+
+  function verificationFailureCopy(status: string | undefined): string {
+    if (status === "verification_expired") {
+      return CONFIRM_ERROR_COPY.bank_verification_expired;
+    }
+    return CONFIRM_ERROR_COPY.bank_verification_failed;
+  }
+
+  function pendingCopy(status: PendingBank["status"]): string {
+    if (status === "pending_automatic_verification") {
+      return "A small deposit is on the way. We'll verify it automatically. Check back in one business day. Starting over sends a new deposit.";
+    }
+    return "A $0.01 deposit is on the way. Come back in one business day and enter the 3-letter code. Starting over sends a new deposit.";
   }
 
   function setEmbedReady(ready: boolean): void {
@@ -432,7 +549,12 @@ export function attachPlaidBankUi({
   }
 
   function unlink(): void {
+    dismissedVerificationId =
+      pending?.id ?? linked?.verificationId ?? current.plaidVerificationId;
     linked = undefined;
+    pending = undefined;
+    codeEntry = false;
+    mountGeneration += 1;
     cachedLinkToken = undefined;
     invalidTokenRemounts = 0;
     teardownEmbedded();
@@ -460,6 +582,7 @@ export function attachPlaidBankUi({
       !iframeReady ||
       !requiresPlaid() ||
       linked ||
+      (pending && !codeEntry) ||
       destroyLink
     ) {
       return;
@@ -472,80 +595,170 @@ export function attachPlaidBankUi({
     }
     mounting = true;
     remountRequested = false;
+    const generation = mountGeneration;
+    const superseded = () => generation !== mountGeneration;
     // Plaid can call onExit before createEmbedded's promise resolves, so
     // the handler we are about to receive may already be dead.
     let invalidated = false;
-    setError(undefined);
+    const updateMode = codeEntry;
+    if (preserveErrorOnNextMount) {
+      preserveErrorOnNextMount = false;
+    } else {
+      setError(undefined);
+    }
     try {
       if (!cachedLinkToken) {
-        cachedLinkToken = await requestPlaidLinkToken({ iframe });
+        const minted = await requestPlaidLinkToken({
+          iframe,
+          plaidBankVerificationId: updateMode ? pending?.id : undefined,
+        });
+        if (superseded()) {
+          return;
+        }
+        cachedLinkToken = minted;
       }
-      if (abort.signal.aborted || !requiresPlaid() || linked) {
+      if (abort.signal.aborted || superseded() || !requiresPlaid() || linked) {
         return;
       }
       const token = cachedLinkToken;
       teardownEmbedded();
-      const destroy = await mountPlaidEmbeddedLink({
-        token,
-        target: targetEl,
-        signal: abort.signal,
-        onLoad: () => {
-          if (abort.signal.aborted) {
-            return;
-          }
-          clearFallbackReveal();
-          setEmbedReady(true);
-        },
-        onSuccess: (publicToken, metadata) => {
-          if (abort.signal.aborted) {
-            return;
-          }
-          const accountId = plaidAccountIdFromMetadata(metadata);
-          if (!accountId) {
-            setError("Select a bank account to continue.");
-            return;
-          }
-          const label = linkedBankLabelFromMetadata(metadata);
-          linked = {
-            credentials: {
-              public_token: publicToken,
-              account_id: accountId,
-            },
+      const onSuccess = (
+        publicToken: string,
+        metadata: PlaidLinkOnSuccessMetadata,
+      ) => {
+        if (abort.signal.aborted) {
+          return;
+        }
+        const accountId = plaidAccountIdFromMetadata(metadata);
+        if (!accountId) {
+          setError("Select a bank account to continue.");
+          return;
+        }
+        const label = linkedBankLabelFromMetadata(metadata);
+        const status = plaidVerificationStatusFromMetadata(metadata);
+        const outcome = plaidLinkOutcome(status);
+        cachedLinkToken = undefined;
+        invalidTokenRemounts = 0;
+        if (outcome === "failed") {
+          linked = undefined;
+          pending = undefined;
+          codeEntry = false;
+          teardownEmbedded();
+          preserveErrorOnNextMount = true;
+          setError(verificationFailureCopy(status));
+          syncSession();
+          return;
+        }
+        if (
+          outcome === "pending" &&
+          status &&
+          isPendingBankVerificationStatus(status)
+        ) {
+          void registerPending({
+            publicToken,
+            accountId,
+            status,
             bankName: label.bankName,
             last4: label.last4,
-          };
-          cachedLinkToken = undefined;
-          // Bank linked: this session recovered. Do not reset on
-          // createEmbedded — INVALID_LINK_TOKEN arrives after that
-          // and would restart the remount budget forever.
-          invalidTokenRemounts = 0;
-          teardownEmbedded();
-          syncSession();
-        },
-        onExit: (error) => {
-          if (abort.signal.aborted) {
-            return;
+          });
+          return;
+        }
+        const verificationId = codeEntry ? pending?.id : undefined;
+        pending = undefined;
+        codeEntry = false;
+        setError(undefined);
+        linked = verificationId
+          ? {
+              credentials: { verification_id: verificationId },
+              bankName: label.bankName,
+              last4: label.last4,
+              verificationId,
+              verificationStatus: "manually_verified",
+            }
+          : {
+              credentials: {
+                public_token: publicToken,
+                account_id: accountId,
+              },
+              bankName: label.bankName,
+              last4: label.last4,
+            };
+        teardownEmbedded();
+        syncSession();
+      };
+      const onExit = (error: { error_code?: string } | null) => {
+        if (abort.signal.aborted) {
+          return;
+        }
+        if (error?.error_code !== "INVALID_LINK_TOKEN") {
+          if (updateMode) {
+            // Closing the overlay returns to the pending card, where
+            // "Enter deposit code" opens a fresh session.
+            invalidated = true;
+            cachedLinkToken = undefined;
+            codeEntry = false;
+            teardownEmbedded();
+            syncSession();
           }
-          if (error?.error_code !== "INVALID_LINK_TOKEN") {
-            return;
+          return;
+        }
+        invalidated = true;
+        cachedLinkToken = undefined;
+        teardownEmbedded();
+        if (!requiresPlaid() || linked) {
+          return;
+        }
+        if (invalidTokenRemounts >= MAX_INVALID_TOKEN_REMOUNTS) {
+          setError("Could not connect bank.");
+          setEmbedReady(true);
+          if (updateMode) {
+            codeEntry = false;
+            syncSession();
           }
-          invalidated = true;
-          cachedLinkToken = undefined;
-          teardownEmbedded();
-          if (!requiresPlaid() || linked) {
-            return;
-          }
-          if (invalidTokenRemounts >= MAX_INVALID_TOKEN_REMOUNTS) {
-            setError("Could not connect bank.");
-            setEmbedReady(true);
-            return;
-          }
-          invalidTokenRemounts += 1;
-          void ensureEmbedded();
-        },
-      });
+          return;
+        }
+        invalidTokenRemounts += 1;
+        void ensureEmbedded();
+      };
+      if (updateMode) {
+        // The overlay opens as soon as the script is ready, so check for a
+        // disconnect during the load before letting it.
+        await loadPlaidScript();
+        if (abort.signal.aborted || superseded()) {
+          return;
+        }
+      }
+      // Embedded Institution Search cannot run update mode, so code entry
+      // opens Link's overlay instead.
+      const destroy = updateMode
+        ? await openPlaidPopupLink({
+            token,
+            signal: abort.signal,
+            onSuccess,
+            onExit,
+          })
+        : await mountPlaidEmbeddedLink({
+            token,
+            target: targetEl,
+            signal: abort.signal,
+            onLoad: () => {
+              if (abort.signal.aborted) {
+                return;
+              }
+              clearFallbackReveal();
+              setEmbedReady(true);
+            },
+            onSuccess,
+            onExit,
+          });
+      if (superseded()) {
+        destroy();
+        return;
+      }
       destroyLink = destroy;
-      startFallbackReveal();
+      if (!updateMode) {
+        startFallbackReveal();
+      }
       // Abort / invalid token / a completed link still drop the handler.
       // requireAchVerification going false does not — hide via syncSession
       // so toggling the host flag does not reload Institution Search.
@@ -555,16 +768,20 @@ export function attachPlaidBankUi({
     } catch (error) {
       cachedLinkToken = undefined;
       teardownEmbedded();
-      if (abort.signal.aborted) {
+      if (abort.signal.aborted || superseded()) {
         return;
       }
       const message =
         error instanceof Error ? error.message : "Could not connect bank.";
-      if (message === "Bank form is not ready.") {
-        return;
+      if (message !== "Bank form is not ready.") {
+        setError(message);
+        setEmbedReady(true);
       }
-      setError(message);
-      setEmbedReady(true);
+      if (updateMode && codeEntry) {
+        // Back to the pending card so "Enter deposit code" can retry.
+        codeEntry = false;
+        syncSession();
+      }
     } finally {
       mounting = false;
       if (remountRequested) {
@@ -574,37 +791,208 @@ export function attachPlaidBankUi({
     }
   }
 
+  async function registerPending({
+    publicToken,
+    accountId,
+    status,
+    bankName,
+    last4,
+  }: {
+    publicToken: string;
+    accountId: string;
+    status: PendingBank["status"];
+    bankName: string;
+    last4: string;
+  }): Promise<void> {
+    try {
+      const registered = await registerPlaidBankVerification({
+        iframe,
+        publicToken,
+        accountId,
+        verificationStatus: status,
+        institutionName: bankName,
+        mask: last4,
+      });
+      if (abort.signal.aborted) {
+        return;
+      }
+      pending = { id: registered.id, status, bankName, last4 };
+      linked = undefined;
+      codeEntry = false;
+      preserveErrorOnNextMount = false;
+      setError(undefined);
+      teardownEmbedded();
+      syncSession();
+    } catch (error) {
+      if (abort.signal.aborted) {
+        return;
+      }
+      teardownEmbedded();
+      preserveErrorOnNextMount = true;
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not save bank verification.",
+      );
+      syncSession();
+    }
+  }
+
+  function applyRefreshed(
+    id: string,
+    refreshed: { status?: string; institutionName?: string; mask?: string },
+    openCodeEntry: boolean,
+  ): void {
+    const status = refreshed.status;
+    const outcome = plaidLinkOutcome(status);
+    const bankName =
+      refreshed.institutionName || pending?.bankName || "Bank account";
+    const last4 = refreshed.mask || pending?.last4 || "";
+    if (outcome === "failed") {
+      // Otherwise the stored id keeps the panel waiting to resume, and a
+      // new Link session never mounts.
+      dismissedVerificationId = id;
+      pending = undefined;
+      linked = undefined;
+      codeEntry = false;
+      preserveErrorOnNextMount = true;
+      setError(verificationFailureCopy(status));
+      syncSession();
+      return;
+    }
+    preserveErrorOnNextMount = false;
+    setError(undefined);
+    if (
+      outcome === "pending" &&
+      status &&
+      isPendingBankVerificationStatus(status)
+    ) {
+      pending = { id, status, bankName, last4 };
+      linked = undefined;
+      codeEntry = openCodeEntry && status === "pending_manual_verification";
+      syncSession();
+      return;
+    }
+    pending = undefined;
+    codeEntry = false;
+    linked = {
+      credentials: { verification_id: id },
+      bankName,
+      last4,
+      verificationId: id,
+      verificationStatus:
+        status === "manually_verified" ||
+        status === "automatically_verified" ||
+        status === "database_matched"
+          ? status
+          : "automatically_verified",
+    };
+    syncSession();
+  }
+
+  async function resumeVerification(id: string): Promise<void> {
+    try {
+      const refreshed = await refreshPlaidBankVerification({
+        iframe,
+        plaidBankVerificationId: id,
+      });
+      if (abort.signal.aborted) {
+        return;
+      }
+      applyRefreshed(id, refreshed, true);
+    } catch (error) {
+      if (abort.signal.aborted) {
+        return;
+      }
+      dismissedVerificationId = id;
+      preserveErrorOnNextMount = true;
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not resume bank verification.",
+      );
+      syncSession();
+    }
+  }
+
+  function maybeResume(): void {
+    const id = current.plaidVerificationId;
+    if (
+      !iframeReady ||
+      !requiresPlaid() ||
+      !id ||
+      id === dismissedVerificationId ||
+      resumeHandledFor === id ||
+      linked ||
+      pending
+    ) {
+      return;
+    }
+    resumeHandledFor = id;
+    void resumeVerification(id);
+  }
+
   function syncSession(): void {
     const requiresVerification = requiresPlaid();
     setBankPlaidSession(iframe, {
       requiresVerification,
       plaid: requiresVerification ? linked?.credentials : undefined,
       clearLinked: unlink,
+      showConfirmError: (error) => {
+        setError(CONFIRM_ERROR_COPY[error]);
+      },
     });
 
     if (!requiresVerification) {
       panel.dataset["mode"] = "hidden";
       panel.setAttribute("aria-hidden", "true");
       hideBankForm(false);
-      if (lastEmittedValid === true) {
-        lastEmittedValid = undefined;
+      const wasValid = lastEmittedValidity?.includes('"isValid":true') === true;
+      lastEmittedValidity = undefined;
+      if (wasValid) {
         current.onValidityChange?.({ isValid: false });
-      } else {
-        lastEmittedValid = undefined;
       }
       return;
     }
 
     panel.removeAttribute("aria-hidden");
-
-    panel.dataset["mode"] = linked ? "linked" : "embed";
     hideBankForm(true);
+
+    const waitingToResume =
+      Boolean(current.plaidVerificationId) &&
+      current.plaidVerificationId !== dismissedVerificationId &&
+      !linked &&
+      !pending;
+
     if (linked) {
+      panel.dataset["mode"] = "linked";
+      disconnect.textContent = "Disconnect";
       linkedName.textContent = linked.bankName;
       linkedMeta.textContent = linked.last4
         ? `****${linked.last4}`
         : "Connected";
+    } else if (pending) {
+      panel.dataset["mode"] = "pending";
+      action.disabled = codeEntry;
+      disconnect.textContent = "Use a different bank";
+      linkedName.textContent = pending.bankName;
+      linkedMeta.textContent = pending.last4
+        ? `****${pending.last4}`
+        : "Pending";
+      pendingNote.textContent = pendingCopy(pending.status);
+      action.textContent =
+        pending.status === "pending_automatic_verification"
+          ? "Check verification"
+          : "Enter deposit code";
+      if (codeEntry) {
+        void ensureEmbedded();
+      }
+    } else if (waitingToResume) {
+      panel.dataset["mode"] = "embed";
+      maybeResume();
     } else {
+      panel.dataset["mode"] = "embed";
+      disconnect.textContent = "Disconnect";
       void ensureEmbedded();
     }
     publishPlaidValidity();
@@ -616,10 +1004,22 @@ export function attachPlaidBankUi({
     }
     if (event.data.type === "IFRAME_READY") {
       iframeReady = true;
+      maybeResume();
     } else if (event.data.type !== "FORM_VALIDITY_CHANGE") {
       return;
     }
-    if (requiresPlaid() && !linked && !destroyLink) {
+    const resumeInFlight =
+      Boolean(current.plaidVerificationId) &&
+      current.plaidVerificationId !== dismissedVerificationId &&
+      !linked &&
+      !pending;
+    if (
+      requiresPlaid() &&
+      !linked &&
+      !pending &&
+      !destroyLink &&
+      !resumeInFlight
+    ) {
       void ensureEmbedded();
     }
   }
@@ -629,6 +1029,36 @@ export function attachPlaidBankUi({
 
   disconnect.addEventListener("click", () => {
     unlink();
+  });
+
+  action.addEventListener("click", () => {
+    if (!pending) {
+      return;
+    }
+    if (pending.status === "pending_automatic_verification") {
+      void refreshPlaidBankVerification({
+        iframe,
+        plaidBankVerificationId: pending.id,
+      })
+        .then((refreshed) => {
+          if (!pending) {
+            return;
+          }
+          applyRefreshed(pending.id, refreshed, false);
+        })
+        .catch((error: unknown) => {
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Could not check verification.",
+          );
+        });
+      return;
+    }
+    codeEntry = true;
+    cachedLinkToken = undefined;
+    teardownEmbedded();
+    syncSession();
   });
 
   return {
@@ -644,6 +1074,24 @@ export function attachPlaidBankUi({
       }
       if ("onValidityChange" in patch) {
         current.onValidityChange = patch.onValidityChange;
+      }
+      if ("plaidVerificationId" in patch) {
+        const nextId = patch.plaidVerificationId;
+        if (nextId !== current.plaidVerificationId) {
+          current.plaidVerificationId = nextId;
+          resumeHandledFor = undefined;
+          if (nextId && nextId !== dismissedVerificationId) {
+            dismissedVerificationId = undefined;
+            if (!linked && !pending) {
+              // The resume may open update-mode Link for code entry, so a
+              // new session's Institution Search must not stay mounted.
+              mountGeneration += 1;
+              remountRequested = false;
+              cachedLinkToken = undefined;
+              teardownEmbedded();
+            }
+          }
+        }
       }
       if ("appearance" in patch) {
         current.appearance = patch.appearance;

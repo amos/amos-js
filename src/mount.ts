@@ -724,6 +724,12 @@ export type AmosBankAccountPaymentMethodFormOptions =
      * @default "payment"
      */
     intent?: "payment" | "setup";
+    /**
+     * Stored micro-deposit verification id from a previous
+     * `onValidityChange` event. Passing it opens code entry or a status
+     * check instead of starting a new Plaid Link session.
+     */
+    plaidVerificationId?: string;
   };
 
 /**
@@ -754,6 +760,7 @@ export function mountAmosBankAccountPaymentMethodForm(
     billingAddressRequirement = "country",
     requireAchVerification = false,
     intent = "payment",
+    plaidVerificationId,
     ...listenerOptions
   } = options;
 
@@ -783,6 +790,7 @@ export function mountAmosBankAccountPaymentMethodForm(
       renderToken,
       requireAchVerification,
       intent,
+      plaidVerificationId,
       appearance: listenerOptions.appearance,
       onValidityChange: listenerOptions.onValidityChange,
     },
