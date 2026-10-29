@@ -14,12 +14,22 @@ type MountHandlers = {
     publicToken: string,
     metadata: PlaidLinkOnSuccessMetadata,
   ) => void;
+  onExit?: (error: { error_code?: string } | null) => void;
   signal?: AbortSignal;
 };
 
-const { destroyLink, mountPlaidEmbeddedLink, lastMount } = vi.hoisted(() => {
+const {
+  destroyLink,
+  destroyPopup,
+  mountPlaidEmbeddedLink,
+  openPlaidPopupLink,
+  lastMount,
+  lastPopup,
+} = vi.hoisted(() => {
   const destroyLink = vi.fn();
+  const destroyPopup = vi.fn();
   const lastMount: { current?: MountHandlers } = {};
+  const lastPopup: { current?: MountHandlers } = {};
   const mountPlaidEmbeddedLink = vi.fn(async (config: MountHandlers) => {
     lastMount.current = config;
     if (config.signal?.aborted) {
@@ -28,7 +38,18 @@ const { destroyLink, mountPlaidEmbeddedLink, lastMount } = vi.hoisted(() => {
     config.onLoad?.();
     return destroyLink;
   });
-  return { destroyLink, mountPlaidEmbeddedLink, lastMount };
+  const openPlaidPopupLink = vi.fn(async (config: MountHandlers) => {
+    lastPopup.current = config;
+    return destroyPopup;
+  });
+  return {
+    destroyLink,
+    destroyPopup,
+    mountPlaidEmbeddedLink,
+    openPlaidPopupLink,
+    lastMount,
+    lastPopup,
+  };
 });
 
 vi.mock("./messaging", async (importOriginal) => {
@@ -54,6 +75,7 @@ vi.mock("./plaid", async (importOriginal) => {
   return {
     ...actual,
     mountPlaidEmbeddedLink,
+    openPlaidPopupLink,
   };
 });
 
@@ -94,8 +116,11 @@ function signalIframeReady(iframe: HTMLIFrameElement): void {
 describe("attachPlaidBankUi requireAchVerification", () => {
   beforeEach(() => {
     destroyLink.mockClear();
+    destroyPopup.mockClear();
     mountPlaidEmbeddedLink.mockClear();
+    openPlaidPopupLink.mockClear();
     lastMount.current = undefined;
+    lastPopup.current = undefined;
     vi.mocked(registerPlaidBankVerification).mockClear();
     vi.mocked(requestPlaidLinkToken).mockClear();
   });
@@ -303,8 +328,61 @@ describe("attachPlaidBankUi requireAchVerification", () => {
       );
     });
     await vi.waitFor(() => {
-      expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(2);
+      expect(openPlaidPopupLink).toHaveBeenCalledTimes(1);
     });
+    expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(1);
+
+    ui.destroy();
+  });
+
+  test("deposit code entry opens update-mode Link as an overlay", async () => {
+    const { host, iframe, panel } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+      },
+    });
+    const action = () =>
+      panel()?.querySelector<HTMLButtonElement>(".amos-js-plaid-action");
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(lastMount.current?.onSuccess).toBeTypeOf("function");
+    });
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      account_id: "acc_123",
+      accounts: [
+        {
+          id: "acc_123",
+          mask: "1234",
+          verification_status: "pending_manual_verification",
+        },
+      ],
+    });
+    await vi.waitFor(() => {
+      expect(panel()?.dataset["mode"]).toBe("pending");
+    });
+
+    action()?.click();
+
+    await vi.waitFor(() => {
+      expect(openPlaidPopupLink).toHaveBeenCalledTimes(1);
+    });
+    expect(requestPlaidLinkToken).toHaveBeenLastCalledWith(
+      expect.objectContaining({ plaidBankVerificationId: "ver_123" }),
+    );
+    expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(1);
+    expect(panel()?.dataset["mode"]).toBe("pending");
+    expect(action()?.disabled).toBe(true);
+
+    lastPopup.current?.onExit?.(null);
+
+    expect(destroyPopup).toHaveBeenCalledTimes(1);
+    expect(panel()?.dataset["mode"]).toBe("pending");
+    expect(action()?.disabled).toBe(false);
 
     ui.destroy();
   });
