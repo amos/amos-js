@@ -1095,6 +1095,17 @@ export type Message = EmbedIframeName &
         metadata?: Record<string, string>;
       }
     | {
+        /**
+         * Parent → embed: the embed token an
+         * `EXTERNAL_BANK_ACCOUNT_TOKEN_REQUEST` asked for, or `error`.
+         */
+        type: "EXTERNAL_BANK_ACCOUNT_TOKEN";
+        intentId: string;
+        requestId: string;
+        token?: string;
+        error?: string;
+      }
+    | {
         /** Embed → parent: the screen, posted after every read. */
         type: "EXTERNAL_BANK_ACCOUNT_STATE";
         intentId: string;
@@ -1109,6 +1120,15 @@ export type Message = EmbedIframeName &
         intentId: string;
         linkToken: string;
         mode: ExternalBankAccountLinkMode;
+      }
+    | {
+        /**
+         * Embed → parent: ask for an embed token for one call on this intent.
+         * Embed tokens expire within seconds, so the form asks before each.
+         */
+        type: "EXTERNAL_BANK_ACCOUNT_TOKEN_REQUEST";
+        intentId: string;
+        requestId: string;
       }
     | {
         /** Embed → parent: how the confirm ended. */

@@ -50,6 +50,12 @@ export type ExternalBankAccountStateEvent = {
 export type ExternalBankAccountUiOptions = {
   intentId: string;
   appearance?: Appearance;
+  /**
+   * Mint an embed token for the intent with your server's
+   * `POST /external_bank_account_intents/:id/embed_token`. Called before each
+   * call the iframe makes, because the token expires within seconds.
+   */
+  getEmbedToken: (intentId: string) => Promise<string>;
   onStateChange?: (event: ExternalBankAccountStateEvent) => void;
   onValidityChange?: (event: { isValid: boolean }) => void;
 };
@@ -215,6 +221,34 @@ export function attachExternalBankAccountUi({
   function requestIntent(): void {
     link = undefined;
     post({ type: "EXTERNAL_BANK_ACCOUNT_INTENT", intentId: current.intentId });
+  }
+
+  /** Answer an `EXTERNAL_BANK_ACCOUNT_TOKEN_REQUEST`, even when minting fails. */
+  async function provideToken(
+    requestId: string,
+    intentId: string,
+  ): Promise<void> {
+    const reply = {
+      type: "EXTERNAL_BANK_ACCOUNT_TOKEN",
+      intentId,
+      requestId,
+    } as const;
+    try {
+      const token = await current.getEmbedToken(intentId);
+      post(
+        token
+          ? { ...reply, token }
+          : { ...reply, error: "Could not mint an embed token." },
+      );
+    } catch (error) {
+      post({
+        ...reply,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not mint an embed token.",
+      });
+    }
   }
 
   function onInvalidLinkToken(): void {
@@ -429,6 +463,11 @@ export function attachExternalBankAccountUi({
         holderValid = data.isValid;
         publishValidity();
         return;
+      case "EXTERNAL_BANK_ACCOUNT_TOKEN_REQUEST":
+        if (data.intentId === current.intentId) {
+          void provideToken(data.requestId, data.intentId);
+        }
+        return;
       case "EXTERNAL_BANK_ACCOUNT_STATE":
         if (data.intentId === current.intentId) {
           onState({
@@ -503,6 +542,9 @@ export function attachExternalBankAccountUi({
 
   return {
     update(patch) {
+      if (patch.getEmbedToken) {
+        current.getEmbedToken = patch.getEmbedToken;
+      }
       if ("onStateChange" in patch) {
         current.onStateChange = patch.onStateChange;
       }

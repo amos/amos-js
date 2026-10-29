@@ -424,7 +424,9 @@ mountAmosBankAccountPaymentMethodForm("#bank-form", {
 
 Links a bank account to pay out to through an external bank account intent. The iframe reads the intent, shows its status, and collects the account holder. Plaid Link runs on the host page below it: Embedded Institution Search for a first link (`connect`), or a button that opens Link's overlay to enter micro-deposit codes (`code`). Same Plaid CSP as `mountAmosBankAccountPaymentMethodForm`.
 
-Options: `renderToken` and `intentId` (required), `appearance`, `onStateChange({ screen, institutionName, mask, error? })`, `onValidityChange({ isValid })` (true once the holder is filled in and the bank step is done), and `onEscapeKeyPressed`. The controller has `iframe`, `update(patch)`, `refresh()` (read the intent again, e.g. while `verifying`), and `destroy()`.
+Options: `renderToken`, `intentId`, and `getEmbedToken(intentId)` (required), `appearance`, `onStateChange({ screen, institutionName, mask, error? })`, `onValidityChange({ isValid })` (true once the holder is filled in and the bank step is done), and `onEscapeKeyPressed`. The controller has `iframe`, `update(patch)`, `refresh()` (read the intent again, e.g. while `verifying`), and `destroy()`.
+
+`getEmbedToken` returns a `Promise<string>` of an embed token your server mints with `POST /external_bank_account_intents/:id/embed_token`. Embed tokens expire within seconds, so the form calls it before each call it makes for the intent: reading it, and minting the Plaid Link token.
 
 ```js
 import {
@@ -435,6 +437,8 @@ import {
 const form = mountAmosExternalBankAccountForm("#payout-bank", {
   renderToken,
   intentId,
+  // Your server calls POST /external_bank_account_intents/:id/embed_token.
+  getEmbedToken: (id) => mintEmbedToken(id),
   onStateChange: ({ screen }) => {
     submit.hidden = !["connect", "code", "finish"].includes(screen);
   },
@@ -443,11 +447,10 @@ const form = mountAmosExternalBankAccountForm("#payout-bank", {
   },
 });
 
-// On submit, mint the embed token on your server
-// (POST /external_bank_account_intents/:id/embed_token), then:
+// On submit:
 const result = await confirmExternalBankAccountIntent({
   iframe: form.iframe,
-  token,
+  token: await mintEmbedToken(intentId),
 });
 ```
 
