@@ -184,6 +184,7 @@ describe("mountAmosExternalBankAccountForm", () => {
     const controller = mountAmosExternalBankAccountForm(host, {
       renderToken: RENDER_TOKEN,
       intentId: "ebai_123",
+      getEmbedToken: async () => "embed.jwt",
     });
 
     const src = new URL(controller.iframe.src);

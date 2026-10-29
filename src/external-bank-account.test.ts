@@ -43,7 +43,11 @@ const METADATA = {
   accounts: [{ id: "acc_1", mask: "6789" }],
 } as PlaidLinkOnSuccessMetadata;
 
-function setup() {
+function setup({
+  getEmbedToken = async () => "embed.jwt",
+}: {
+  getEmbedToken?: (intentId: string) => Promise<string>;
+} = {}) {
   const host = document.createElement("div");
   const iframe = document.createElement("iframe");
   iframe.src = `${location.origin}/`;
@@ -66,7 +70,12 @@ function setup() {
   const ui = attachExternalBankAccountUi({
     host,
     iframe,
-    options: { intentId: INTENT_ID, onStateChange, onValidityChange },
+    options: {
+      intentId: INTENT_ID,
+      getEmbedToken,
+      onStateChange,
+      onValidityChange,
+    },
   });
 
   function fromIframe(message: Message): void {
@@ -179,6 +188,76 @@ describe("attachExternalBankAccountUi", () => {
     form.ui.destroy();
     refreshExternalBankAccountIntent({ iframe: form.iframe });
     expect(form.posted).toHaveLength(1);
+  });
+
+  test("answers a token request with the token the host mints", async () => {
+    const minted: Array<string> = [];
+    const form = setup({
+      getEmbedToken: async (intentId) => {
+        minted.push(intentId);
+        return "embed.jwt";
+      },
+    });
+
+    form.fromIframe({
+      type: "EXTERNAL_BANK_ACCOUNT_TOKEN_REQUEST",
+      intentId: INTENT_ID,
+      requestId: "r1",
+    });
+
+    await vi.waitFor(() => {
+      expect(form.posted).toContainEqual({
+        type: "EXTERNAL_BANK_ACCOUNT_TOKEN",
+        intentId: INTENT_ID,
+        requestId: "r1",
+        token: "embed.jwt",
+      });
+    });
+    expect(minted).toEqual([INTENT_ID]);
+    form.ui.destroy();
+  });
+
+  test("answers with the error when minting fails", async () => {
+    const form = setup({
+      getEmbedToken: async () => {
+        throw new Error("Session expired");
+      },
+    });
+
+    form.fromIframe({
+      type: "EXTERNAL_BANK_ACCOUNT_TOKEN_REQUEST",
+      intentId: INTENT_ID,
+      requestId: "r1",
+    });
+
+    await vi.waitFor(() => {
+      expect(form.posted).toContainEqual({
+        type: "EXTERNAL_BANK_ACCOUNT_TOKEN",
+        intentId: INTENT_ID,
+        requestId: "r1",
+        error: "Session expired",
+      });
+    });
+    form.ui.destroy();
+  });
+
+  test("mints for no other intent", async () => {
+    const mint = vi.fn(async () => "embed.jwt");
+    const form = setup({ getEmbedToken: mint });
+
+    form.fromIframe({
+      type: "EXTERNAL_BANK_ACCOUNT_TOKEN_REQUEST",
+      intentId: "ebai_other",
+      requestId: "r1",
+    });
+    form.fromIframe({
+      type: "EXTERNAL_BANK_ACCOUNT_TOKEN_REQUEST",
+      intentId: INTENT_ID,
+      requestId: "r2",
+    });
+
+    await vi.waitFor(() => expect(mint).toHaveBeenCalledTimes(1));
+    form.ui.destroy();
   });
 
   test("reports state and ignores other intents", () => {

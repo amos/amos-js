@@ -825,6 +825,12 @@ export type AmosExternalBankAccountFormOptions = {
   renderToken: string;
   /** The external bank account intent this form links. */
   intentId: string;
+  /**
+   * Mint an embed token for the intent with your server's
+   * `POST /external_bank_account_intents/:id/embed_token`. Called before each
+   * call the iframe makes, because the token expires within seconds.
+   */
+  getEmbedToken: (intentId: string) => Promise<string>;
   appearance?: Appearance;
   /**
    * Called with each screen the form shows, e.g. to hide your submit
@@ -878,6 +884,7 @@ export function mountAmosExternalBankAccountForm(
     renderToken,
     intentId,
     appearance,
+    getEmbedToken,
     onStateChange,
     onValidityChange,
     onEscapeKeyPressed,
@@ -901,7 +908,13 @@ export function mountAmosExternalBankAccountForm(
   const bankUi = attachExternalBankAccountUi({
     host,
     iframe,
-    options: { intentId, appearance, onStateChange, onValidityChange },
+    options: {
+      intentId,
+      appearance,
+      getEmbedToken,
+      onStateChange,
+      onValidityChange,
+    },
   });
 
   return {
