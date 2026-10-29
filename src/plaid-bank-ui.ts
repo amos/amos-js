@@ -60,12 +60,17 @@ const PLAID_BANK_UI_STYLES = `
   width: 0 !important;
 }
 .amos-js-plaid-embed {
+  border-radius: var(--radius, 0.625rem);
   box-sizing: border-box;
   height: 350px;
   min-height: 350px;
   min-width: 300px;
+  overflow: hidden;
   position: relative;
   width: 100%;
+}
+.amos-js-plaid-panel[data-amos-external-bank-account-panel]:not([data-mode="hidden"]) {
+  margin-top: var(--field-gap, 1rem);
 }
 .amos-js-plaid-embed-target {
   box-sizing: border-box;
