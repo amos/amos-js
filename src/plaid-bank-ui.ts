@@ -362,6 +362,8 @@ export function attachPlaidBankUi({
   const appliedThemeKeys: Array<string> = [];
   let cachedLinkToken: string | undefined;
   let mounting = false;
+  /** Bumped to drop a mount that is still fetching its token or script. */
+  let mountGeneration = 0;
   let remountRequested = false;
   let invalidTokenRemounts = 0;
   let iframeReady = false;
@@ -585,6 +587,8 @@ export function attachPlaidBankUi({
     }
     mounting = true;
     remountRequested = false;
+    const generation = mountGeneration;
+    const superseded = () => generation !== mountGeneration;
     // Plaid can call onExit before createEmbedded's promise resolves, so
     // the handler we are about to receive may already be dead.
     let invalidated = false;
@@ -595,12 +599,16 @@ export function attachPlaidBankUi({
     }
     try {
       if (!cachedLinkToken) {
-        cachedLinkToken = await requestPlaidLinkToken({
+        const minted = await requestPlaidLinkToken({
           iframe,
           plaidBankVerificationId: codeEntry ? pending?.id : undefined,
         });
+        if (superseded()) {
+          return;
+        }
+        cachedLinkToken = minted;
       }
-      if (abort.signal.aborted || !requiresPlaid() || linked) {
+      if (abort.signal.aborted || superseded() || !requiresPlaid() || linked) {
         return;
       }
       const token = cachedLinkToken;
@@ -699,6 +707,10 @@ export function attachPlaidBankUi({
           void ensureEmbedded();
         },
       });
+      if (superseded()) {
+        destroy();
+        return;
+      }
       destroyLink = destroy;
       startFallbackReveal();
       // Abort / invalid token / a completed link still drop the handler.
@@ -757,6 +769,8 @@ export function attachPlaidBankUi({
       pending = { id: registered.id, status, bankName, last4 };
       linked = undefined;
       codeEntry = false;
+      preserveErrorOnNextMount = false;
+      setError(undefined);
       teardownEmbedded();
       syncSession();
     } catch (error) {
@@ -785,6 +799,9 @@ export function attachPlaidBankUi({
       refreshed.institutionName || pending?.bankName || "Bank account";
     const last4 = refreshed.mask || pending?.last4 || "";
     if (outcome === "failed") {
+      // Otherwise the stored id keeps the panel waiting to resume, and a
+      // new Link session never mounts.
+      dismissedVerificationId = id;
       pending = undefined;
       linked = undefined;
       codeEntry = false;
@@ -793,6 +810,8 @@ export function attachPlaidBankUi({
       syncSession();
       return;
     }
+    preserveErrorOnNextMount = false;
+    setError(undefined);
     if (
       outcome === "pending" &&
       status &&
@@ -1009,6 +1028,14 @@ export function attachPlaidBankUi({
           resumeHandledFor = undefined;
           if (nextId && nextId !== dismissedVerificationId) {
             dismissedVerificationId = undefined;
+            if (!linked && !pending) {
+              // The resume may need update-mode Link for code entry, which
+              // cannot mount over a new session's Institution Search.
+              mountGeneration += 1;
+              remountRequested = false;
+              cachedLinkToken = undefined;
+              teardownEmbedded();
+            }
           }
         }
       }
