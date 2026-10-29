@@ -74,6 +74,7 @@ vi.mock("./plaid", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./plaid")>();
   return {
     ...actual,
+    loadPlaidScript: vi.fn(async () => {}),
     mountPlaidEmbeddedLink,
     openPlaidPopupLink,
   };
@@ -436,6 +437,65 @@ describe("attachPlaidBankUi requireAchVerification", () => {
     await vi.waitFor(() => {
       expect(openPlaidPopupLink).toHaveBeenCalledTimes(1);
     });
+
+    ui.destroy();
+  });
+
+  test("disconnecting while code entry loads mounts Institution Search", async () => {
+    const { host, iframe, panel } = mountHost();
+    const ui = attachPlaidBankUi({
+      host,
+      iframe,
+      options: {
+        renderToken: unsignedJwt({}),
+        requireAchVerification: true,
+      },
+    });
+
+    signalIframeReady(iframe);
+    await vi.waitFor(() => {
+      expect(lastMount.current?.onSuccess).toBeTypeOf("function");
+    });
+    lastMount.current?.onSuccess?.("public-sandbox", {
+      account_id: "acc_123",
+      accounts: [
+        {
+          id: "acc_123",
+          mask: "1234",
+          verification_status: "pending_manual_verification",
+        },
+      ],
+    });
+    await vi.waitFor(() => {
+      expect(panel()?.dataset["mode"]).toBe("pending");
+    });
+
+    let resolveToken: (token: string) => void = () => {};
+    vi.mocked(requestPlaidLinkToken).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveToken = resolve;
+        }),
+    );
+    panel()?.querySelector<HTMLButtonElement>(".amos-js-plaid-action")?.click();
+    await vi.waitFor(() => {
+      expect(requestPlaidLinkToken).toHaveBeenLastCalledWith(
+        expect.objectContaining({ plaidBankVerificationId: "ver_123" }),
+      );
+    });
+
+    panel()
+      ?.querySelector<HTMLButtonElement>(
+        ".amos-js-plaid-linked .amos-js-plaid-disconnect",
+      )
+      ?.click();
+    resolveToken("link-update-token");
+
+    await vi.waitFor(() => {
+      expect(mountPlaidEmbeddedLink).toHaveBeenCalledTimes(2);
+    });
+    expect(openPlaidPopupLink).not.toHaveBeenCalled();
+    expect(panel()?.dataset["mode"]).toBe("embed");
 
     ui.destroy();
   });

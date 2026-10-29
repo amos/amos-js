@@ -10,6 +10,7 @@ import type { PaymentMethodFormListenerOptions } from "./payment-method-form";
 import {
   isPendingBankVerificationStatus,
   linkedBankLabelFromMetadata,
+  loadPlaidScript,
   mountPlaidEmbeddedLink,
   openPlaidPopupLink,
   type PlaidLinkOnSuccessMetadata,
@@ -553,6 +554,7 @@ export function attachPlaidBankUi({
     linked = undefined;
     pending = undefined;
     codeEntry = false;
+    mountGeneration += 1;
     cachedLinkToken = undefined;
     invalidTokenRemounts = 0;
     teardownEmbedded();
@@ -718,6 +720,14 @@ export function attachPlaidBankUi({
         invalidTokenRemounts += 1;
         void ensureEmbedded();
       };
+      if (updateMode) {
+        // The overlay opens as soon as the script is ready, so check for a
+        // disconnect during the load before letting it.
+        await loadPlaidScript();
+        if (abort.signal.aborted || superseded()) {
+          return;
+        }
+      }
       // Embedded Institution Search cannot run update mode, so code entry
       // opens Link's overlay instead.
       const destroy = updateMode
@@ -758,7 +768,7 @@ export function attachPlaidBankUi({
     } catch (error) {
       cachedLinkToken = undefined;
       teardownEmbedded();
-      if (abort.signal.aborted) {
+      if (abort.signal.aborted || superseded()) {
         return;
       }
       const message =
