@@ -817,7 +817,8 @@ export function mountAmosBankAccountPaymentMethodForm(
  */
 export type AmosExternalBankAccountFormOptions = {
   /**
-   * The Amos render token for the form. It must allow bank accounts.
+   * The Amos render token for the form. Any valid render token works; it
+   * doesn't need to allow a particular payment method.
    *
    * It is safe to pass this to the client. Create this on
    * https://dashboard.amos.com.

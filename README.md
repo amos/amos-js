@@ -424,7 +424,7 @@ mountAmosBankAccountPaymentMethodForm("#bank-form", {
 
 Links a bank account to pay out to through an external bank account intent. The iframe reads the intent, shows its status, and collects the account holder. Plaid Link runs on the host page below it: Embedded Institution Search for a first link (`connect`), or a button that opens Link's overlay to enter micro-deposit codes (`code`). Same Plaid CSP as `mountAmosBankAccountPaymentMethodForm`.
 
-Options: `renderToken`, `intentId`, and `getEmbedToken(intentId)` (required), `appearance`, `onStateChange({ screen, institutionName, mask, error? })`, `onValidityChange({ isValid })` (true once the holder is filled in and the bank step is done), and `onEscapeKeyPressed`. The controller has `iframe`, `update(patch)`, `refresh()` (read the intent again, e.g. while `verifying`), and `destroy()`.
+Options: `renderToken` (any valid render token; it doesn't need to allow a particular payment method), `intentId`, and `getEmbedToken(intentId)` (required), `appearance`, `onStateChange({ screen, institutionName, mask, error? })`, `onValidityChange({ isValid })` (true once the holder is filled in and the bank step is done), and `onEscapeKeyPressed`. The controller has `iframe`, `update(patch)`, `refresh()` (read the intent again, e.g. while `verifying`), and `destroy()`.
 
 `getEmbedToken` returns a `Promise<string>` of an embed token your server mints with `POST /external_bank_account_intents/:id/embed_token`. Embed tokens expire within seconds, so the form calls it before each call it makes for the intent: reading it, and minting the Plaid Link token.
 
