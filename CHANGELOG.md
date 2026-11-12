@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.13.1
+
+### Patch Changes
+
+- Add `mountAmosOnboarding`, the whole legal entity application in one iframe. The iframe calls `/embed/legal_entity_applications/…` with a fresh embed token from `getEmbedToken` before each request. Without an `applicationId` it collects the first step and asks `createApplication` to create the application on your server. `refreshOnboarding` re-reads it. Requires `@amos.com/node` 0.1.80 or later for the application types.
+
 ## 0.13.0
 
 ### Minor Changes
