@@ -839,6 +839,66 @@ export type ExternalBankAccountConfirmResult =
       error?: string;
     };
 
+/** A legal entity application's state, as the API reports it. */
+export type OnboardingApplicationState =
+  components["schemas"]["LegalEntityApplicationStateType"];
+
+/**
+ * The fields the onboarding form collects before an application exists:
+ * everything `POST /legal_entity_applications` requires. Passed to
+ * `createApplication` when the form starts without an `applicationId`.
+ */
+export type OnboardingCreateApplicationInput =
+  components["schemas"]["CreateLegalEntityApplicationInput"];
+
+/**
+ * The screen the onboarding form shows. Report-only (e.g. for analytics):
+ * the applicant can move back and forth, so screens repeat.
+ */
+export type OnboardingStep =
+  | "loading"
+  | "business"
+  | "profile"
+  | "principals"
+  | "payouts"
+  | "documents"
+  | "review"
+  | "status"
+  | "unavailable";
+
+/** One requirement that still blocks submission or approval. */
+export type OnboardingRequirement = {
+  /** `legal_entity_application_principal`, `merchant_application` or `irs_cp_575`. */
+  requirementType: string;
+  /** What the underwriter wrote, when they added it by hand. */
+  message: string | null;
+};
+
+/**
+ * What the onboarding form shows, posted after every read and save. Holds
+ * no field values: the same facts a webhook gives your server.
+ */
+export type OnboardingStateEvent = {
+  /** `null` until the applicant saves the first step. */
+  applicationId: string | null;
+  applicationState: OnboardingApplicationState | null;
+  step: OnboardingStep;
+  openRequirements: Array<OnboardingRequirement>;
+};
+
+export type OnboardingSubmittedEvent = {
+  applicationId: string;
+  applicationState: OnboardingApplicationState;
+};
+
+/**
+ * What `createApplication` resolves with. Return the API's 422 `errors`
+ * as they came, so the form can mark the fields they name.
+ */
+export type OnboardingCreateApplicationResult =
+  | { applicationId: string }
+  | { errors: Record<string, Array<string>> };
+
 /**
  * Typed `postMessage` payloads exchanged between the host page and the
  * embedded Amos iframe.
@@ -1135,6 +1195,64 @@ export type Message = EmbedIframeName &
         type: "EXTERNAL_BANK_ACCOUNT_INTENT_RESULT";
         intentId: string;
         result: ExternalBankAccountConfirmResult;
+      }
+    | {
+        /**
+         * Parent → embed: show this legal entity application, or start a new
+         * one when `applicationId` is `null`. Send again to re-read it.
+         */
+        type: "ONBOARDING_APPLICATION";
+        applicationId: string | null;
+      }
+    | {
+        /**
+         * Embed → parent: ask for an embed token for one call on this
+         * application. Embed tokens expire within seconds, so the form asks
+         * before each call.
+         */
+        type: "ONBOARDING_TOKEN_REQUEST";
+        applicationId: string;
+        requestId: string;
+      }
+    | {
+        /** Parent → embed: the token an `ONBOARDING_TOKEN_REQUEST` asked for, or `error`. */
+        type: "ONBOARDING_TOKEN";
+        applicationId: string;
+        requestId: string;
+        token?: string;
+        error?: string;
+      }
+    | {
+        /**
+         * Embed → parent: no application exists yet, so ask the platform to
+         * create one with the first step's fields.
+         */
+        type: "ONBOARDING_CREATE_REQUEST";
+        requestId: string;
+        application: OnboardingCreateApplicationInput;
+      }
+    | {
+        /**
+         * Parent → embed: the application `ONBOARDING_CREATE_REQUEST` made,
+         * the API's field `errors`, or an `error` to show.
+         */
+        type: "ONBOARDING_CREATED";
+        requestId: string;
+        applicationId?: string;
+        errors?: Record<string, Array<string>>;
+        error?: string;
+      }
+    | ({
+        /** Embed → parent: the screen and application state, after every read and save. */
+        type: "ONBOARDING_STATE";
+      } & OnboardingStateEvent)
+    | ({
+        /** Embed → parent: the applicant submitted (or resubmitted) the application. */
+        type: "ONBOARDING_SUBMITTED";
+      } & OnboardingSubmittedEvent)
+    | {
+        /** Embed → parent: a new screen opened; scroll the form's top into view. */
+        type: "ONBOARDING_SCROLL_INTO_VIEW";
       }
   );
 

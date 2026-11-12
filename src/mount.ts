@@ -26,6 +26,11 @@ import {
   getGooglePayButtonSrc,
 } from "./google-pay";
 import {
+  attachOnboardingUi,
+  getOnboardingFormSrc,
+  type OnboardingUiOptions,
+} from "./onboarding";
+import {
   attachPaymentMethodFormListeners,
   type BillingAddressRequirement,
   type CreditCardAdditionalFields,
@@ -37,7 +42,13 @@ import {
   type PaymentMethodFormListenerOptions,
 } from "./payment-method-form";
 import { attachPlaidBankUi } from "./plaid-bank-ui";
-import type { Appearance } from "./types";
+import type {
+  Appearance,
+  OnboardingCreateApplicationInput,
+  OnboardingCreateApplicationResult,
+  OnboardingStateEvent,
+  OnboardingSubmittedEvent,
+} from "./types";
 
 type Container = HTMLElement | string;
 
@@ -939,6 +950,124 @@ export function mountAmosExternalBankAccountForm(
       iframeMount.destroy();
     },
   };
+}
+
+/**
+ * Options accepted by {@link mountAmosOnboarding}.
+ */
+export type AmosOnboardingOptions = {
+  /**
+   * Any valid Amos render token. It pins the origins allowed to frame the
+   * form and the environment. Safe to pass to the client.
+   */
+  renderToken: string;
+  /**
+   * The legal entity application to fill in. Omit it (or pass `null`) to
+   * start a new one with `createApplication`. Changing it remounts.
+   */
+  applicationId?: string | null;
+  /**
+   * Mint an embed token for the application with your server's
+   * `POST /legal_entity_applications/:id/embed_token`. Called before each
+   * call the iframe makes, because the token expires within seconds.
+   */
+  getEmbedToken: (applicationId: string) => Promise<string>;
+  /**
+   * Create the application with your server's
+   * `POST /legal_entity_applications`, from the first step's fields.
+   * Required when there is no `applicationId`. Resolve with the API's 422
+   * `errors` to show them on the form.
+   */
+  createApplication?: (
+    application: OnboardingCreateApplicationInput,
+  ) => Promise<OnboardingCreateApplicationResult>;
+  /** Called once `createApplication` returns an id. Save it to resume later. */
+  onApplicationCreated?: (event: { applicationId: string }) => void;
+  appearance?: Appearance;
+  /**
+   * Called after every read and save with the application's state, the
+   * screen shown, and the requirements still open. Holds no field values.
+   */
+  onStateChange?: (event: OnboardingStateEvent) => void;
+  /** Called when the applicant submits or resubmits. Verify with the webhook. */
+  onSubmitted?: (event: OnboardingSubmittedEvent) => void;
+};
+
+/**
+ * Controller returned by {@link mountAmosOnboarding}.
+ */
+export type AmosOnboardingMountController = {
+  /** The underlying `<iframe>` element. */
+  iframe: HTMLIFrameElement;
+  update: (
+    patch: Partial<
+      Omit<AmosOnboardingOptions, "renderToken" | "applicationId">
+    >,
+  ) => void;
+  /** Read the application again, e.g. after a webhook. */
+  refresh: () => void;
+  destroy: () => void;
+};
+
+/**
+ * Mount the onboarding form: the whole legal entity application in one
+ * iframe. The applicant enters the business, payments profile,
+ * principals, payout account and EIN letter, then submits; if an
+ * underwriter asks for more, the same form shows what is needed.
+ *
+ * Every field goes from the iframe to Amos, except the first step of a
+ * new application, which `createApplication` sends from your server.
+ */
+export function mountAmosOnboarding(
+  container: Container,
+  options: AmosOnboardingOptions,
+): AmosOnboardingMountController {
+  const host = resolveContainer(container);
+  const { renderToken, appearance } = options;
+
+  const iframe = createIframe({
+    src: getOnboardingFormSrc(renderToken),
+    title: "Secure business application powered by Amos",
+    name: "amos-onboarding",
+    height: "480px",
+    sandbox: PAYMENT_IFRAME_SANDBOX,
+  });
+
+  const iframeMount = mountPaymentMethodFormWithSkeleton({
+    host,
+    iframe,
+    listenerOptions: { appearance },
+    skeletonOptions: { kind: "onboarding", appearance },
+  });
+
+  const ui = attachOnboardingUi({
+    iframe,
+    options: onboardingUiOptions(options),
+  });
+
+  return {
+    iframe,
+    update(patch) {
+      if ("appearance" in patch) {
+        iframeMount.update({ appearance: patch.appearance });
+      }
+      ui.update(patch);
+    },
+    refresh() {
+      ui.refresh();
+    },
+    destroy() {
+      ui.destroy();
+      iframeMount.destroy();
+    },
+  };
+}
+
+function onboardingUiOptions(
+  options: AmosOnboardingOptions,
+): OnboardingUiOptions {
+  const { renderToken: _renderToken, ...rest } = options;
+  return rest;
 }
 
 /**

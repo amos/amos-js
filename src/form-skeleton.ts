@@ -430,7 +430,11 @@ function billingFields({
   ];
 }
 
-export type PaymentMethodFormSkeletonKind = "card" | "bank" | "external_bank";
+export type PaymentMethodFormSkeletonKind =
+  | "card"
+  | "bank"
+  | "external_bank"
+  | "onboarding";
 
 export type PaymentMethodFormSkeletonOptions = {
   kind: PaymentMethodFormSkeletonKind;
@@ -468,6 +472,14 @@ function buildChildren(
       }),
     );
     return children;
+  }
+
+  if (options.kind === "onboarding") {
+    return [
+      field("above", { label: "Legal name" }),
+      field("above", { label: "Business type" }),
+      field("above", { label: "Employer Identification Number (EIN)" }),
+    ];
   }
 
   if (options.kind === "external_bank") {

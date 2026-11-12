@@ -458,6 +458,38 @@ const result = await confirmExternalBankAccountIntent({
 
 `confirmExternalBankAccountIntent` resolves `{ status: "succeeded" }`, `{ status: "requires_verification" }` (micro-deposits sent), or `{ status: "failed", reason, retryable, error? }`, and never throws. The SDK sends the picked bank only on a first link and manages the idempotency key: a new one per submit, reused only after a `timeout`, so a retry never links twice. Pass `idempotencyKey` only to override that. After 15 seconds without an answer it resolves `{ status: "failed", reason: "timeout", retryable: true }`. `refreshExternalBankAccountIntent` reads the intent again, like `controller.refresh()`.
 
+### `mountAmosOnboarding(container, options)`
+
+The whole legal entity application in one iframe: the business, how it will take payments, its principals, a payout account and the IRS EIN letter, then review and submit. If an underwriter asks for more (another principal, payments profile or EIN letter), the same form shows the request and lets the applicant resubmit. The iframe calls `/embed/legal_entity_applications/{id}/…` itself with a fresh embed token per call; field values never reach your page, with one exception below.
+
+Options: `renderToken` (any valid render token) and `getEmbedToken(applicationId)` (required); `applicationId` (omit or `null` to start a new application); `createApplication(application)` (required without an `applicationId`); `onApplicationCreated({ applicationId })`; `appearance`; `onStateChange({ applicationId, applicationState, step, openRequirements })`; `onSubmitted({ applicationId, applicationState })`. The controller has `iframe`, `update(patch)`, `refresh()` (read the application again) and `destroy()`.
+
+- `getEmbedToken` returns a `Promise<string>` your server mints with `POST /legal_entity_applications/:id/embed_token`. Tokens expire within seconds, so the form asks before each call.
+- Without an `applicationId`, the form collects the first step and calls `createApplication` with those fields (legal name, entity and ownership type, EIN, contact, address). Create the application on your server with `POST /legal_entity_applications` and resolve `{ applicationId }`, or `{ errors }` with the API's 422 field errors to show them on the form. Save the id (`onApplicationCreated`) and pass it next time to resume. These first-step fields, the EIN included, pass through your page, because the API only creates applications from a platform's server.
+- `onStateChange` carries no field values. `step` is `business`, `profile`, `principals`, `payouts`, `documents`, `review`, `status`, `loading` or `unavailable`; treat it as analytics, since steps repeat. `openRequirements` lists `{ requirementType, message }`, with the underwriter's message when they wrote one.
+
+```js
+import { mountAmosOnboarding } from "@amos.com/amos-js";
+
+const form = mountAmosOnboarding("#application", {
+  renderToken,
+  applicationId: savedApplicationId ?? null,
+  // Your server calls POST /legal_entity_applications/:id/embed_token.
+  getEmbedToken: (id) => mintEmbedToken(id),
+  // Your server calls POST /legal_entity_applications.
+  createApplication: (application) => createApplication(application),
+  onApplicationCreated: ({ applicationId }) => saveApplicationId(applicationId),
+  onSubmitted: () => showThanks(),
+});
+
+// After a legal_entity_application.* webhook:
+form.refresh();
+```
+
+### `refreshOnboarding({ iframe })`
+
+Reads the application behind `mountAmosOnboarding` again, like `controller.refresh()`.
+
 ### `mountAmosGooglePayButton(container, options)`
 
 Mount the secure Google Pay button (express checkout) into a container element. A button-shaped skeleton with an opaque background is shown immediately. The iframe stays at opacity 1 with an explicit pixel width and height, and is `inert`, until appearance is applied, or for 1.5s after the postMessage handshake starts (`IFRAME_READY`) if appearance never acks.

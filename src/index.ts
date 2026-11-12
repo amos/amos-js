@@ -78,6 +78,8 @@ export type {
   AmosExternalBankAccountFormOptions,
   AmosGooglePayButtonMountController,
   AmosGooglePayButtonOptions,
+  AmosOnboardingMountController,
+  AmosOnboardingOptions,
   AmosPaymentMethodFormMountController,
 } from "./mount";
 export {
@@ -86,10 +88,12 @@ export {
   mountAmosCreditCardPaymentMethodForm,
   mountAmosExternalBankAccountForm,
   mountAmosGooglePayButton,
+  mountAmosOnboarding,
   PAYMENT_IFRAME_SANDBOX,
   SKELETON_REVEAL_TIMEOUT_MS,
   WALLET_IFRAME_SANDBOX,
 } from "./mount";
+export { getOnboardingFormSrc, refreshOnboarding } from "./onboarding";
 export type {
   BillingAddressRequirement,
   CreditCardAdditionalFields,
@@ -152,6 +156,13 @@ export type {
   FontSource,
   GooglePayButtonElementProps,
   Message,
+  OnboardingApplicationState,
+  OnboardingCreateApplicationInput,
+  OnboardingCreateApplicationResult,
+  OnboardingRequirement,
+  OnboardingStateEvent,
+  OnboardingStep,
+  OnboardingSubmittedEvent,
   PaymentMethodFormCardBrandChangeEvent,
   PaymentMethodFormDefaultValues,
   PaymentMethodFormField,
