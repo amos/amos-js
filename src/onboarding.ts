@@ -8,14 +8,16 @@ import {
   type Message,
   type OnboardingCreateApplicationInput,
   type OnboardingCreateApplicationResult,
+  type OnboardingOrganization,
   type OnboardingStateEvent,
   type OnboardingSubmittedEvent,
+  type OnboardingSurveyEvent,
 } from "./types";
 
 export type OnboardingUiOptions = {
   /**
    * The legal entity application to show. Omit it (or pass `null`) to start
-   * a new one: the form collects the first step, then calls
+   * a new one: the form opens on its start screen, then calls
    * `createApplication`.
    */
   applicationId?: string | null;
@@ -28,12 +30,15 @@ export type OnboardingUiOptions = {
   getEmbedToken: (applicationId: string) => Promise<string>;
   /**
    * Create the application with your server's
-   * `POST /legal_entity_applications`, using the fields the applicant
-   * entered on the first step. Required when there is no `applicationId`.
-   * Resolve with the API's 422 `errors` to show them on the form.
+   * `POST /legal_entity_applications`, using `application` as the body: the
+   * legal name and type from the start screen. Required when there is no
+   * `applicationId`. Resolve with the API's 422 `errors` to show them on
+   * the form. `organization` is what the applicant chose there (public
+   * name, organization type, sub-category), for your own records.
    */
   createApplication?: (
     application: OnboardingCreateApplicationInput,
+    organization?: OnboardingOrganization,
   ) => Promise<OnboardingCreateApplicationResult>;
   /** Called once `createApplication` returns an id. Save it to resume later. */
   onApplicationCreated?: (event: { applicationId: string }) => void;
@@ -44,6 +49,11 @@ export type OnboardingUiOptions = {
   onStateChange?: (event: OnboardingStateEvent) => void;
   /** Called when the applicant submits or resubmits. Verify with the webhook. */
   onSubmitted?: (event: OnboardingSubmittedEvent) => void;
+  /**
+   * Called with the applicant's answers each time they save the survey
+   * step. Amos does not store them; keep them if you want them.
+   */
+  onSurveyCompleted?: (event: OnboardingSurveyEvent) => void;
 };
 
 type OnboardingSession = { refresh: () => void };
@@ -124,6 +134,7 @@ export function attachOnboardingUi({
   async function create(
     requestId: string,
     application: OnboardingCreateApplicationInput,
+    organization: OnboardingOrganization | undefined,
   ): Promise<void> {
     const reply = { type: "ONBOARDING_CREATED", requestId } as const;
     // A second request for the same form (a double click, a retry after a
@@ -140,7 +151,7 @@ export function attachOnboardingUi({
       return;
     }
     try {
-      creating ??= current.createApplication(application);
+      creating ??= current.createApplication(application, organization);
       const result = await creating;
       if ("applicationId" in result && result.applicationId) {
         applicationId = result.applicationId;
@@ -178,7 +189,7 @@ export function attachOnboardingUi({
         }
         return;
       case "ONBOARDING_CREATE_REQUEST":
-        void create(data.requestId, data.application);
+        void create(data.requestId, data.application, data.organization);
         return;
       case "ONBOARDING_STATE":
         current.onStateChange?.({
@@ -192,6 +203,12 @@ export function attachOnboardingUi({
         current.onSubmitted?.({
           applicationId: data.applicationId,
           applicationState: data.applicationState,
+        });
+        return;
+      case "ONBOARDING_SURVEY":
+        current.onSurveyCompleted?.({
+          applicationId: data.applicationId,
+          survey: data.survey,
         });
         return;
       case "ONBOARDING_SCROLL_INTO_VIEW":

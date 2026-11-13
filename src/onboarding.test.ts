@@ -5,6 +5,8 @@ import {
   type Message,
   type OnboardingCreateApplicationInput,
   type OnboardingCreateApplicationResult,
+  type OnboardingOrganization,
+  type OnboardingSurvey,
 } from "./types";
 
 const APPLICATION_ID = "lea_123";
@@ -13,14 +15,22 @@ const BUSINESS: OnboardingCreateApplicationInput = {
   legal_name: "Riverside Community Food Bank",
   entity_type: "tax_exempt_organization",
   ownership_type: "private",
-  tax_id: "843157290",
-  contact_email: "finance@riversidefoodbank.org",
-  contact_phone: "+15125550148",
-  business_address_line1: "2201 E Cesar Chavez St",
-  business_city: "Austin",
-  business_state: "TX",
-  business_postal_code: "78702",
-  business_country: "US",
+};
+
+const ORGANIZATION: OnboardingOrganization = {
+  doingBusinessAs: "Riverside Food Bank",
+  organizationType: "nonprofit",
+  businessCategory: "charity",
+  religiousAffiliation: null,
+};
+
+const SURVEY: OnboardingSurvey = {
+  previousPlatform: null,
+  referralSource: "Friend",
+  referralName: "Dana Okafor",
+  channels: ["website", "email"],
+  websiteStatus: "Already live",
+  websiteUrl: "https://riversidefoodbank.org",
 };
 
 function setup({
@@ -32,6 +42,7 @@ function setup({
   getEmbedToken?: (applicationId: string) => Promise<string>;
   createApplication?: (
     application: OnboardingCreateApplicationInput,
+    organization?: OnboardingOrganization,
   ) => Promise<OnboardingCreateApplicationResult>;
 } = {}) {
   const iframe = document.createElement("iframe");
@@ -52,6 +63,7 @@ function setup({
   const onStateChange = vi.fn();
   const onSubmitted = vi.fn();
   const onApplicationCreated = vi.fn();
+  const onSurveyCompleted = vi.fn();
   const ui = attachOnboardingUi({
     iframe,
     options: {
@@ -61,6 +73,7 @@ function setup({
       onStateChange,
       onSubmitted,
       onApplicationCreated,
+      onSurveyCompleted,
     },
   });
 
@@ -82,6 +95,7 @@ function setup({
     onStateChange,
     onSubmitted,
     onApplicationCreated,
+    onSurveyCompleted,
     ofType: <T extends Message["type"]>(type: T) =>
       posted.filter(
         (message): message is Extract<Message, { type: T }> =>
@@ -183,9 +197,12 @@ describe("attachOnboardingUi", () => {
   });
 
   test("creates the application, then mints tokens for it", async () => {
-    const createApplication = vi.fn(async () => ({
-      applicationId: "lea_new",
-    }));
+    const createApplication = vi.fn(
+      async (
+        _application: OnboardingCreateApplicationInput,
+        _organization?: OnboardingOrganization,
+      ) => ({ applicationId: "lea_new" }),
+    );
     const getEmbedToken = vi.fn(async (_id: string) => "fresh.jwt");
     const form = mounted({
       applicationId: null,
@@ -200,10 +217,11 @@ describe("attachOnboardingUi", () => {
       type: "ONBOARDING_CREATE_REQUEST",
       requestId: "c1",
       application: BUSINESS,
+      organization: ORGANIZATION,
     });
     await flush();
 
-    expect(createApplication).toHaveBeenCalledWith(BUSINESS);
+    expect(createApplication).toHaveBeenCalledWith(BUSINESS, ORGANIZATION);
     expect(form.onApplicationCreated).toHaveBeenCalledWith({
       applicationId: "lea_new",
     });
@@ -280,6 +298,21 @@ describe("attachOnboardingUi", () => {
     expect(form.ofType("ONBOARDING_CREATED")[0]?.error).toMatch(
       /can't start an application/,
     );
+  });
+
+  test("hands the survey answers to the page", () => {
+    const form = mounted();
+
+    form.fromIframe({
+      type: "ONBOARDING_SURVEY",
+      applicationId: APPLICATION_ID,
+      survey: SURVEY,
+    });
+
+    expect(form.onSurveyCompleted).toHaveBeenCalledWith({
+      applicationId: APPLICATION_ID,
+      survey: SURVEY,
+    });
   });
 
   test("forwards state and submission without the message envelope", () => {

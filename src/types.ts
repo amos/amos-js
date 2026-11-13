@@ -844,12 +844,70 @@ export type OnboardingApplicationState =
   components["schemas"]["LegalEntityApplicationStateType"];
 
 /**
- * The fields the onboarding form collects before an application exists:
- * everything `POST /legal_entity_applications` requires. Passed to
- * `createApplication` when the form starts without an `applicationId`.
+ * What the onboarding form's start screen sends before an application
+ * exists: the legal name, plus the entity and ownership type the organization
+ * type implies (when it implies one). An application can be created this
+ * incomplete; the rest, the EIN included, goes from the iframe to Amos.
+ * Passed to `createApplication` when the form starts without an
+ * `applicationId`.
  */
 export type OnboardingCreateApplicationInput =
   components["schemas"]["CreateLegalEntityApplicationInput"];
+
+/** The kind of organization the applicant picks on the start screen. */
+export type OnboardingOrganizationType =
+  | "political"
+  | "nonprofit"
+  | "church_ministry"
+  | "education"
+  | "vendor";
+
+/**
+ * What the applicant said about the organization on the start screen, next
+ * to the application fields. Passed to `createApplication` as its second
+ * argument, for platforms that keep their own record of the account.
+ */
+export type OnboardingOrganization = {
+  /** The public name. The legal name when the applicant gave no other. */
+  doingBusinessAs: string;
+  organizationType: OnboardingOrganizationType;
+  /**
+   * The sub-category, which becomes the payments profile's
+   * `business_category`. A vendor has none to choose and gets `vendor`.
+   */
+  businessCategory: components["schemas"]["MerchantBusinessCategoryType"];
+  /** Asked of education only; `null` for every other type. */
+  religiousAffiliation: boolean | null;
+};
+
+/** Where the applicant plans to take payments. */
+export type OnboardingSurveyChannel =
+  | "website"
+  | "email"
+  | "internal"
+  | "social_media";
+
+/**
+ * The applicant's answers on the survey step. Amos does not store these:
+ * they are the platform's to keep, so the form hands them to
+ * `onSurveyCompleted`.
+ */
+export type OnboardingSurvey = {
+  previousPlatform: string | null;
+  /** The option chosen for "How did you hear about us?", as shown. */
+  referralSource: string;
+  /** Who referred them, when the source is a person. */
+  referralName: string | null;
+  channels: Array<OnboardingSurveyChannel>;
+  /** Asked when `channels` includes `website`. */
+  websiteStatus: string | null;
+  websiteUrl: string | null;
+};
+
+export type OnboardingSurveyEvent = {
+  applicationId: string;
+  survey: OnboardingSurvey;
+};
 
 /**
  * The screen the onboarding form shows. Report-only (e.g. for analytics):
@@ -857,11 +915,13 @@ export type OnboardingCreateApplicationInput =
  */
 export type OnboardingStep =
   | "loading"
+  | "start"
   | "business"
   | "profile"
   | "principals"
   | "payouts"
   | "documents"
+  | "survey"
   | "review"
   | "status"
   | "unavailable";
@@ -879,7 +939,7 @@ export type OnboardingRequirement = {
  * no field values: the same facts a webhook gives your server.
  */
 export type OnboardingStateEvent = {
-  /** `null` until the applicant saves the first step. */
+  /** `null` until the applicant starts the application. */
   applicationId: string | null;
   applicationState: OnboardingApplicationState | null;
   step: OnboardingStep;
@@ -1225,11 +1285,13 @@ export type Message = EmbedIframeName &
     | {
         /**
          * Embed → parent: no application exists yet, so ask the platform to
-         * create one with the first step's fields.
+         * create one from the start screen. An embed from before the start
+         * screen sends no `organization`.
          */
         type: "ONBOARDING_CREATE_REQUEST";
         requestId: string;
         application: OnboardingCreateApplicationInput;
+        organization?: OnboardingOrganization;
       }
     | {
         /**
@@ -1250,6 +1312,10 @@ export type Message = EmbedIframeName &
         /** Embed → parent: the applicant submitted (or resubmitted) the application. */
         type: "ONBOARDING_SUBMITTED";
       } & OnboardingSubmittedEvent)
+    | ({
+        /** Embed → parent: the applicant saved the survey step. */
+        type: "ONBOARDING_SURVEY";
+      } & OnboardingSurveyEvent)
     | {
         /** Embed → parent: a new screen opened; scroll the form's top into view. */
         type: "ONBOARDING_SCROLL_INTO_VIEW";
