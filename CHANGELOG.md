@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.13.2
+
+### Patch Changes
+
+- `mountAmosOnboarding`: a new application opens on a start screen (legal name, DBA, organization type and sub-category), and a survey step comes before review. `createApplication` now receives only `legal_name` plus the `entity_type` and `ownership_type` the organization type implies, so the EIN no longer passes through your page, and a second argument, `organization`, with what the applicant chose. `onSurveyCompleted` receives the survey's answers, which Amos does not store. `OnboardingStep` gains `start` and `survey`; adds the `OnboardingOrganization`, `OnboardingOrganizationType`, `OnboardingSurvey`, `OnboardingSurveyChannel` and `OnboardingSurveyEvent` types.
+
 ## 0.13.1
 
 ### Patch Changes
