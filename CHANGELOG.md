@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.13.3
+
+### Patch Changes
+
+- `mountAmosOnboarding`: the survey step's answers are now saved to the application on Amos (`application_survey`) like every other step, so the form no longer hands them to your page. Removes `onSurveyCompleted`, the `ONBOARDING_SURVEY` message and the `OnboardingSurvey`, `OnboardingSurveyChannel` and `OnboardingSurveyEvent` types; read the answers with the API instead. `OnboardingOrganization` drops `religiousAffiliation`, which was always `null` (the question moved to the survey). The `survey` step itself is unchanged.
+
 ## 0.13.2
 
 ### Patch Changes
