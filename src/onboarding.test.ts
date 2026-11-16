@@ -6,7 +6,6 @@ import {
   type OnboardingCreateApplicationInput,
   type OnboardingCreateApplicationResult,
   type OnboardingOrganization,
-  type OnboardingSurvey,
 } from "./types";
 
 const APPLICATION_ID = "lea_123";
@@ -21,16 +20,6 @@ const ORGANIZATION: OnboardingOrganization = {
   doingBusinessAs: "Riverside Food Bank",
   organizationType: "nonprofit",
   businessCategory: "charity",
-  religiousAffiliation: null,
-};
-
-const SURVEY: OnboardingSurvey = {
-  previousPlatform: null,
-  referralSource: "Friend",
-  referralName: "Dana Okafor",
-  channels: ["website", "email"],
-  websiteStatus: "Already live",
-  websiteUrl: "https://riversidefoodbank.org",
 };
 
 function setup({
@@ -63,7 +52,6 @@ function setup({
   const onStateChange = vi.fn();
   const onSubmitted = vi.fn();
   const onApplicationCreated = vi.fn();
-  const onSurveyCompleted = vi.fn();
   const ui = attachOnboardingUi({
     iframe,
     options: {
@@ -73,7 +61,6 @@ function setup({
       onStateChange,
       onSubmitted,
       onApplicationCreated,
-      onSurveyCompleted,
     },
   });
 
@@ -95,7 +82,6 @@ function setup({
     onStateChange,
     onSubmitted,
     onApplicationCreated,
-    onSurveyCompleted,
     ofType: <T extends Message["type"]>(type: T) =>
       posted.filter(
         (message): message is Extract<Message, { type: T }> =>
@@ -298,21 +284,6 @@ describe("attachOnboardingUi", () => {
     expect(form.ofType("ONBOARDING_CREATED")[0]?.error).toMatch(
       /can't start an application/,
     );
-  });
-
-  test("hands the survey answers to the page", () => {
-    const form = mounted();
-
-    form.fromIframe({
-      type: "ONBOARDING_SURVEY",
-      applicationId: APPLICATION_ID,
-      survey: SURVEY,
-    });
-
-    expect(form.onSurveyCompleted).toHaveBeenCalledWith({
-      applicationId: APPLICATION_ID,
-      survey: SURVEY,
-    });
   });
 
   test("forwards state and submission without the message envelope", () => {

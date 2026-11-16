@@ -11,7 +11,6 @@ import {
   type OnboardingOrganization,
   type OnboardingStateEvent,
   type OnboardingSubmittedEvent,
-  type OnboardingSurveyEvent,
 } from "./types";
 
 export type OnboardingUiOptions = {
@@ -49,11 +48,6 @@ export type OnboardingUiOptions = {
   onStateChange?: (event: OnboardingStateEvent) => void;
   /** Called when the applicant submits or resubmits. Verify with the webhook. */
   onSubmitted?: (event: OnboardingSubmittedEvent) => void;
-  /**
-   * Called with the applicant's answers each time they save the survey
-   * step. Amos does not store them; keep them if you want them.
-   */
-  onSurveyCompleted?: (event: OnboardingSurveyEvent) => void;
 };
 
 type OnboardingSession = { refresh: () => void };
@@ -203,12 +197,6 @@ export function attachOnboardingUi({
         current.onSubmitted?.({
           applicationId: data.applicationId,
           applicationState: data.applicationState,
-        });
-        return;
-      case "ONBOARDING_SURVEY":
-        current.onSurveyCompleted?.({
-          applicationId: data.applicationId,
-          survey: data.survey,
         });
         return;
       case "ONBOARDING_SCROLL_INTO_VIEW":

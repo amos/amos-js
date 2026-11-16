@@ -876,37 +876,6 @@ export type OnboardingOrganization = {
    * `business_category`. A vendor has none to choose and gets `vendor`.
    */
   businessCategory: components["schemas"]["MerchantBusinessCategoryType"];
-  /** Asked of education only; `null` for every other type. */
-  religiousAffiliation: boolean | null;
-};
-
-/** Where the applicant plans to take payments. */
-export type OnboardingSurveyChannel =
-  | "website"
-  | "email"
-  | "internal"
-  | "social_media";
-
-/**
- * The applicant's answers on the survey step. Amos does not store these:
- * they are the platform's to keep, so the form hands them to
- * `onSurveyCompleted`.
- */
-export type OnboardingSurvey = {
-  previousPlatform: string | null;
-  /** The option chosen for "How did you hear about us?", as shown. */
-  referralSource: string;
-  /** Who referred them, when the source is a person. */
-  referralName: string | null;
-  channels: Array<OnboardingSurveyChannel>;
-  /** Asked when `channels` includes `website`. */
-  websiteStatus: string | null;
-  websiteUrl: string | null;
-};
-
-export type OnboardingSurveyEvent = {
-  applicationId: string;
-  survey: OnboardingSurvey;
 };
 
 /**
@@ -1312,10 +1281,6 @@ export type Message = EmbedIframeName &
         /** Embed → parent: the applicant submitted (or resubmitted) the application. */
         type: "ONBOARDING_SUBMITTED";
       } & OnboardingSubmittedEvent)
-    | ({
-        /** Embed → parent: the applicant saved the survey step. */
-        type: "ONBOARDING_SURVEY";
-      } & OnboardingSurveyEvent)
     | {
         /** Embed → parent: a new screen opened; scroll the form's top into view. */
         type: "ONBOARDING_SCROLL_INTO_VIEW";

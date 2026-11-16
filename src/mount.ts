@@ -49,7 +49,6 @@ import type {
   OnboardingOrganization,
   OnboardingStateEvent,
   OnboardingSubmittedEvent,
-  OnboardingSurveyEvent,
 } from "./types";
 
 type Container = HTMLElement | string;
@@ -996,11 +995,6 @@ export type AmosOnboardingOptions = {
   onStateChange?: (event: OnboardingStateEvent) => void;
   /** Called when the applicant submits or resubmits. Verify with the webhook. */
   onSubmitted?: (event: OnboardingSubmittedEvent) => void;
-  /**
-   * Called with the applicant's answers each time they save the survey
-   * step. Amos does not store them; keep them if you want them.
-   */
-  onSurveyCompleted?: (event: OnboardingSurveyEvent) => void;
 };
 
 /**
@@ -1026,9 +1020,9 @@ export type AmosOnboardingMountController = {
  * account and EIN letter, answer a short survey, and submit. If an
  * underwriter asks for more, the same form shows what is needed.
  *
- * Every field goes from the iframe to Amos, except the start screen of a
- * new application (name and type, no tax ID), which `createApplication`
- * sends from your server, and the survey, which is yours to keep.
+ * Every field goes from the iframe to Amos, including the survey, except the
+ * start screen of a new application (name and type, no tax ID), which
+ * `createApplication` sends from your server.
  */
 export function mountAmosOnboarding(
   container: Container,
