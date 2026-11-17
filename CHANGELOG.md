@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.13.5
+
+### Patch Changes
+
+- Add Plaid
+
 ## 0.13.4
 
 ### Patch Changes
