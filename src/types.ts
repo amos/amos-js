@@ -881,10 +881,16 @@ export type OnboardingOrganization = {
 /**
  * The screen the onboarding form shows. Report-only (e.g. for analytics):
  * the applicant can move back and forth, so screens repeat.
+ *
+ * `overview` is the task list: every section with its status, shown while
+ * the applicant can still change the application. `principals` covers both
+ * the applicant's own details and the other owners and officers. `status` is
+ * what an application shows once it is submitted or decided.
  */
 export type OnboardingStep =
   | "loading"
   | "start"
+  | "overview"
   | "business"
   | "profile"
   | "principals"
