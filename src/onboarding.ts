@@ -2,6 +2,7 @@ import { embedIframeSearchParams } from "./embed-src";
 import { isMessageFromEmbedIframe } from "./iframe-message";
 import { getEmbedOrigin } from "./jwt";
 import { getIframeTargetOrigin } from "./messaging";
+import { openPlaidPopupLink, plaidAccountIdFromMetadata } from "./plaid";
 import {
   type Appearance,
   createMessage,
@@ -66,8 +67,9 @@ function errorText(error: unknown, fallback: string): string {
 /**
  * Host-page half of the onboarding form. The iframe owns every field and
  * calls `/embed/legal_entity_applications/…` itself. This side answers its
- * requests for embed tokens and, before an application exists, asks the
- * platform to create one.
+ * requests for embed tokens, before an application exists asks the platform
+ * to create one, and opens Plaid Link when the form needs it (a payout bank
+ * account, a principal's identity), since Link cannot run inside the iframe.
  */
 export function attachOnboardingUi({
   iframe,
@@ -166,6 +168,53 @@ export function attachOnboardingUi({
     }
   }
 
+  /** Destroys the Link session on screen, if there is one. */
+  let closePlaid: (() => void) | undefined;
+
+  /**
+   * Open Plaid Link for the form: the iframe made the link token, and gets
+   * back what Link answered. One session at a time; a new request replaces
+   * the last.
+   */
+  async function openPlaid(
+    requestId: string,
+    linkToken: string,
+  ): Promise<void> {
+    const reply = { type: "ONBOARDING_PLAID_RESULT", requestId } as const;
+    closePlaid?.();
+    closePlaid = undefined;
+    post({ ...reply, status: "opened" });
+    try {
+      const close = await openPlaidPopupLink({
+        token: linkToken,
+        onSuccess: (publicToken, metadata) => {
+          const account = metadata.account ?? metadata.accounts?.[0];
+          const accountId = plaidAccountIdFromMetadata(metadata);
+          const institutionName = metadata.institution?.name;
+          post({
+            ...reply,
+            status: "success",
+            publicToken: publicToken ?? "",
+            ...(metadata.link_session_id
+              ? { linkSessionId: metadata.link_session_id }
+              : {}),
+            ...(accountId ? { accountId } : {}),
+            ...(institutionName ? { institutionName } : {}),
+            ...(account?.mask ? { mask: account.mask } : {}),
+          });
+        },
+        onExit: () => post({ ...reply, status: "exit" }),
+      });
+      closePlaid = close;
+    } catch (error) {
+      post({
+        ...reply,
+        status: "error",
+        error: errorText(error, "Could not open Plaid."),
+      });
+    }
+  }
+
   function handleMessage(event: MessageEvent<Message>): void {
     if (!isMessageFromEmbedIframe(event, iframe)) {
       return;
@@ -199,6 +248,9 @@ export function attachOnboardingUi({
           applicationState: data.applicationState,
         });
         return;
+      case "ONBOARDING_PLAID_OPEN":
+        void openPlaid(data.requestId, data.linkToken);
+        return;
       case "ONBOARDING_SCROLL_INTO_VIEW":
         if (iframe.getBoundingClientRect().top < 0) {
           iframe.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -226,6 +278,8 @@ export function attachOnboardingUi({
       sendApplication();
     },
     destroy() {
+      closePlaid?.();
+      closePlaid = undefined;
       window.removeEventListener("message", handleMessage);
       iframe.removeEventListener("load", handleLoad);
       sessions.delete(iframe);

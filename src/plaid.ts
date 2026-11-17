@@ -20,6 +20,8 @@ export type PlaidLinkOnSuccessMetadata = {
   accounts?: Array<PlaidLinkAccount>;
   account?: PlaidLinkAccount;
   account_id?: string;
+  /** The Link session. Identity Verification uses it as the verification id. */
+  link_session_id?: string;
 };
 
 type PlaidEmbeddedHandler = {

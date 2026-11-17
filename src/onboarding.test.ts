@@ -318,6 +318,83 @@ describe("attachOnboardingUi", () => {
     });
   });
 
+  test("opens Plaid Link for the form and answers what Link said", async () => {
+    type LinkConfig = {
+      token: string;
+      onSuccess: (publicToken: string, metadata: object) => void;
+      onExit: (error: null) => void;
+    };
+    const sessions: Array<LinkConfig> = [];
+    const open = vi.fn();
+    const destroy = vi.fn();
+    window.Plaid = {
+      createEmbedded: () => ({ destroy }),
+      create: (config) => {
+        sessions.push(config as LinkConfig);
+        return { open, destroy };
+      },
+    };
+    const form = mounted();
+
+    form.fromIframe({
+      type: "ONBOARDING_PLAID_OPEN",
+      requestId: "p1",
+      linkToken: "link-sandbox-1",
+    });
+    // At once, before Link has loaded: the form is waiting to hear that
+    // this SDK can open Link at all.
+    expect(form.ofType("ONBOARDING_PLAID_RESULT")).toEqual([
+      expect.objectContaining({ requestId: "p1", status: "opened" }),
+    ]);
+    await flush();
+    expect(sessions[0]?.token).toBe("link-sandbox-1");
+    expect(open).toHaveBeenCalledOnce();
+
+    // A bank link: the public token and the account picked.
+    sessions[0]?.onSuccess("public-1", {
+      institution: { name: "Chase" },
+      accounts: [{ id: "acc_1", mask: "6789" }],
+    });
+    expect(form.ofType("ONBOARDING_PLAID_RESULT")[1]).toMatchObject({
+      requestId: "p1",
+      status: "success",
+      publicToken: "public-1",
+      accountId: "acc_1",
+      institutionName: "Chase",
+      mask: "6789",
+    });
+
+    // An identity verification: no public token, only the session.
+    form.fromIframe({
+      type: "ONBOARDING_PLAID_OPEN",
+      requestId: "p2",
+      linkToken: "link-sandbox-2",
+    });
+    await flush();
+    // The first session is gone before the second opens.
+    expect(destroy).toHaveBeenCalledOnce();
+    sessions[1]?.onSuccess("", { link_session_id: "idv_1" });
+    expect(form.ofType("ONBOARDING_PLAID_RESULT").at(-1)).toMatchObject({
+      requestId: "p2",
+      status: "success",
+      publicToken: "",
+      linkSessionId: "idv_1",
+    });
+
+    form.fromIframe({
+      type: "ONBOARDING_PLAID_OPEN",
+      requestId: "p3",
+      linkToken: "link-sandbox-3",
+    });
+    await flush();
+    sessions[2]?.onExit(null);
+    expect(form.ofType("ONBOARDING_PLAID_RESULT").at(-1)).toMatchObject({
+      requestId: "p3",
+      status: "exit",
+    });
+    delete window.Plaid;
+  });
+
   test("ignores messages from other windows", () => {
     const form = mounted();
     form.fromIframe(
