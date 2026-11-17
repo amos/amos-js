@@ -921,6 +921,26 @@ export type OnboardingStateEvent = {
   openRequirements: Array<OnboardingRequirement>;
 };
 
+/**
+ * What Plaid Link answered for the onboarding form. A bank link carries the
+ * `publicToken` and the account picked; an identity verification carries only
+ * `linkSessionId`, and its `publicToken` is empty.
+ */
+export type OnboardingPlaidResult =
+  | { status: "opened" }
+  | {
+      status: "success";
+      publicToken: string;
+      linkSessionId?: string;
+      accountId?: string;
+      institutionName?: string;
+      mask?: string;
+    }
+  /** The person closed Link without finishing. */
+  | { status: "exit" }
+  /** Link could not be opened. Presentable text. */
+  | { status: "error"; error: string };
+
 export type OnboardingSubmittedEvent = {
   applicationId: string;
   applicationState: OnboardingApplicationState;
@@ -1291,6 +1311,25 @@ export type Message = EmbedIframeName &
         /** Embed → parent: a new screen opened; scroll the form's top into view. */
         type: "ONBOARDING_SCROLL_INTO_VIEW";
       }
+    | {
+        /**
+         * Embed → parent: open Plaid Link on the host page with this link
+         * token, to link a payout bank account or to verify a principal's
+         * identity. Link cannot run inside the iframe.
+         */
+        type: "ONBOARDING_PLAID_OPEN";
+        requestId: string;
+        linkToken: string;
+      }
+    | ({
+        /**
+         * Parent → embed: how the Link session `ONBOARDING_PLAID_OPEN` asked
+         * for is going. `opened` comes at once, so the form knows this SDK
+         * can open Link; one of the others follows.
+         */
+        type: "ONBOARDING_PLAID_RESULT";
+        requestId: string;
+      } & OnboardingPlaidResult)
   );
 
 /**

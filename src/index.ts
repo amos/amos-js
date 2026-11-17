@@ -161,6 +161,7 @@ export type {
   OnboardingCreateApplicationResult,
   OnboardingOrganization,
   OnboardingOrganizationType,
+  OnboardingPlaidResult,
   OnboardingRequirement,
   OnboardingStateEvent,
   OnboardingStep,
