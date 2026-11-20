@@ -3,10 +3,12 @@ import {
   mountAmosCreditCardPaymentMethodForm,
   mountAmosExternalBankAccountForm,
   mountAmosGooglePayButton,
+  mountAmosOnboarding,
   PAYMENT_IFRAME_SANDBOX,
   SKELETON_REVEAL_TIMEOUT_MS,
   WALLET_IFRAME_SANDBOX,
 } from "./mount";
+import type { Message, OnboardingAppearance } from "./types";
 
 const RENDER_TOKEN = [
   btoa(JSON.stringify({ alg: "none" })),
@@ -220,6 +222,70 @@ describe("mountAmosGooglePayButton sandbox", () => {
       WALLET_IFRAME_SANDBOX,
     );
     expect(controller.iframe.allow).toBe("payment");
+
+    controller.destroy();
+  });
+});
+
+describe("mountAmosOnboarding appearance", () => {
+  function mount(appearance: OnboardingAppearance) {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const controller = mountAmosOnboarding(host, {
+      renderToken: RENDER_TOKEN,
+      applicationId: "lea_123",
+      getEmbedToken: async () => "embed.jwt",
+      appearance,
+    });
+    const frameWindow = controller.iframe.contentWindow;
+    if (!frameWindow) {
+      throw new Error("iframe has no window");
+    }
+    const posted: Array<Message> = [];
+    vi.spyOn(frameWindow, "postMessage").mockImplementation(
+      (message: unknown) => {
+        posted.push(message as Message);
+      },
+    );
+    const sent = () =>
+      posted.flatMap((message) =>
+        message.type === "UPDATE_APPEARANCE" ? [message.appearance] : [],
+      );
+    return { controller, sent };
+  }
+
+  test("sends the application form's own variables and rules to the iframe", () => {
+    const appearance: OnboardingAppearance = {
+      themeVariables: { "--primary": "blue", "--success": "green" },
+      rules: {
+        ".Input": { borderRadius: "0" },
+        ".Button--primary": { borderRadius: "999px" },
+        ".Notice--warning": { backgroundColor: "var(--accent)" },
+      },
+    };
+    const { controller, sent } = mount(appearance);
+
+    postFromIframe(controller.iframe, { type: "IFRAME_READY" });
+
+    expect(sent()).toHaveLength(1);
+    expect(sent()[0]).toMatchObject(appearance);
+
+    controller.destroy();
+  });
+
+  test("replaces the rules on update", () => {
+    const { controller, sent } = mount({
+      rules: { ".Button": { fontWeight: "600" } },
+    });
+    postFromIframe(controller.iframe, { type: "IFRAME_READY" });
+
+    controller.update({
+      appearance: { rules: { ".Badge": { textTransform: "uppercase" } } },
+    });
+
+    expect(sent().at(-1)?.rules).toEqual({
+      ".Badge": { textTransform: "uppercase" },
+    });
 
     controller.destroy();
   });

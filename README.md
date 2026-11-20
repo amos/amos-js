@@ -14,7 +14,7 @@ npm install @amos.com/amos-js @amos.com/node
 
 ## What it gives you
 
-- **Types** for the `postMessage` protocol used between your page and the Amos iframe (`Message`, `Appearance`, `ThemeVariable`, `ConfirmPaymentResult`, `ConfirmSetupResult`). OpenAPI schema types (for example `components["schemas"]["PaymentIntent"]`) come from `@amos.com/node`.
+- **Types** for the `postMessage` protocol used between your page and the Amos iframe (`Message`, `Appearance`, `OnboardingAppearance`, `ThemeVariable`, `ConfirmPaymentResult`, `ConfirmSetupResult`). OpenAPI schema types (for example `components["schemas"]["PaymentIntent"]`) come from `@amos.com/node`.
 - **Iframe-targeted helpers** to validate the form, confirm a payment intent, confirm a setup intent, update appearance, etc.
 - **Mount functions** (`mountAmosCreditCardPaymentMethodForm`, `mountAmosBankAccountPaymentMethodForm`, `mountAmosExternalBankAccountForm`, `mountAmosGooglePayButton`, `mountAmosApplePayButton`) that create the iframe, wire up its message protocol, manage its height, and show a loading skeleton (field-shaped for card/bank forms, button-shaped for Google Pay / Apple Pay) with an opaque background over an opacity-1 iframe, until appearance acks or 1.5s after the postMessage handshake starts (`IFRAME_READY`). They return a small controller for updating options and tearing it down.
 - **Lower-level building blocks** (`getCreditCardFormSrc`, `attachPaymentMethodFormListeners`, `attachGooglePayButtonListeners`, `attachApplePayButtonListeners`, ...) for integrators (such as `@amos.com/react-amos-js`) that want to render the iframe element themselves.
@@ -352,6 +352,58 @@ Radio groups (e.g. account type) always use an above-style group label regardles
 | `--radius`                         | Base border-radius (derived into sm/md/lg/xl)            | `0.625rem`                      |
 | `--font-family`                    | Font stack for the iframe UI                             | `Inter, ui-sans-serif, system-ui, sans-serif` |
 
+
+### Application form
+
+`mountAmosOnboarding` takes the same `appearance` (type `OnboardingAppearance`), so one object can style your payment forms and the application form. `themeVariables`, `fonts` and `rules` work as above, with the same replace model on `update({ appearance })`. Its labels are always above the field, so there is no `labels`, and the floating-label, `--field-gap`, `--control-gap` and `--radio-size` variables do nothing there.
+
+```ts
+mountAmosOnboarding("#application", {
+  renderToken,
+  getEmbedToken,
+  appearance: {
+    themeVariables: {
+      "--primary": "oklch(0.5 0.2 240)",
+      "--radius": "0.25rem",
+      "--success": "oklch(0.6 0.15 150)",
+    },
+    rules: {
+      ".Input": { borderRadius: "0" },
+      ".Heading": { fontFamily: "Source Serif 4, ui-serif, serif" },
+      ".Button": { borderRadius: "999px" },
+      ".Button--primary": { backgroundColor: "var(--primary)" },
+      ".Notice--warning": { borderColor: "var(--warning)" },
+    },
+  },
+});
+```
+
+Two more theme variables color its statuses: `--success` (default `oklch(0.55 0.14 155)`) for completed, verified and approved, and `--warning` (default `oklch(0.7 0.15 70)`) for what needs attention. Rule values may use them as `var(--success)` / `var(--warning)`.
+
+`rules` accepts the selectors above (`.Input`, `.Label`, `.Error`, …; it has no dropdown or radio parts) and these for the parts only this form has:
+
+| Selector | Targets |
+| --- | --- |
+| `.Heading` | Screen titles |
+| `.SectionTitle` | Titles of groups of fields and of cards |
+| `.Hint` | Help text under a field |
+| `.Button` | Every button except text links |
+| `.Button:hover`, `.Button:focus`, `.Button:disabled` | Those buttons in the given state |
+| `.Button--primary`, `.Button--primary:hover` | The main action of a screen (Save, Continue, Submit) |
+| `.Button--secondary`, `.Button--secondary:hover` | Outlined buttons |
+| `.Button--ghost`, `.Button--ghost:hover` | Borderless buttons (Back, Cancel, Remove) |
+| `.Link`, `.Link:hover` | Buttons drawn as text links (Change, Replace, Fix) |
+| `.Block` | Bordered containers: the task list, cards, summaries, the upload area |
+| `.PickerItem`, `.PickerItem:hover` | One option of a pick-one group of cards |
+| `.PickerItem--selected` | The chosen option |
+| `.Checkbox`, `.Checkbox--checked` | The box of a checkbox |
+| `.CheckboxLabel` | The text next to a checkbox |
+| `.Notice` | Every notice, whatever its tone |
+| `.Notice--error`, `.Notice--warning`, `.Notice--success` | Notices of that tone |
+| `.Badge` | Status pills (Completed, Verified, Submitted, …) |
+
+A variant or state (`.Button--primary`, `.Button:hover`) overrides its part (`.Button`) whichever comes first. Between two that both apply, such as `.Button--primary` and `.Button:hover`, the later key wins; `.Button--primary:hover` beats both. These selectors are ignored by the payment forms, and need an embed that knows them: until then the form keeps its defaults for those parts.
+
 ## API reference
 
 ### `mountAmosCreditCardPaymentMethodForm(container, options)`
@@ -462,7 +514,7 @@ const result = await confirmExternalBankAccountIntent({
 
 The whole legal entity application in one iframe. A new applicant starts by naming the organization (legal name and DBA) and choosing its type and sub-category; from then on the form opens on a task list of its sections, each with a status, done in any order and saved as they go: organization details, the payments profile, the applicant's own details, the other owners and officers, a payout account, the IRS EIN letter and a short survey, then a check-your-answers page to submit from. The applicant verifies their own email with a 6-digit code; that is the one verified principal an application needs to be submitted, and what lets them invite the other owners and officers, who each complete their own details from an emailed link. If an underwriter asks for more (another principal, payments profile or EIN letter), the request shows on the task list and the applicant resubmits from the same form. The iframe calls `/embed/legal_entity_applications/{id}/…` itself with a fresh embed token per call; field values never reach your page, except the start screen below.
 
-Options: `renderToken` (any valid render token) and `getEmbedToken(applicationId)` (required); `applicationId` (omit or `null` to start a new application); `createApplication(application, organization)` (required without an `applicationId`); `onApplicationCreated({ applicationId })`; `appearance`; `onStateChange({ applicationId, applicationState, step, openRequirements })`; `onSubmitted({ applicationId, applicationState })`. The controller has `iframe`, `update(patch)`, `refresh()` (read the application again) and `destroy()`.
+Options: `renderToken` (any valid render token) and `getEmbedToken(applicationId)` (required); `applicationId` (omit or `null` to start a new application); `createApplication(application, organization)` (required without an `applicationId`); `onApplicationCreated({ applicationId })`; `appearance` (`OnboardingAppearance`, see [Application form](#application-form)); `onStateChange({ applicationId, applicationState, step, openRequirements })`; `onSubmitted({ applicationId, applicationState })`. The controller has `iframe`, `update(patch)`, `refresh()` (read the application again) and `destroy()`.
 
 - `getEmbedToken` returns a `Promise<string>` your server mints with `POST /legal_entity_applications/:id/embed_token`. Tokens expire within seconds, so the form asks before each call.
 - Without an `applicationId`, the form opens on its start screen and calls `createApplication` when the applicant clicks **Start application**. `application` is the body for `POST /legal_entity_applications`: `legal_name`, plus the `entity_type` and `ownership_type` the organization type implies (a vendor gets neither and picks on the next step). Create the application on your server and resolve `{ applicationId }`, or `{ errors }` with the API's 422 field errors to show them on the form. Save the id (`onApplicationCreated`) and pass it next time to resume. `organization` is `{ doingBusinessAs, organizationType, businessCategory }`, for your own records; the form saves the DBA and category to the application's payments profile itself. Nothing sensitive passes through your page: the EIN is collected after the application exists.

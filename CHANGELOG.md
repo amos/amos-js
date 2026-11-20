@@ -1,5 +1,11 @@
 # @amos.com/amos-js
 
+## 0.14.0
+
+### Minor Changes
+
+- `mountAmosOnboarding`: `appearance` is now an `OnboardingAppearance`, the payment forms' appearance API with the application form's own parts. `rules` takes every `AppearanceRuleSelector` plus `.Heading`, `.SectionTitle`, `.Hint`, `.Button` (with `:hover`, `:focus`, `:disabled`, and the `--primary`, `--secondary` and `--ghost` variants), `.Link`, `.Block`, `.PickerItem` (and `--selected`), `.Checkbox` (and `--checked`), `.CheckboxLabel`, `.Notice` (and `--error`, `--warning`, `--success`) and `.Badge`. `themeVariables` gains `--success` and `--warning` for status colors. The form's fields, labels and errors now follow `--input-font-size`, `--input-padding`, `--input-border-width`, `--input-shadow`, `--label-font-size`, `--error-font-size` and the `.Label` / `.Error` rules like the payment forms do. An `Appearance` is still accepted; there is no `labels` (labels are always above the field). Adds the `OnboardingAppearance`, `OnboardingAppearanceRuleSelector` and `OnboardingThemeVariable` types.
+
 ## 0.13.5
 
 ### Patch Changes

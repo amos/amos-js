@@ -628,6 +628,104 @@ export type Appearance = {
 };
 
 /**
+ * Theme variables for {@link OnboardingAppearance}: every
+ * {@link ThemeVariable}, plus the status colors only the application form
+ * uses.
+ */
+export type OnboardingThemeVariable =
+  | ThemeVariable
+  /*
+   * Done / verified / approved: status badges and success notices.
+   *
+   * Default: oklch(0.55 0.14 155)
+   */
+  | "--success"
+  /*
+   * Needs attention: status badges and warning notices.
+   *
+   * Default: oklch(0.7 0.15 70)
+   */
+  | "--warning";
+
+/**
+ * Class names for {@link OnboardingAppearance.rules}: every
+ * {@link AppearanceRuleSelector}, plus the parts only the application form
+ * has. Mapped onto iframe `data-slot` targets internally; the DOM is not
+ * the public API.
+ */
+export type OnboardingAppearanceRuleSelector =
+  | AppearanceRuleSelector
+  /* Screen titles. */
+  | ".Heading"
+  /* Titles of the groups of fields inside a screen. */
+  | ".SectionTitle"
+  /* Help text under a field. */
+  | ".Hint"
+  /* Every button except text links: primary, secondary and ghost. */
+  | ".Button"
+  | ".Button:hover"
+  | ".Button:focus"
+  | ".Button:disabled"
+  /* The main action of a screen (Save, Continue, Submit). */
+  | ".Button--primary"
+  | ".Button--primary:hover"
+  /* Outlined buttons. */
+  | ".Button--secondary"
+  | ".Button--secondary:hover"
+  /* Borderless buttons (Back, Cancel, Remove). */
+  | ".Button--ghost"
+  | ".Button--ghost:hover"
+  /* Buttons drawn as text links. */
+  | ".Link"
+  | ".Link:hover"
+  /* Bordered containers: the task list, cards, summaries, the upload area. */
+  | ".Block"
+  /* One option of a pick-one group of cards. */
+  | ".PickerItem"
+  | ".PickerItem:hover"
+  | ".PickerItem--selected"
+  /* The box of a checkbox. */
+  | ".Checkbox"
+  | ".Checkbox--checked"
+  /* The text next to a checkbox. */
+  | ".CheckboxLabel"
+  /* Every notice, whatever its tone. */
+  | ".Notice"
+  | ".Notice--error"
+  | ".Notice--warning"
+  | ".Notice--success"
+  /* Status pills (Completed, Verified, Submitted, ...). */
+  | ".Badge";
+
+/**
+ * Appearance overrides for the application form
+ * ({@link mountAmosOnboarding}). The same shape as {@link Appearance}, so
+ * one object can style the payment forms and the application form, with
+ * more `themeVariables` and `rules` for the parts only the application
+ * form has. There is no `labels`: its labels are always above the field.
+ */
+export type OnboardingAppearance = {
+  /**
+   * CSS custom properties to override. Each update that includes
+   * `themeVariables` **replaces** the full override set, as in
+   * {@link Appearance.themeVariables}.
+   */
+  themeVariables?: Partial<Record<OnboardingThemeVariable, string>>;
+  /** Webfonts to load in the iframe. See {@link Appearance.fonts}. */
+  fonts?: Array<FontSource>;
+  /**
+   * Per-part CSS, keyed by class name (`.Input`, `.Button--primary`,
+   * `.Notice`, …). Overrides `themeVariables` for the properties it sets.
+   * Values may use `var(--token)` for allowlisted theme variables.
+   * Omitted on `update({ appearance })` keeps the previous set; a
+   * provided object replaces it (`{}` clears).
+   */
+  rules?: Partial<
+    Record<OnboardingAppearanceRuleSelector, AppearanceRuleDeclarations>
+  >;
+};
+
+/**
  * Apple's `<apple-pay-button>` attributes. `@types/applepayjs` only
  * covers `ApplePaySession`, so this bag is the custom element's HTML
  * attributes plus inner `style`. Posted as-is on `buttonProps`.

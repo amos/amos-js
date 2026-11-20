@@ -44,6 +44,7 @@ import {
 import { attachPlaidBankUi } from "./plaid-bank-ui";
 import type {
   Appearance,
+  OnboardingAppearance,
   OnboardingCreateApplicationInput,
   OnboardingCreateApplicationResult,
   OnboardingOrganization,
@@ -987,7 +988,12 @@ export type AmosOnboardingOptions = {
   ) => Promise<OnboardingCreateApplicationResult>;
   /** Called once `createApplication` returns an id. Save it to resume later. */
   onApplicationCreated?: (event: { applicationId: string }) => void;
-  appearance?: Appearance;
+  /**
+   * Theme variables, fonts and per-part rules, as on the payment forms,
+   * plus the parts only this form has (`.Button--primary`, `.Notice`,
+   * `.PickerItem`, …). Update it with `update({ appearance })`.
+   */
+  appearance?: OnboardingAppearance;
   /**
    * Called after every read and save with the application's state, the
    * screen shown, and the requirements still open. Holds no field values.

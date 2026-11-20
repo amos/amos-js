@@ -4,9 +4,9 @@ import { getEmbedOrigin } from "./jwt";
 import { getIframeTargetOrigin } from "./messaging";
 import { openPlaidPopupLink, plaidAccountIdFromMetadata } from "./plaid";
 import {
-  type Appearance,
   createMessage,
   type Message,
+  type OnboardingAppearance,
   type OnboardingCreateApplicationInput,
   type OnboardingCreateApplicationResult,
   type OnboardingOrganization,
@@ -21,7 +21,7 @@ export type OnboardingUiOptions = {
    * `createApplication`.
    */
   applicationId?: string | null;
-  appearance?: Appearance;
+  appearance?: OnboardingAppearance;
   /**
    * Mint an embed token for the application with your server's
    * `POST /legal_entity_applications/:id/embed_token`. Called before each
